@@ -1,0 +1,225 @@
+{
+  "_descricao": "Histórico de propostas Flying Studio, extraído dos PDFs reais. Usado para calcular o preço médio do último projeto do mesmo cliente.",
+  "_atualizado_em": "2026-05-22",
+
+  "clientes": {
+    "GALLI": {
+      "nome_padrao": "GALLI",
+      "contato_padrao": "DANIEL PUCCI",
+      "propostas": [
+        {
+          "ref": "SAID AIACH",
+          "data": "2026-05-19",
+          "arquivo": "Flying_Galli_Aiach_R00.pdf",
+          "desconto_pct": 12,
+          "desconto_label": "12% de Desconto de Parceria",
+          "forma_pagamento": [
+            {"percentual": 50, "marco": "Na aprovação desta Proposta"},
+            {"percentual": 25, "marco": "Envio dos Shades"},
+            {"percentual": 25, "marco": "Envio HR - Imagens finais"}
+          ],
+          "prazos": {"shades": "20 (Vinte) dias", "primeiro_tiro": "15 (Quinze) dias após a aprovação dos Shades", "revisoes": "10 (Dez) dias para contemplar e enviar novos tiros"},
+          "externas": {"qtd": 9, "total": 19300, "itens": [
+            {"desc": "Perspectiva Fachada vista da calçada", "preco": 3000},
+            {"desc": "Perspectiva Jardim", "preco": 1900},
+            {"desc": "Perspectiva Quadra de areia", "preco": 1900},
+            {"desc": "Perspectiva Piscina", "preco": 1900},
+            {"desc": "Perspectiva Dec c Jacuzzi", "preco": 1900},
+            {"desc": "Perspectiva Playground", "preco": 1900},
+            {"desc": "Perspectiva Gourmet/churrasqueira", "preco": 1900},
+            {"desc": "Perspectiva Terraço rooftop", "preco": 1900},
+            {"desc": "Perspectiva Fachada Bird's View", "preco": 3000}
+          ]},
+          "internas": {"qtd": 5, "total": 8750, "itens": [
+            {"desc": "Perspectiva Bicicletário", "preco": 1750},
+            {"desc": "Perspectiva Academia", "preco": 1750},
+            {"desc": "Perspectiva Sauna", "preco": 1750},
+            {"desc": "Perspectiva Brinquedoteca", "preco": 1750},
+            {"desc": "Perspectiva Salão de Festas", "preco": 1750}
+          ]},
+          "plantas": {"qtd": 4, "total": 10200, "itens": [
+            {"desc": "Planta Humanizada Implantação Térreo", "preco": 3000},
+            {"desc": "Planta Humanizada Implantação Mezanino lazer", "preco": 3000},
+            {"desc": "Planta Humanizada Implantação rooftop", "preco": 3000},
+            {"desc": "Planta Humanizada Apartamento Tipo", "preco": 1200}
+          ]}
+        }
+      ]
+    },
+
+    "CASA VIVA": {
+      "nome_padrao": "CASA VIVA",
+      "contato_padrao": "ANA BEATRIZ",
+      "propostas": [
+        {
+          "ref": "PRESTES MAIA",
+          "data": "2026-05-15",
+          "arquivo": "Flying_Casa_Viva_Prestes_Maia_AnexoI_R01.pdf",
+          "desconto_pct": 22,
+          "desconto_label": "Desconto especial de 22%",
+          "forma_pagamento": [
+            {"percentual": 50, "marco": "Na aprovação desta Proposta"},
+            {"percentual": 25, "marco": "Envio dos Shades"},
+            {"percentual": 25, "marco": "Envio HR - Imagens finais"}
+          ],
+          "prazos": {"shades": "15 (Quinze) dias", "primeiro_tiro": "10 (Dez) dias após a aprovação dos Shades", "revisoes": "10 (Dez) dias para contemplar e enviar novos tiros"},
+          "externas": {"qtd": 8, "total": 15800, "itens": [
+            {"desc": "Perspectiva Fachada", "preco": 2500},
+            {"desc": "Perspectiva Portaria", "preco": 1900},
+            {"desc": "Perspectiva PetPlace", "preco": 1900},
+            {"desc": "Perspectiva Churrasqueira", "preco": 1900},
+            {"desc": "Perspectiva Horta/Pomar", "preco": 1900},
+            {"desc": "Perspectiva Redário", "preco": 1900},
+            {"desc": "Perspectiva Fitness Externo", "preco": 1900},
+            {"desc": "Perspectiva Bicicletário", "preco": 1900}
+          ]},
+          "internas": {"qtd": 8, "total": 14000, "itens": [
+            {"desc": "Perspectiva Lobby", "preco": 1750},
+            {"desc": "Perspectiva Mini Market", "preco": 1750},
+            {"desc": "Perspectiva Lavanderia", "preco": 1750},
+            {"desc": "Perspectiva Espaço Camarote", "preco": 1750},
+            {"desc": "Perspectiva Maleiro", "preco": 1750},
+            {"desc": "Perspectiva Coworking", "preco": 1750},
+            {"desc": "Perspectiva Espaço Beauty", "preco": 1750},
+            {"desc": "Perspectiva Academia", "preco": 1750}
+          ]},
+          "plantas": {"qtd": 5, "total": 8300, "itens": [
+            {"desc": "Planta Humanizada Implantação térreo", "preco": 3000},
+            {"desc": "Planta tipo a - 30m² - 1 dorm com varanda", "preco": 1325},
+            {"desc": "Planta tipo b - 24m² - 1 dorm sem varanda", "preco": 1325},
+            {"desc": "Planta tipo c - 37,5m² - 2 dorm com varanda", "preco": 1325},
+            {"desc": "Planta tipo d - 27,5m² - 1 dorm com office", "preco": 1325}
+          ]},
+          "extras": [
+            {"tipo": "filme_viral_45s", "descricao": "Filme Viral até 0:45", "preco": 4500, "cortesia": true}
+          ]
+        }
+      ]
+    },
+
+    "HABRAS": {
+      "nome_padrao": "HABRAS",
+      "contato_padrao": "BEATRIZ FREIRE",
+      "propostas": [
+        {
+          "ref": "ITAQUÁ JAPONÊS",
+          "data": "2026-05-20",
+          "arquivo": "Flying_Habras_Itaqua_Japones_AnexoI_R00.pdf",
+          "desconto_pct": 10,
+          "desconto_label": "10% de Desconto",
+          "forma_pagamento": [
+            {"percentual": 50, "marco": "Na aprovação desta Proposta"},
+            {"percentual": 25, "marco": "Envio dos Shades"},
+            {"percentual": 25, "marco": "Envio HR - Imagens finais"}
+          ],
+          "prazos": {"shades": "20 (Vinte) dias", "primeiro_tiro": "15 (Quinze) dias após a aprovação dos Shades", "revisoes": "10 (Dez) dias para contemplar e enviar novos tiros"},
+          "externas": {"qtd": 8, "total": 18500, "itens": [
+            {"desc": "Perspectiva Fachada", "preco": 3000},
+            {"desc": "Perspectiva Fotomontagem", "preco": 3000},
+            {"desc": "Perspectiva Voo de pássaro", "preco": 3000},
+            {"desc": "Perspectiva Portaria", "preco": 1900},
+            {"desc": "Perspectiva Playground", "preco": 1900},
+            {"desc": "Perspectiva Piscinas", "preco": 1900},
+            {"desc": "Perspectiva Solarium", "preco": 1900},
+            {"desc": "Perspectiva Quadra", "preco": 1900}
+          ]},
+          "internas": {"qtd": 12, "total": 21000, "itens": [
+            {"desc": "Perspectiva Salão de Festas", "preco": 1750},
+            {"desc": "Perspectiva Cinema", "preco": 1750},
+            {"desc": "Perspectiva Fitness", "preco": 1750},
+            {"desc": "Perspectiva Salão de Jogos", "preco": 1750},
+            {"desc": "Perspectiva Brinquedoteca", "preco": 1750},
+            {"desc": "Perspectiva Coworking", "preco": 1750},
+            {"desc": "Perspectiva Churrasqueiras", "preco": 1750},
+            {"desc": "Perspectiva Pet Place", "preco": 1750},
+            {"desc": "Perspectiva Espaço Zen", "preco": 1750},
+            {"desc": "Perspectiva Lazer Coberto", "preco": 1750},
+            {"desc": "Perspectiva Sala", "preco": 1750},
+            {"desc": "Perspectiva Terraço", "preco": 1750}
+          ]},
+          "plantas": {"qtd": 8, "total": 11400, "itens": [
+            {"desc": "Planta Humanizada Implantação Geral (térreo) com bolotário, norte e rosa dos ventos", "preco": 3000},
+            {"desc": "Planta Humanizada Tipo A Garden", "preco": 1200},
+            {"desc": "Planta Humanizada Tipo B", "preco": 1200},
+            {"desc": "Planta Humanizada Tipo C", "preco": 1200},
+            {"desc": "Planta Humanizada Tipo D", "preco": 1200},
+            {"desc": "Planta Humanizada Tipo E", "preco": 1200},
+            {"desc": "Planta Humanizada Tipo F", "preco": 1200},
+            {"desc": "Planta Humanizada Tipo E", "preco": 1200}
+          ]},
+          "extras": [
+            {"tipo": "filme_viral_60s", "descricao": "Filme Viral até 1:00", "preco": 4500, "cortesia": true}
+          ]
+        }
+      ]
+    },
+
+    "BRNPAR": {
+      "nome_padrao": "BRNPAR",
+      "contato_padrao": "MARCELLE HASHIMOTO",
+      "propostas": [
+        {
+          "ref": "NC AVARÉ",
+          "data": "2026-05-18",
+          "arquivo": "Orc_BRNPAR_Avare_AnexoI_R02.pdf",
+          "desconto_pct": 8,
+          "desconto_label": "8% de desconto",
+          "forma_pagamento": [
+            {"percentual": 30, "marco": "Na aprovação desta Proposta"},
+            {"percentual": 20, "marco": "Envio dos Shades"},
+            {"percentual": 50, "marco": "Envio HR - Imagens finais"}
+          ],
+          "prazos": {"shades": "20 (Vinte) dias úteis", "primeiro_tiro": "15 (Quinze) dias úteis após a aprovação dos Shades", "revisoes": "10 (Dez) dias úteis para contemplar e enviar novos tiros"},
+          "externas": {"qtd": 5, "total": 13000, "itens": [
+            {"desc": "Perspectiva Fotomontagem (Diurna)", "preco": 3500},
+            {"desc": "Perspectiva Fachada (Entardecer)", "preco": 3500},
+            {"desc": "Perspectiva Portaria (Entardecer)", "preco": 2000},
+            {"desc": "Perspectiva Playground (Diurna)", "preco": 2000},
+            {"desc": "Perspectiva Quadra (Diurna)", "preco": 2000}
+          ]},
+          "internas": {"qtd": 6, "total": 10800, "itens": [
+            {"desc": "Perspectiva Salão de festas (Diurna)", "preco": 1800},
+            {"desc": "Perspectiva Espaço Pet (Diurna)", "preco": 1800},
+            {"desc": "Perspectiva Quarto Casal (Diurna)", "preco": 1800},
+            {"desc": "Perspectiva Quarto Solteiro (Diurna)", "preco": 1800},
+            {"desc": "Perspectiva Living (Diurna)", "preco": 1800},
+            {"desc": "Perspectiva Banho (Diurna)", "preco": 1800}
+          ]},
+          "plantas": {"qtd": 3, "total": 5400, "itens": [
+            {"desc": "Planta Humanizada Implantação", "preco": 3000},
+            {"desc": "Planta tipo Humanizada", "preco": 1200},
+            {"desc": "Planta Mosca Pavimento Completo", "preco": 1200}
+          ]},
+          "creditos": [
+            {"descricao": "Valor Pago no Projeto Turquia", "valor": 6300}
+          ],
+          "extras": [
+            {"tipo": "filme_viral_45s", "descricao": "Filme Viral até 0:45", "preco": 4500, "cortesia": true}
+          ]
+        }
+      ]
+    },
+
+    "OXE": {
+      "nome_padrao": "OXE",
+      "contato_padrao": "RICHARD",
+      "_obs": "Anexo III - foco em tecnologias (tour virtual, maquete eletrônica). Não usado para média de imagens.",
+      "propostas": [
+        {
+          "ref": "JD. SÃO PAULO",
+          "data": "2026-04-09",
+          "arquivo": "Orc_OXE_Jd_Sao_Paulo_AnexoIII_R03.pdf",
+          "tipo_proposta": "tecnologias",
+          "tour_virtual": [
+            {"escopo": "Áreas de Lazer", "preco": 27000},
+            {"escopo": "Apartamento 1 dorm", "preco": 10000},
+            {"escopo": "Apartamento 2 dorms", "preco": 12500}
+          ],
+          "maquete_eletronica": {"preco": 18000},
+          "total_bruto": 67500,
+          "total_liquido": 61900
+        }
+      ]
+    }
+  }
+}

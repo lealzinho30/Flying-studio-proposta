@@ -1,0 +1,70 @@
+{
+  "_descricao": "Tabela de Preços Padrão Flying Studio - extraída da Planilha Custos. Usada como referência quando NÃO há histórico do cliente.",
+  "_atualizado_em": "2026-05-22",
+  "_moeda": "BRL",
+
+  "externas": {
+    "_default": 1900,
+    "_descricao_padrao": "Perspectiva Externa",
+    "tabela": [
+      {"chave": "fotomontagem_drone_flying", "descricao": "Fotomontagem c/ FotoDrone (Drone por conta da Flying)", "preco": 4500, "padroes": ["fotomontagem.*drone", "drone.*fotomontagem"]},
+      {"chave": "fachada_fotomontagem_voo", "descricao": "Perspectiva Fachada / Fotomontagem / Voo", "preco": 3000, "padroes": ["\\bfachada\\b", "voo de passaro", "bird'?s view", "fotomontagem"]},
+      {"chave": "fotografia_aerea_drone", "descricao": "Fotografia aérea Drone p/ Fotomontagem", "preco": 2200, "padroes": ["fotografia aerea"]},
+      {"chave": "estudo_fachada_cromatico", "descricao": "Estudo de Fachada / Cromática", "preco": 18000, "padroes": ["estudo.*fachada", "estudo cromatic"]},
+      {"chave": "externa_diversa", "descricao": "Perspectiva Externa", "preco": 1900, "padroes": [".*"]}
+    ]
+  },
+
+  "internas": {
+    "_default": 1750,
+    "_descricao_padrao": "Perspectiva Interna",
+    "tabela": [
+      {"chave": "interna_diversa", "descricao": "Perspectiva Interna", "preco": 1750, "padroes": [".*"]}
+    ]
+  },
+
+  "plantas": {
+    "_default": 1200,
+    "_descricao_padrao": "Planta Humanizada",
+    "tabela": [
+      {"chave": "planta_implantacao", "descricao": "Planta Humanizada Implantação / Pavimento (Térreo, Rooftop, Estac., Bolotário, Lazer)", "preco": 3000, "padroes": ["implantacao", "terreo", "rooftop", "mezanino", "lazer", "subsolo", "estacionamento", "bolotario", "pavimento.*completo"]},
+      {"chave": "planta_isometrica", "descricao": "Planta Tipo Isométrica / 3D", "preco": 1500, "padroes": ["isometric", "3d", "mosca"]},
+      {"chave": "planta_tipo", "descricao": "Planta Humanizada Tipo", "preco": 1200, "padroes": [".*"]}
+    ]
+  },
+
+  "filmes": {
+    "filme_3d_60s":         {"descricao": "Filme 3D - 60 segundos",                     "preco": 15000},
+    "filme_3d_30s":         {"descricao": "Filme 3D - 30 segundos",                     "preco": 8000},
+    "takes_7s":             {"descricao": "TAKES animados de 7 segundos",               "preco": 1300},
+    "filme_viral_45s":      {"descricao": "Filme Viral até 0:45 (RINNO FILMS)",         "preco": 3900},
+    "filme_viral_60s":      {"descricao": "Filme Viral até 1:00 (RINNO FILMS)",         "preco": 3900}
+  },
+
+  "tour_virtual": {
+    "elaboracao_ambiente":   {"descricao": "Tour Virtual / VR 360 - Elaboração por ambiente",  "preco": 2500},
+    "render_ambiente":       {"descricao": "Tour Virtual / VR 360 - Render por ambiente",      "preco": 1200},
+    "web_mobile_ambiente":   {"descricao": "Tour Virtual / VR 360 - Web/Mobile/PC por ambiente","preco": 450}
+  },
+
+  "drone": {
+    "voo_hora": {"descricao": "Voo de Drone (por hora / por endereço SP)", "preco": 1800}
+  },
+
+  "forma_pagamento_padrao": {
+    "descricao": "Padrão Flying Studio",
+    "parcelas": [
+      {"percentual": 50, "marco": "Na aprovação desta Proposta"},
+      {"percentual": 25, "marco": "Envio dos Shades"},
+      {"percentual": 25, "marco": "Envio HR - Imagens finais"}
+    ]
+  },
+
+  "prazos_padrao": {
+    "shades": "20 (Vinte) dias",
+    "primeiro_tiro": "15 (Quinze) dias após a aprovação dos Shades",
+    "revisoes": "10 (Dez) dias para contemplar e enviar novos tiros"
+  },
+
+  "desconto_sugerido_padrao_pct": 10
+}
