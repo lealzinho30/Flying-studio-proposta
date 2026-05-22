@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Flying Studio · Propostas IA{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span class="brand-name">Flying Studio</span>
+      <span class="brand-sub">· Propostas IA</span>
+    </div>
+    <nav class="topnav">
+      <a href="{{ url_for('home') }}">Nova proposta</a>
+      <span class="ai-badge {{ 'ativo' if openai_ativo else 'offline' }}">
+        {% if openai_ativo %}IA: OpenAI{% else %}IA: parser local{% endif %}
+      </span>
+    </nav>
+  </header>
+
+  <main class="main">
+    {% block conteudo %}{% endblock %}
+  </main>
+
+  <footer class="rodape">
+    Flying Studio · Geração automática de propostas comerciais
+  </footer>
+</body>
+</html>

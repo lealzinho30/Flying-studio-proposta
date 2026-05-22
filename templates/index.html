@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block titulo %}Nova proposta · Flying Studio{% endblock %}
+{% block conteudo %}
+<section class="hero">
+  <h1>Descreva o projeto. <span class="grad">A IA escreve a proposta.</span></h1>
+  <p class="lead">
+    Cliente, lista de imagens (externas, internas, plantas) e desconto.
+    O sistema compara <strong>preço de planilha</strong> vs <strong>histórico do cliente</strong>
+    e gera o <code>.docx</code> no formato padrão Flying Studio.
+  </p>
+</section>
+
+{% if erro %}
+<div class="alerta">{{ erro }}</div>
+{% endif %}
+
+<form class="form-card" method="post" action="{{ url_for('gerar') }}">
+  <label class="rotulo" for="descricao">Descrição do projeto</label>
+  <textarea
+    id="descricao"
+    name="descricao"
+    rows="22"
+    placeholder="Ex.: Cliente HABRAS, ref Itaquá Japonês, A/C Beatriz Freire. 10% de desconto. Use histórico do cliente.&#10;Externas: Fachada, Fotomontagem, Voo de pássaro, Portaria, Playground, Piscinas, Solarium, Quadra&#10;Internas: Salão de Festas, Cinema, Fitness, ...&#10;Plantas: Implantação Geral, Tipo A, Tipo B, ..."
+    spellcheck="false">{{ exemplo }}</textarea>
+
+  <div class="opcoes">
+    <fieldset class="estrategia">
+      <legend>Estratégia de preço</legend>
+      <label><input type="radio" name="estrategia" value="auto" checked> Auto (histórico se existir)</label>
+      <label><input type="radio" name="estrategia" value="planilha"> Planilha</label>
+      <label><input type="radio" name="estrategia" value="historico"> Histórico do cliente</label>
+    </fieldset>
+
+    <button type="submit" class="cta">
+      Gerar proposta →
+    </button>
+  </div>
+
+  <details class="dica">
+    <summary>Como descrever (clique para ver dicas)</summary>
+    <ul>
+      <li>Cabeçalhos reconhecidos: <code>Cliente:</code>, <code>Ref:</code>, <code>A/C:</code>, <code>Desconto:</code>.</li>
+      <li>Listas: <code>Externas:</code> seguidas de itens em linha (com ou sem <code>-</code>) ou separados por vírgula.</li>
+      <li>Idem para <code>Internas:</code> e <code>Plantas:</code>.</li>
+      <li>Para forçar a estratégia direto no texto: escreva <em>"use preço de planilha"</em> ou <em>"siga o histórico do cliente"</em>.</li>
+      <li>Para mostrar preço por item (estilo BRNPAR): escreva <em>"preços individuais por imagem"</em>.</li>
+    </ul>
+  </details>
+</form>
+{% endblock %}

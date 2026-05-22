@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block titulo %}{{ cliente.empresa }} · {{ cliente.ref }} — Proposta gerada{% endblock %}
+{% block conteudo %}
+<section class="resultado-topo">
+  <div>
+    <p class="bread"><a href="{{ url_for('home') }}">← Nova proposta</a></p>
+    <h1>{{ cliente.empresa }} <span class="grad">· {{ cliente.ref }}</span></h1>
+    <p class="lead">
+      A/C: <strong>{{ cliente.contato }}</strong>
+      · {{ descricoes.externas|length + descricoes.internas|length + descricoes.plantas|length }} imagens
+      · Desconto {{ '%g' % desconto_pct }}%
+      · Estratégia escolhida: <strong>{{ estrategia }}</strong>
+      <span class="origem-tag">parser: {{ parsed._origem }}</span>
+    </p>
+  </div>
+  <a class="cta-download" href="{{ download_url }}">⬇ Baixar {{ download_nome }}</a>
+</section>
+
+{% if parsed._avisos %}
+<div class="avisos">
+  {% for a in parsed._avisos %}<div class="alerta-suave">⚠ {{ a }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<section class="grid-comparativo">
+  <article class="cartao {{ 'destaque' if estrategia == 'planilha' else '' }}">
+    <header>
+      <span class="tag">Levantamento 1</span>
+      <h2>Preço de Planilha</h2>
+    </header>
+    <ul class="resumo">
+      <li>Externas: <strong>{{ brl(plan.externas.total) }}</strong> ({{ plan.externas.qtd }})</li>
+      <li>Internas: <strong>{{ brl(plan.internas.total) }}</strong> ({{ plan.internas.qtd }})</li>
+      <li>Plantas: <strong>{{ brl(plan.plantas.total) }}</strong> ({{ plan.plantas.qtd }})</li>
+    </ul>
+    <p class="subtotal">Subtotal: {{ brl(plan.subtotal) }}</p>
+    {% if desconto_pct %}<p class="desc">Desconto {{ '%g' % desconto_pct }}%: -{{ brl(plan.desconto_valor) }}</p>{% endif %}
+    <p class="total">{{ brl(plan.total_final) }}</p>
+  </article>
+
+  <article class="cartao {{ 'destaque' if estrategia == 'historico' else '' }} {{ 'desabilitado' if not hist else '' }}">
+    <header>
+      <span class="tag">Levantamento 2</span>
+      <h2>Histórico do Cliente</h2>
+    </header>
+    {% if hist %}
+    <ul class="resumo">
+      <li>Externas: <strong>{{ brl(hist.externas.total) }}</strong> ({{ hist.externas.qtd }})</li>
+      <li>Internas: <strong>{{ brl(hist.internas.total) }}</strong> ({{ hist.internas.qtd }})</li>
+      <li>Plantas: <strong>{{ brl(hist.plantas.total) }}</strong> ({{ hist.plantas.qtd }})</li>
+    </ul>
+    <p class="subtotal">Subtotal: {{ brl(hist.subtotal) }}</p>
+    {% if desconto_pct %}<p class="desc">Desconto {{ '%g' % desconto_pct }}%: -{{ brl(hist.desconto_valor) }}</p>{% endif %}
+    <p class="total">{{ brl(hist.total_final) }}</p>
+    {% else %}
+    <p class="sem-hist">Cliente <strong>{{ cliente.empresa }}</strong> não está no histórico ainda.</p>
+    <p class="sem-hist-sub">Adicione em <code>data/historico_clientes.json</code> após fechar a proposta.</p>
+    {% endif %}
+  </article>
+</section>
+
+<section class="detalhe">
+  <h2>Itens da proposta gerada <span class="muted">(estratégia {{ estrategia }})</span></h2>
+
+  {% for cat_nome, cat in [('Ilustrações Externas', orc.externas), ('Ilustrações Internas', orc.internas), ('Plantas Humanizadas', orc.plantas)] %}
+    {% if cat.qtd %}
+    <div class="bloco-cat">
+      <h3>{{ cat_nome }} · <span class="muted">{{ cat.qtd }} item(ns)</span></h3>
+      <table class="itens">
+        <thead><tr><th>#</th><th>Descrição</th><th>Preço</th><th>Fonte</th></tr></thead>
+        <tbody>
+          {% for it in cat.itens %}
+          <tr>
+            <td class="num">{{ loop.index }}</td>
+            <td>{{ it.descricao_normalizada }}</td>
+            <td class="preco">{{ brl(it.preco) }}</td>
+            <td class="fonte">{{ it.fonte }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot><tr><td colspan="2"><strong>Total {{ cat.qtd }} itens</strong></td><td class="preco"><strong>{{ brl(cat.total) }}</strong></td><td></td></tr></tfoot>
+      </table>
+    </div>
+    {% endif %}
+  {% endfor %}
+</section>
+
+<section class="texto-original">
+  <details>
+    <summary>Texto original que você descreveu</summary>
+    <pre>{{ texto_original }}</pre>
+  </details>
+</section>
+
+<div class="acoes-finais">
+  <a class="cta-download grande" href="{{ download_url }}">⬇ Baixar proposta {{ download_nome }}</a>
+  <a class="link-secundario" href="{{ url_for('home') }}">+ Nova proposta</a>
+</div>
+{% endblock %}

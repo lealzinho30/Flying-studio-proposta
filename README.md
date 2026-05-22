@@ -1,7 +1,18 @@
 # Flying Studio — Automação de Propostas
 
 Automação para gerar **propostas comerciais Flying Studio** em formato Word (.docx) idênticas
-ao padrão usado pela equipe, com **dois levantamentos de preço lado a lado**:
+ao padrão usado pela equipe.
+
+Tem duas formas de usar:
+
+- **Interface web (IA)** — `python3 app.py` → abre em `http://localhost:5000`. Você
+  descreve o projeto em texto livre num campo grande (cliente, lista de imagens,
+  desconto, estratégia) e a aplicação gera o `.docx` automaticamente, com
+  comparação dos dois levantamentos lado a lado.
+- **CLI** — `python3 gerador.py exemplos/exemplo_galli.yaml` para fluxo automatizado
+  com YAML.
+
+A lógica de preço sempre faz **dois levantamentos lado a lado**:
 
 1. **Planilha** — usa a tabela de preços padrão da Flying (Externas R$1.900, Internas R$1.750,
    Plantas Tipo R$1.200, Implantações R$3.000, Fachada/Voo R$3.000 etc.)
@@ -14,19 +25,20 @@ A quantidade de imagens é variável a cada projeto — você só precisa listar
 ## Estrutura
 
 ```
+app.py             # Servidor web Flask com UI da IA
+gerador.py         # CLI (alternativa via YAML)
 flying/
-  precos.py        # carrega a planilha de preços e classifica cada imagem
-  historico.py     # acessa propostas anteriores por cliente
+  ai_parser.py     # converte texto livre em estrutura (OpenAI ou regex local)
+  precos.py        # tabela de preços + classificador de imagens
+  historico.py     # acesso ao histórico de cada cliente
   orcamento.py     # faz os 2 levantamentos
   docx_writer.py   # gera o .docx no formato Flying Studio
+templates/         # HTML da UI web (index + resultado)
+static/            # CSS da UI
 data/
   precos_planilha.json     # tabela base (você pode editar para ajustar valores)
   historico_clientes.json  # histórico extraído dos PDFs reais (5 clientes)
-exemplos/
-  exemplo_galli.yaml         # cliente já existente
-  exemplo_brnpar.yaml        # cliente com preços individuais por item
-  exemplo_novo_cliente.yaml  # cliente NOVO (sem histórico)
-gerador.py         # CLI principal
+exemplos/          # exemplos de YAML para o CLI
 saida/             # DOCX gerados
 ```
 
@@ -36,9 +48,65 @@ saida/             # DOCX gerados
 pip install -r requirements.txt
 ```
 
-Dependências: `python-docx` e `PyYAML`.
+Dependências: `python-docx`, `PyYAML`, `Flask`, `openai`.
 
-## Uso rápido
+## Uso pela interface web (recomendado)
+
+```bash
+python3 app.py
+# → abre em http://localhost:5000
+```
+
+Na tela inicial você cola/digita um texto descrevendo o projeto. Exemplos que o
+sistema entende:
+
+```
+Cliente: HABRAS
+Ref: Itaquá Japonês
+A/C: Beatriz Freire
+10% de desconto. Use o histórico do cliente.
+
+Externas:
+- Fachada
+- Fotomontagem
+- Voo de pássaro
+- Portaria
+
+Internas: Salão de Festas, Cinema, Fitness, Coworking
+
+Plantas: Implantação Geral, Tipo A, Tipo B, Tipo C
+```
+
+Ou de forma curta:
+
+```
+HABRAS Itaquá Japonês, A/C Beatriz Freire, 10% desconto, histórico.
+Externas: Fachada, Fotomontagem, Voo de pássaro, Portaria, Playground, Piscinas, Solarium, Quadra
+Internas: Salão de Festas, Cinema, Fitness, Coworking, Brinquedoteca, Pet Place, Sala, Terraço
+Plantas: Implantação Geral, Tipo A Garden, Tipo B, Tipo C, Tipo D
+```
+
+A página de resultado mostra os **dois levantamentos lado a lado** (planilha vs
+histórico do cliente, com a estratégia escolhida em destaque) e um botão para
+baixar o `.docx`.
+
+### IA: OpenAI vs parser local
+
+- **Sem chave de API** (default): roda um parser regex local que detecta
+  cabeçalhos (`Cliente:`, `Ref:`, `A/C:`, `Externas:`, `Internas:`, `Plantas:`,
+  `X% desconto`, *"use histórico"* / *"preço de planilha"* / *"preços individuais"*).
+  Suficiente para uso normal — testado contra os 5 PDFs reais.
+- **Com chave de API**: defina `OPENAI_API_KEY` no ambiente e o app passa o
+  texto pelo `gpt-4o-mini` (configurável via `OPENAI_MODEL`) para extração mais
+  flexível. O parser local continua atuando como fallback.
+
+```bash
+# opcional
+export OPENAI_API_KEY="sk-..."
+python3 app.py
+```
+
+## Uso pelo CLI
 
 ### 1) Comparar os 2 levantamentos sem gerar arquivo
 
