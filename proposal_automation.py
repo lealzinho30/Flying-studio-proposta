@@ -17,6 +17,9 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+DEFAULT_HISTORICO_PATH = "data/historico_propostas.json"
+DEFAULT_PRECOS_PLANILHA_PATH = "data/precos_planilha.json"
+
 
 CATEGORIAS = (
     ("externas", "ILUSTRACOES EXTERNAS", "Perspectiva"),
@@ -304,6 +307,70 @@ def gerar_texto_proposta(
     return "\n".join(linhas) + "\n"
 
 
+def gerar_docx_proposta(texto_proposta: str, saida_docx: Path) -> None:
+    """Cria um .docx simples com o texto da proposta."""
+    try:
+        from docx import Document
+    except ImportError as exc:
+        raise RuntimeError(
+            "Dependencia ausente: instale python-docx para gerar .docx."
+        ) from exc
+
+    saida_docx.parent.mkdir(parents=True, exist_ok=True)
+
+    documento = Document()
+    for linha in texto_proposta.splitlines():
+        documento.add_paragraph(linha)
+    documento.save(saida_docx)
+
+
+def gerar_proposta(
+    payload: dict[str, Any],
+    modo: str,
+    historico_path: str = DEFAULT_HISTORICO_PATH,
+    precos_planilha_path: str = DEFAULT_PRECOS_PLANILHA_PATH,
+    saida_txt: str | None = None,
+    saida_resumo: str | None = None,
+) -> dict[str, Any]:
+    """Gera proposta e retorna detalhes de calculo e texto final."""
+    historico = carregar_json(Path(historico_path))
+    precos_planilha = carregar_json(Path(precos_planilha_path))
+
+    itens = carregar_itens(payload)
+    cliente_para_busca = payload.get("cliente") or payload.get("empresa") or ""
+    desconto = float(payload.get("desconto_percentual", 0) or 0)
+
+    resultado = resolver_precificacao(
+        modo=modo,
+        cliente=cliente_para_busca,
+        historico=historico,
+        precos_planilha=precos_planilha,
+    )
+    totais = calcular_totais(itens, resultado.unitarios, desconto)
+    texto = gerar_texto_proposta(payload, itens, totais, modo, resultado)
+
+    resumo = {
+        "cliente_consultado": cliente_para_busca,
+        "modo_precificacao": modo,
+        "projeto_cliente_usado": resultado.projeto_cliente_usado,
+        "origem_por_categoria": resultado.origem,
+        "unitarios": resultado.unitarios,
+        "totais": totais,
+        "texto_proposta": texto,
+    }
+
+    if saida_txt:
+        destino_txt = Path(saida_txt)
+        destino_txt.parent.mkdir(parents=True, exist_ok=True)
+        destino_txt.write_text(texto, encoding="utf-8")
+        resumo["saida_proposta"] = str(destino_txt)
+
+    if saida_resumo:
+        salvar_json(Path(saida_resumo), resumo)
+
+    return resumo
+
+
 def comando_analisar(args: argparse.Namespace) -> int:
     historico = carregar_json(Path(args.historico))
     medias = media_ponderada_historico(historico)
@@ -321,42 +388,28 @@ def comando_analisar(args: argparse.Namespace) -> int:
 
 def comando_gerar(args: argparse.Namespace) -> int:
     payload = carregar_json(Path(args.entrada))
-    historico = carregar_json(Path(args.historico))
-    precos_planilha = carregar_json(Path(args.precos_planilha))
-
-    itens = carregar_itens(payload)
-    cliente_para_busca = payload.get("cliente") or payload.get("empresa") or ""
-    desconto = float(payload.get("desconto_percentual", 0) or 0)
-
-    resultado = resolver_precificacao(
+    resumo = gerar_proposta(
+        payload=payload,
         modo=args.modo,
-        cliente=cliente_para_busca,
-        historico=historico,
-        precos_planilha=precos_planilha,
+        historico_path=args.historico,
+        precos_planilha_path=args.precos_planilha,
+        saida_txt=args.saida,
+        saida_resumo=args.saida_resumo,
     )
-    totais = calcular_totais(itens, resultado.unitarios, desconto)
-    texto = gerar_texto_proposta(payload, itens, totais, args.modo, resultado)
 
-    saida = Path(args.saida)
-    saida.parent.mkdir(parents=True, exist_ok=True)
-    saida.write_text(texto, encoding="utf-8")
+    if args.saida_docx:
+        gerar_docx_proposta(resumo["texto_proposta"], Path(args.saida_docx))
 
-    resumo = {
-        "cliente_consultado": cliente_para_busca,
-        "modo_precificacao": args.modo,
-        "projeto_cliente_usado": resultado.projeto_cliente_usado,
-        "origem_por_categoria": resultado.origem,
-        "unitarios": resultado.unitarios,
-        "totais": totais,
-        "saida_proposta": str(saida),
-    }
-
-    if args.saida_resumo:
-        salvar_json(Path(args.saida_resumo), resumo)
-    else:
-        print(json.dumps(resumo, ensure_ascii=False, indent=2))
+    if not args.saida_resumo:
+        resumo_sem_texto = {k: v for k, v in resumo.items() if k != "texto_proposta"}
+        print(json.dumps(resumo_sem_texto, ensure_ascii=False, indent=2))
 
     if args.comparar:
+        itens = carregar_itens(payload)
+        desconto = float(payload.get("desconto_percentual", 0) or 0)
+        historico = carregar_json(Path(args.historico))
+        precos_planilha = carregar_json(Path(args.precos_planilha))
+        cliente_para_busca = payload.get("cliente") or payload.get("empresa") or ""
         alternativo = "cliente" if args.modo == "planilha" else "planilha"
         outro_resultado = resolver_precificacao(
             modo=alternativo,
@@ -366,7 +419,7 @@ def comando_gerar(args: argparse.Namespace) -> int:
         )
         outro_total = calcular_totais(itens, outro_resultado.unitarios, desconto)
         print("\nComparativo rapido:")
-        print(f"- Modo atual ({args.modo}): {moeda_brl(totais['total_final'])}")
+        print(f"- Modo atual ({args.modo}): {moeda_brl(resumo['totais']['total_final'])}")
         print(f"- Modo alternativo ({alternativo}): {moeda_brl(outro_total['total_final'])}")
 
     return 0
@@ -383,7 +436,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     analisar.add_argument(
         "--historico",
-        default="data/historico_propostas.json",
+        default=DEFAULT_HISTORICO_PATH,
         help="Arquivo JSON com historico de projetos.",
     )
     analisar.set_defaults(func=comando_analisar)
@@ -398,18 +451,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="Arquivo texto de saida da proposta.",
     )
     gerar.add_argument(
+        "--saida-docx",
+        default="",
+        help="Arquivo .docx opcional de saida da proposta.",
+    )
+    gerar.add_argument(
         "--saida-resumo",
         default="out/resumo_precificacao.json",
         help="Arquivo JSON com detalhes dos calculos. Use vazio para imprimir no stdout.",
     )
     gerar.add_argument(
         "--historico",
-        default="data/historico_propostas.json",
+        default=DEFAULT_HISTORICO_PATH,
         help="Arquivo JSON com historico de projetos.",
     )
     gerar.add_argument(
         "--precos-planilha",
-        default="data/precos_planilha.json",
+        default=DEFAULT_PRECOS_PLANILHA_PATH,
         help="Arquivo JSON com tabela padrao da planilha.",
     )
     gerar.add_argument(

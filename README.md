@@ -1,6 +1,6 @@
 # Flying Studio - Automacao de Propostas
 
-Este repositorio contem uma automacao simples para gerar propostas de imagens
+Este repositorio contem uma automacao para gerar propostas de imagens
 no mesmo padrao textual dos modelos atuais da Flying Studio.
 
 Escopo desta versao:
@@ -8,11 +8,11 @@ Escopo desta versao:
 - Ilustracoes internas
 - Plantas
 
-## O que o script faz
+## O que a automacao faz
 
 1. Recebe os dados do projeto via JSON (cliente, referencia, itens, desconto).
 2. Calcula os valores automaticamente.
-3. Gera um arquivo de proposta em texto para copiar no Word.
+3. Gera proposta em texto e tambem em Word (.docx).
 4. Suporta dois modos de precificacao:
    - `planilha`: usa a tabela padrao (`data/precos_planilha.json`)
    - `cliente`: usa o ultimo projeto do mesmo cliente; se nao achar cliente,
@@ -21,9 +21,12 @@ Escopo desta versao:
 ## Arquivos principais
 
 - `proposal_automation.py`: CLI principal da automacao
+- `brief_ai_parser.py`: interpretador de texto livre (assistente IA)
+- `web_app.py`: interface web para escrever o briefing e gerar proposta
 - `data/precos_planilha.json`: custos padrao por categoria
 - `data/historico_propostas.json`: historico base para precificacao por cliente
 - `examples/entrada_projeto.json`: exemplo de input
+- `requirements.txt`: dependencias da aplicacao web
 
 ## Como usar
 
@@ -42,6 +45,7 @@ python3 proposal_automation.py gerar \
   --entrada examples/entrada_projeto.json \
   --modo planilha \
   --saida out/proposta_planilha.txt \
+  --saida-docx out/proposta_planilha.docx \
   --saida-resumo out/resumo_planilha.json \
   --comparar
 ```
@@ -53,9 +57,42 @@ python3 proposal_automation.py gerar \
   --entrada examples/entrada_projeto.json \
   --modo cliente \
   --saida out/proposta_cliente.txt \
+  --saida-docx out/proposta_cliente.docx \
   --saida-resumo out/resumo_cliente.json \
   --comparar
 ```
+
+## Interface "IA integrada" (texto livre)
+
+### Instalar dependencias
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+### Subir a interface web
+
+```bash
+python3 web_app.py
+```
+
+Abra no navegador:
+
+```text
+http://localhost:8080
+```
+
+Nessa tela, voce descreve em texto livre:
+- cliente / empresa / contato / referencia
+- lista de imagens
+- regra de preco (`planilha` ou `cliente`)
+- desconto (opcional)
+
+A aplicacao interpreta o texto, classifica as imagens por categoria,
+calcula os valores e gera os arquivos:
+- `.txt`
+- `.docx`
+- `.json` (resumo dos calculos)
 
 ## Formato do JSON de entrada
 
