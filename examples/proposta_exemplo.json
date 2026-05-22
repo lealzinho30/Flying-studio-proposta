@@ -1,0 +1,31 @@
+{
+  "cliente": "GALLI",
+  "referencia": "SAID AIACH - NOVA ETAPA",
+  "aos_cuidados": "DANIEL PUCCI",
+  "estrategia_preco": "cliente",
+  "comparar_precos": true,
+  "desconto_percentual": 12,
+  "forma_pagamento": [
+    "50% - Na aprovacao desta Proposta.",
+    "25% - Envio dos Shades",
+    "25% - Envio HR - Imagens finais"
+  ],
+  "itens": {
+    "externas": [
+      "Fachada vista da calcada",
+      "Jardim",
+      "Piscina",
+      "Gourmet/churrasqueira"
+    ],
+    "internas": [
+      "Bicicletario",
+      "Academia",
+      "Salao de Festas"
+    ],
+    "plantas": [
+      "Implantacao terreo",
+      "Implantacao rooftop",
+      "Apartamento Tipo"
+    ]
+  }
+}
