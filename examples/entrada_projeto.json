@@ -1,0 +1,26 @@
+{
+  "empresa": "CLIENTE EXEMPLO",
+  "cliente": "CLIENTE EXEMPLO",
+  "referencia": "RESIDENCIAL EXEMPLO",
+  "a_c": "NOME DO CONTATO",
+  "cidade_data": "Sao Paulo, 22 de Maio de 2026.",
+  "desconto_percentual": 10,
+  "itens": {
+    "externas": [
+      "Fachada",
+      "Portaria",
+      "Playground",
+      "Piscina"
+    ],
+    "internas": [
+      "Lobby",
+      "Coworking",
+      "Academia"
+    ],
+    "plantas": [
+      "Implantacao terreo",
+      "Tipo A",
+      "Tipo B"
+    ]
+  }
+}

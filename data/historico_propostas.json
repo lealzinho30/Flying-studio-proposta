@@ -1,0 +1,78 @@
+[
+  {
+    "cliente": "GALLI",
+    "referencia": "SAID AIACH",
+    "data": "2026-05-19",
+    "categorias": {
+      "externas": {
+        "quantidade": 9,
+        "total": 19300.0
+      },
+      "internas": {
+        "quantidade": 5,
+        "total": 8750.0
+      },
+      "plantas": {
+        "quantidade": 4,
+        "total": 10200.0
+      }
+    }
+  },
+  {
+    "cliente": "HABRAS",
+    "referencia": "ITAQUA JAPONES",
+    "data": "2026-05-20",
+    "categorias": {
+      "externas": {
+        "quantidade": 8,
+        "total": 18500.0
+      },
+      "internas": {
+        "quantidade": 12,
+        "total": 21000.0
+      },
+      "plantas": {
+        "quantidade": 8,
+        "total": 11400.0
+      }
+    }
+  },
+  {
+    "cliente": "BRNPAR",
+    "referencia": "NC AVARE",
+    "data": "2026-05-18",
+    "categorias": {
+      "externas": {
+        "quantidade": 5,
+        "total": 13000.0
+      },
+      "internas": {
+        "quantidade": 6,
+        "total": 10800.0
+      },
+      "plantas": {
+        "quantidade": 3,
+        "total": 5400.0
+      }
+    }
+  },
+  {
+    "cliente": "CASA VIVA",
+    "referencia": "PRESTES MAIA",
+    "data": "2026-05-15",
+    "categorias": {
+      "externas": {
+        "quantidade": 8,
+        "total": 15800.0
+      },
+      "internas": {
+        "quantidade": 8,
+        "total": 14000.0
+      },
+      "plantas": {
+        "quantidade": 5,
+        "total": 8300.0
+      }
+    }
+  }
+]
