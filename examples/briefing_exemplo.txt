@@ -1,0 +1,21 @@
+Cliente: GALLI
+Referencia: SAID AIACH - NOVA ETAPA
+A/C: DANIEL PUCCI
+Preco: seguir ultimo projeto do cliente
+Desconto: 12%
+
+Externas:
+- Fachada vista da calcada
+- Jardim
+- Piscina
+- Gourmet/churrasqueira
+
+Internas:
+- Bicicletario
+- Academia
+- Salao de Festas
+
+Plantas:
+- Implantacao terreo
+- Implantacao rooftop
+- Apartamento Tipo

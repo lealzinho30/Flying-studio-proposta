@@ -64,7 +64,7 @@ dois levantamentos na proposta.
 Execute com Python 3, sem instalar dependencias:
 
 ```bash
-python -m proposal_automation examples/proposta_exemplo.json --saida output --formato both --comparar
+python3 -m proposal_automation examples/proposta_exemplo.json --saida output --formato both --comparar
 ```
 
 Saidas esperadas:
@@ -77,9 +77,61 @@ output/galli-said-aiach-nova-etapa.docx
 Para forcar uma estrategia:
 
 ```bash
-python -m proposal_automation examples/proposta_exemplo.json --estrategia planilha
-python -m proposal_automation examples/proposta_exemplo.json --estrategia cliente
+python3 -m proposal_automation examples/proposta_exemplo.json --estrategia planilha
+python3 -m proposal_automation examples/proposta_exemplo.json --estrategia cliente
 ```
+
+## Interface com assistente
+
+Para usar uma tela com um espaco de briefing em texto livre:
+
+```bash
+python3 -m proposal_automation.web_app
+```
+
+Depois abra:
+
+```text
+http://127.0.0.1:8787
+```
+
+Na tela, escreva algo neste formato:
+
+```text
+Cliente: GALLI
+Referencia: SAID AIACH - NOVA ETAPA
+A/C: DANIEL PUCCI
+Preco: seguir ultimo projeto do cliente
+Desconto: 12%
+
+Externas:
+- Fachada vista da calcada
+- Jardim
+- Piscina
+- Gourmet/churrasqueira
+
+Internas:
+- Bicicletario
+- Academia
+- Salao de Festas
+
+Plantas:
+- Implantacao terreo
+- Implantacao rooftop
+- Apartamento Tipo
+```
+
+Ao clicar em **Gerar proposta atualizada**, o assistente:
+
+1. interpreta cliente, referencia, contato, desconto e criterio de preco;
+2. separa as imagens entre externas, internas e plantas;
+3. calcula a proposta com preco de `planilha` ou `cliente`;
+4. mostra os dados entendidos para revisao;
+5. gera os arquivos `.docx` e `.md` para download.
+
+O assistente e local e deterministico: nao precisa de chave de API. Ele funciona
+como uma camada de IA baseada nas regras comerciais e no historico ja extraido
+dos PDFs.
 
 ## Modelo de entrada
 
