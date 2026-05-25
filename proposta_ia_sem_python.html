@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Proposta IA - Sem Python</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; color: #1f2328; }
+    .wrap { max-width: 1100px; margin: 24px auto; padding: 0 16px 24px; }
+    .card { background: #fff; border: 1px solid #d0d7de; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+    h1, h2, h3 { margin-top: 0; }
+    textarea { width: 100%; min-height: 220px; font-family: Consolas, monospace; font-size: 14px; padding: 10px; border: 1px solid #d0d7de; border-radius: 8px; box-sizing: border-box; }
+    select, input, button { font-size: 14px; padding: 8px 10px; border: 1px solid #d0d7de; border-radius: 8px; }
+    button { cursor: pointer; background: #0969da; color: #fff; border: 0; }
+    button.secondary { background: #57606a; }
+    button:disabled { background: #8c959f; cursor: not-allowed; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+    .row > div { min-width: 220px; }
+    pre { white-space: pre-wrap; background: #0d1117; color: #e6edf3; border-radius: 8px; padding: 12px; max-height: 500px; overflow: auto; }
+    .error { color: #cf222e; font-weight: bold; }
+    .ok { color: #1a7f37; font-weight: bold; }
+    .muted { color: #57606a; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #d0d7de; padding: 8px; text-align: left; }
+    th { background: #f6f8fa; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Assistente de Propostas (sem Python)</h1>
+      <p class="muted">
+        Cole seu briefing em texto livre. A pagina interpreta cliente, imagens e regra de preco,
+        calcula os valores e gera o texto final da proposta.
+      </p>
+      <label for="brief"><strong>Briefing</strong></label>
+      <textarea id="brief">Cliente: GALLI
+Empresa: GALLI
+Referencia: Residencial Exemplo
+A/C: Daniel
+Preco: cliente
+Desconto: 10%
+
+- Fachada externa
+- Portaria externa
+- Playground externo
+- Lobby interno
+- Coworking interno
+- Academia interna
+- Planta implantacao terreo
+- Planta tipo A
+- Planta tipo B</textarea>
+
+      <div class="row" style="margin-top: 10px;">
+        <div>
+          <label for="modoForcado">Modo de preco</label><br />
+          <select id="modoForcado">
+            <option value="auto">Auto (IA)</option>
+            <option value="planilha">Planilha</option>
+            <option value="cliente">Ultimo projeto do cliente</option>
+          </select>
+        </div>
+        <div>
+          <label for="descontoForcado">Desconto forcado (%)</label><br />
+          <input id="descontoForcado" type="text" placeholder="Ex: 12" />
+        </div>
+        <div>
+          <button id="gerarBtn">Gerar proposta</button>
+        </div>
+      </div>
+
+      <p id="status" class="muted" style="margin-top: 10px;">Preencha e clique em "Gerar proposta".</p>
+    </div>
+
+    <div class="card">
+      <h2>Resumo de calculo</h2>
+      <div id="resumoCalculo" class="muted">Sem dados ainda.</div>
+      <div style="margin-top: 10px;">
+        <button id="baixarTxt" class="secondary" disabled>Baixar TXT</button>
+        <button id="baixarDoc" class="secondary" disabled>Baixar DOC</button>
+        <button id="baixarJson" class="secondary" disabled>Baixar JSON</button>
+        <button id="copiarTexto" class="secondary" disabled>Copiar proposta</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Preview da proposta</h2>
+      <pre id="preview">Sem proposta gerada.</pre>
+    </div>
+  </div>
+
+  <script>
+    const PLANILHA_PRECOS = { externas: 1900.0, internas: 1750.0, plantas: 1200.0 };
+
+    const HISTORICO = [
+      {
+        cliente: "GALLI",
+        referencia: "SAID AIACH",
+        data: "2026-05-19",
+        categorias: {
+          externas: { quantidade: 9, total: 19300.0 },
+          internas: { quantidade: 5, total: 8750.0 },
+          plantas: { quantidade: 4, total: 10200.0 }
+        }
+      },
+      {
+        cliente: "HABRAS",
+        referencia: "ITAQUA JAPONES",
+        data: "2026-05-20",
+        categorias: {
+          externas: { quantidade: 8, total: 18500.0 },
+          internas: { quantidade: 12, total: 21000.0 },
+          plantas: { quantidade: 8, total: 11400.0 }
+        }
+      },
+      {
+        cliente: "BRNPAR",
+        referencia: "NC AVARE",
+        data: "2026-05-18",
+        categorias: {
+          externas: { quantidade: 5, total: 13000.0 },
+          internas: { quantidade: 6, total: 10800.0 },
+          plantas: { quantidade: 3, total: 5400.0 }
+        }
+      },
+      {
+        cliente: "CASA VIVA",
+        referencia: "PRESTES MAIA",
+        data: "2026-05-15",
+        categorias: {
+          externas: { quantidade: 8, total: 15800.0 },
+          internas: { quantidade: 8, total: 14000.0 },
+          plantas: { quantidade: 5, total: 8300.0 }
+        }
+      }
+    ];
+
+    const PREFIXOS = {
+      externas: "Perspectiva",
+      internas: "Perspectiva",
+      plantas: "Planta Humanizada"
+    };
+
+    const APRESENTACAO = "A Flying Studio presta servicos de computacao grafica e tecnologias que se aplicam aos lancamentos imobiliarios e remanescentes. Em nosso atendimento diario, desenvolvemos lacos com projeto e auxiliamos em layout, estudos de projetos e fachadas, de decoracao e paisagismo de acordo com cada necessidade.";
+
+    const KW_PLANTAS = ["planta", "implantacao", "humanizada", "pavimento", "tipo", "mosca"];
+    const KW_EXTERNAS = ["externa", "externo", "fachada", "portaria", "playground", "piscina", "quadra", "churrasqueira", "redario", "jardim", "horta", "pomar", "solarium", "bird", "voo", "fotomontagem", "rooftop", "pet place", "petplace", "bicicletario", "calcada"];
+    const KW_INTERNAS = ["interna", "interno", "lobby", "coworking", "academia", "lavanderia", "living", "quarto", "banho", "sala", "salao", "sauna", "cinema", "fitness", "brinquedoteca", "mini market", "market", "beauty", "camarote", "maleiro", "cozinha", "dorm", "dormitorio"];
+
+    let ultimoResultado = null;
+
+    function normalizar(texto) {
+      return texto
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim()
+        .replace(/\s+/g, " ");
+    }
+
+    function arred(valor) {
+      return Math.round((Number(valor) + 1e-9) * 100) / 100;
+    }
+
+    function moeda(valor) {
+      return Number(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    function limparBullet(texto) {
+      return texto.replace(/^\s*[-*•]+\s*/, "").trim();
+    }
+
+    function numeroNoTexto(texto) {
+      const match = texto.match(/(\d+(?:[.,]\d+)?)/);
+      if (!match) return null;
+      return Number(match[1].replace(",", "."));
+    }
+
+    function modoDoTexto(texto) {
+      const t = normalizar(texto);
+      if (t.includes("planilha") || t.includes("padrao") || t.includes("tabela")) return "planilha";
+      if (t.includes("cliente") || t.includes("historico") || t.includes("ultimo projeto") || t.includes("ultimo")) return "cliente";
+      return null;
+    }
+
+    function categoriaPorTexto(texto) {
+      const t = normalizar(texto);
+      if (KW_PLANTAS.some((kw) => t.includes(kw))) return "plantas";
+      if (KW_EXTERNAS.some((kw) => t.includes(kw))) return "externas";
+      if (KW_INTERNAS.some((kw) => t.includes(kw))) return "internas";
+      return null;
+    }
+
+    function normalizarItem(categoria, nome) {
+      const limpo = limparBullet(nome);
+      const prefixo = PREFIXOS[categoria];
+      if (normalizar(limpo).startsWith(normalizar(prefixo))) return limpo;
+      return `${prefixo} ${limpo}`;
+    }
+
+    function adicionarPorQuantidade(itens, categoria, quantidade) {
+      if (!Number.isFinite(quantidade) || quantidade <= 0) return;
+      const inicio = itens[categoria].length + 1;
+      const base = PREFIXOS[categoria];
+      for (let i = inicio; i < inicio + quantidade; i++) {
+        itens[categoria].push(`${base} ${categoria.slice(0, -1)} ${String(i).padStart(2, "0")}`);
+      }
+    }
+
+    function interpretarBrief(brief) {
+      const linhas = brief.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+      const campos = {};
+      const itens = { externas: [], internas: [], plantas: [] };
+      const naoClassificados = [];
+
+      for (const linhaRaw of linhas) {
+        const linha = limparBullet(linhaRaw);
+
+        const meta = linha.match(/^(cliente|empresa|referencia|ref|a\/c|contato|preco|modo|desconto)\s*[:=-]\s*(.+)$/i);
+        if (meta) {
+          const chave = normalizar(meta[1]);
+          const valor = meta[2].trim();
+          if (["preco", "modo"].includes(chave)) {
+            const modo = modoDoTexto(valor);
+            if (modo) campos.modo_precificacao = modo;
+            continue;
+          }
+          if (chave === "desconto") {
+            const n = numeroNoTexto(valor);
+            if (n !== null) campos.desconto_percentual = n;
+            continue;
+          }
+          if (chave === "ref") campos.referencia = valor;
+          else if (chave === "a/c" || chave === "contato") campos.a_c = valor;
+          else campos[chave] = valor;
+          continue;
+        }
+
+        const porCategoria = linha.match(/^(externas?|internas?|plantas?)\s*[:=-]\s*(.+)$/i);
+        if (porCategoria) {
+          const catToken = normalizar(porCategoria[1]);
+          const categoria = catToken.startsWith("extern") ? "externas" : catToken.startsWith("intern") ? "internas" : "plantas";
+          const valores = porCategoria[2].split(/[;,|]+/).map((v) => v.trim()).filter(Boolean);
+          if (valores.length === 1) {
+            const qtd = numeroNoTexto(valores[0]);
+            if (qtd !== null && Number.isInteger(qtd)) {
+              adicionarPorQuantidade(itens, categoria, qtd);
+              continue;
+            }
+          }
+          valores.forEach((v) => itens[categoria].push(normalizarItem(categoria, v)));
+          continue;
+        }
+
+        const qtdLinha = normalizar(linha).match(/(\d+)\s+(?:imagens?\s+)?(externas?|internas?|plantas?)/i);
+        if (qtdLinha) {
+          const qtd = Number(qtdLinha[1]);
+          const catToken = qtdLinha[2];
+          const categoria = catToken.startsWith("extern") ? "externas" : catToken.startsWith("intern") ? "internas" : "plantas";
+          adicionarPorQuantidade(itens, categoria, qtd);
+          continue;
+        }
+
+        const categoria = categoriaPorTexto(linha);
+        if (categoria) {
+          itens[categoria].push(normalizarItem(categoria, linha));
+          continue;
+        }
+
+        const modoSolto = modoDoTexto(linha);
+        if (modoSolto && !campos.modo_precificacao) {
+          campos.modo_precificacao = modoSolto;
+          continue;
+        }
+
+        if (normalizar(linha).includes("desconto") && campos.desconto_percentual === undefined) {
+          const n = numeroNoTexto(linha);
+          if (n !== null) {
+            campos.desconto_percentual = n;
+            continue;
+          }
+        }
+
+        naoClassificados.push(linha);
+      }
+
+      return { campos, itens, naoClassificados };
+    }
+
+    function mediaHistoricaGlobal() {
+      const acc = {
+        externas: { q: 0, t: 0 },
+        internas: { q: 0, t: 0 },
+        plantas: { q: 0, t: 0 }
+      };
+
+      HISTORICO.forEach((p) => {
+        ["externas", "internas", "plantas"].forEach((cat) => {
+          const q = Number(p.categorias?.[cat]?.quantidade || 0);
+          const t = Number(p.categorias?.[cat]?.total || 0);
+          if (q > 0 && t > 0) {
+            acc[cat].q += q;
+            acc[cat].t += t;
+          }
+        });
+      });
+
+      return {
+        externas: acc.externas.q > 0 ? acc.externas.t / acc.externas.q : 0,
+        internas: acc.internas.q > 0 ? acc.internas.t / acc.internas.q : 0,
+        plantas: acc.plantas.q > 0 ? acc.plantas.t / acc.plantas.q : 0
+      };
+    }
+
+    function ultimoProjetoCliente(cliente) {
+      const alvo = normalizar(cliente || "");
+      const filtrados = HISTORICO.filter((p) => normalizar(p.cliente || "") === alvo);
+      if (!filtrados.length) return null;
+      return filtrados.sort((a, b) => (a.data || "").localeCompare(b.data || "")).at(-1);
+    }
+
+    function unitariosProjeto(projeto) {
+      if (!projeto) return { externas: 0, internas: 0, plantas: 0 };
+      const out = {};
+      ["externas", "internas", "plantas"].forEach((cat) => {
+        const q = Number(projeto.categorias?.[cat]?.quantidade || 0);
+        const t = Number(projeto.categorias?.[cat]?.total || 0);
+        out[cat] = q > 0 && t > 0 ? t / q : 0;
+      });
+      return out;
+    }
+
+    function resolverPreco(modo, cliente) {
+      if (modo === "planilha") {
+        return {
+          unitarios: {
+            externas: PLANILHA_PRECOS.externas,
+            internas: PLANILHA_PRECOS.internas,
+            plantas: PLANILHA_PRECOS.plantas
+          },
+          origem: {
+            externas: "planilha_padrao",
+            internas: "planilha_padrao",
+            plantas: "planilha_padrao"
+          },
+          projetoClienteUsado: null
+        };
+      }
+
+      const medias = mediaHistoricaGlobal();
+      const ultimo = ultimoProjetoCliente(cliente);
+      const unitUltimo = unitariosProjeto(ultimo);
+      const unitarios = {};
+      const origem = {};
+
+      ["externas", "internas", "plantas"].forEach((cat) => {
+        const u = Number(unitUltimo[cat] || 0);
+        if (u > 0) {
+          unitarios[cat] = arred(u);
+          origem[cat] = "ultimo_projeto_cliente";
+          return;
+        }
+        const m = Number(medias[cat] || 0);
+        if (m > 0) {
+          unitarios[cat] = arred(m);
+          origem[cat] = "media_historica_global";
+          return;
+        }
+        unitarios[cat] = arred(PLANILHA_PRECOS[cat]);
+        origem[cat] = "planilha_padrao_fallback";
+      });
+
+      return {
+        unitarios,
+        origem,
+        projetoClienteUsado: ultimo ? ultimo.referencia : null
+      };
+    }
+
+    function calcularTotais(itens, unitarios, descontoPercentual) {
+      const categorias = {};
+      let subtotal = 0;
+      let totalImagens = 0;
+
+      ["externas", "internas", "plantas"].forEach((cat) => {
+        const quantidade = itens[cat].length;
+        const total = arred(quantidade * Number(unitarios[cat] || 0));
+        categorias[cat] = {
+          quantidade,
+          unitario: arred(unitarios[cat] || 0),
+          total
+        };
+        subtotal += total;
+        totalImagens += quantidade;
+      });
+
+      subtotal = arred(subtotal);
+      const descontoValor = arred(subtotal * (Number(descontoPercentual || 0) / 100));
+      const totalFinal = arred(subtotal - descontoValor);
+      return {
+        categorias,
+        total_imagens: totalImagens,
+        subtotal,
+        desconto_percentual: Number(descontoPercentual || 0),
+        desconto_valor: descontoValor,
+        total_final: totalFinal
+      };
+    }
+
+    function hojeCidadeData() {
+      const meses = ["janeiro", "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+      const d = new Date();
+      const dia = String(d.getDate()).padStart(2, "0");
+      const mes = meses[d.getMonth()];
+      const ano = d.getFullYear();
+      return `Sao Paulo, ${dia} de ${mes} de ${ano}.`;
+    }
+
+    function gerarTexto(payload, itens, totais, modo, infoPreco) {
+      const empresa = payload.empresa || "CLIENTE";
+      const referencia = payload.referencia || "PROJETO";
+      const ac = payload.a_c || "CONTATO";
+      const cidadeData = payload.cidade_data || "";
+
+      const linhas = [];
+      linhas.push("PROPOSTA DE IMAGENS, FILMES E TECNOLOGIAS 3D");
+      linhas.push(`${empresa} - REF: ${referencia}`);
+      linhas.push(`A/C: ${ac}`);
+      linhas.push("");
+      linhas.push("1 - APRESENTACAO FLYING STUDIO");
+      linhas.push(APRESENTACAO);
+      linhas.push("");
+      linhas.push("2 - ITENS A SEREM DESENVOLVIDOS / INVESTIMENTOS:");
+      if (modo === "cliente" && infoPreco.projetoClienteUsado) {
+        linhas.push(`Base de preco: ultimo projeto do cliente ('${infoPreco.projetoClienteUsado}').`);
+      } else if (modo === "cliente") {
+        linhas.push("Base de preco: media historica global (cliente sem historico).");
+      } else {
+        linhas.push("Base de preco: planilha padrao.");
+      }
+
+      const secoes = [
+        ["externas", "ILUSTRACOES EXTERNAS"],
+        ["internas", "ILUSTRACOES INTERNAS"],
+        ["plantas", "PLANTAS BAIXAS"]
+      ];
+
+      secoes.forEach(([cat, titulo], i) => {
+        const sec = i + 1;
+        linhas.push(`2.${sec} ${titulo}`);
+        linhas.push("Itens Descricao dos Servicos");
+        itens[cat].forEach((desc, idx) => {
+          linhas.push(`2.${sec}.${idx + 1} ${desc}`);
+        });
+        const bloco = totais.categorias[cat];
+        linhas.push(`${bloco.quantidade} Valor Total ${moeda(bloco.total)}`);
+      });
+
+      linhas.push(`${totais.total_imagens} Valor Final ${moeda(totais.subtotal)}`);
+      linhas.push(`Valor Total do Projeto = ${moeda(totais.subtotal)}`);
+      if (totais.desconto_percentual > 0) {
+        linhas.push(`Valor Total do Projeto com ${totais.desconto_percentual}% de Desconto = ${moeda(totais.total_final)}`);
+      }
+      linhas.push("INVESTIMENTO PARA O DESENVOLVIMENTOS DOS ITENS ACIMA DESCRITOS:");
+      linhas.push(moeda(totais.desconto_percentual > 0 ? totais.total_final : totais.subtotal));
+      linhas.push("FORMA DE PAGAMENTO:");
+      linhas.push("50% - Na aprovacao desta Proposta.");
+      linhas.push("25% - Envio dos Shades");
+      linesPush(linhas, "25% - Envio HR - Imagens finais", "", "3 - PRAZOS / SOLICITACOES / CONSIDERACOES / ENTREGAS");
+      linesPush(linhas, "Shades - 20 (Vinte) dias uteis", "1o Tiro - 15 (Quinze) dias uteis apos a aprovacao dos Shades", "Revisoes - 10 (Dez) dias uteis para contemplar e enviar novos tiros");
+      if (cidadeData) {
+        linhas.push("");
+        linhas.push(cidadeData);
+      }
+      linhas.push("De acordo,");
+      linhas.push(empresa);
+
+      return linhas.join("\n") + "\n";
+    }
+
+    function linesPush(arr, ...vals) {
+      vals.forEach((v) => arr.push(v));
+    }
+
+    function baixarArquivo(nome, conteudo, mime) {
+      const blob = new Blob([conteudo], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nome;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function atualizarResumo(resultado) {
+      const resumo = document.getElementById("resumoCalculo");
+      const t = resultado.totais;
+      resumo.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Categoria</th>
+              <th>Qtd</th>
+              <th>Unitario</th>
+              <th>Total</th>
+              <th>Origem</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Externas</td><td>${t.categorias.externas.quantidade}</td><td>${moeda(t.categorias.externas.unitario)}</td><td>${moeda(t.categorias.externas.total)}</td><td>${resultado.origem_por_categoria.externas}</td></tr>
+            <tr><td>Internas</td><td>${t.categorias.internas.quantidade}</td><td>${moeda(t.categorias.internas.unitario)}</td><td>${moeda(t.categorias.internas.total)}</td><td>${resultado.origem_por_categoria.internas}</td></tr>
+            <tr><td>Plantas</td><td>${t.categorias.plantas.quantidade}</td><td>${moeda(t.categorias.plantas.unitario)}</td><td>${moeda(t.categorias.plantas.total)}</td><td>${resultado.origem_por_categoria.plantas}</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Subtotal:</strong> ${moeda(t.subtotal)}<br />
+        <strong>Desconto:</strong> ${t.desconto_percentual}% (${moeda(t.desconto_valor)})<br />
+        <strong>Total final:</strong> ${moeda(t.total_final)}<br />
+        <strong>Projeto cliente usado:</strong> ${resultado.projeto_cliente_usado || "-"}</p>
+      `;
+    }
+
+    function gerarProposta() {
+      const status = document.getElementById("status");
+      const preview = document.getElementById("preview");
+      const brief = document.getElementById("brief").value.trim();
+      const modoForcado = document.getElementById("modoForcado").value;
+      const descontoForcado = document.getElementById("descontoForcado").value.trim();
+
+      if (!brief) {
+        status.className = "error";
+        status.textContent = "Preencha o briefing.";
+        return;
+      }
+
+      const interpretado = interpretarBrief(brief);
+      const campos = { ...interpretado.campos };
+      if (modoForcado === "planilha" || modoForcado === "cliente") campos.modo_precificacao = modoForcado;
+      const descontoN = numeroNoTexto(descontoForcado);
+      if (descontoForcado && descontoN !== null) campos.desconto_percentual = descontoN;
+
+      const totalItens = interpretado.itens.externas.length + interpretado.itens.internas.length + interpretado.itens.plantas.length;
+      if (!totalItens) {
+        status.className = "error";
+        status.textContent = "Nao consegui identificar imagens. Inclua linhas como 'Fachada externa' ou 'Planta tipo A'.";
+        return;
+      }
+
+      const payload = {
+        empresa: (campos.empresa || campos.cliente || "CLIENTE").trim(),
+        cliente: (campos.cliente || campos.empresa || "CLIENTE").trim(),
+        referencia: (campos.referencia || "PROJETO").trim(),
+        a_c: (campos.a_c || "CONTATO").trim(),
+        cidade_data: hojeCidadeData(),
+        desconto_percentual: Number(campos.desconto_percentual || 0),
+        itens: interpretado.itens
+      };
+
+      const modo = campos.modo_precificacao || "planilha";
+      const infoPreco = resolverPreco(modo, payload.cliente);
+      const totais = calcularTotais(payload.itens, infoPreco.unitarios, payload.desconto_percentual);
+      const texto = gerarTexto(payload, payload.itens, totais, modo, infoPreco);
+
+      const resultado = {
+        payload,
+        modo_precificacao: modo,
+        projeto_cliente_usado: infoPreco.projetoClienteUsado,
+        origem_por_categoria: infoPreco.origem,
+        unitarios: infoPreco.unitarios,
+        totais,
+        texto_proposta: texto,
+        nao_classificados: interpretado.naoClassificados
+      };
+
+      ultimoResultado = resultado;
+      preview.textContent = texto;
+      atualizarResumo(resultado);
+
+      document.getElementById("baixarTxt").disabled = false;
+      document.getElementById("baixarDoc").disabled = false;
+      document.getElementById("baixarJson").disabled = false;
+      document.getElementById("copiarTexto").disabled = false;
+
+      status.className = "ok";
+      status.textContent = `Proposta gerada com sucesso. Itens nao classificados: ${resultado.nao_classificados.length}.`;
+    }
+
+    document.getElementById("gerarBtn").addEventListener("click", gerarProposta);
+
+    document.getElementById("baixarTxt").addEventListener("click", () => {
+      if (!ultimoResultado) return;
+      const base = `${normalizar(ultimoResultado.payload.empresa).replace(/\s+/g, "-")}-${normalizar(ultimoResultado.payload.referencia).replace(/\s+/g, "-")}`;
+      baixarArquivo(`${base || "proposta"}.txt`, ultimoResultado.texto_proposta, "text/plain;charset=utf-8");
+    });
+
+    document.getElementById("baixarDoc").addEventListener("click", () => {
+      if (!ultimoResultado) return;
+      const base = `${normalizar(ultimoResultado.payload.empresa).replace(/\s+/g, "-")}-${normalizar(ultimoResultado.payload.referencia).replace(/\s+/g, "-")}`;
+      const htmlDoc = `<!doctype html><html><head><meta charset="UTF-8"></head><body><pre>${ultimoResultado.texto_proposta.replace(/</g, "&lt;").replace(/>/g, "&gt;")}</pre></body></html>`;
+      baixarArquivo(`${base || "proposta"}.doc`, htmlDoc, "application/msword");
+    });
+
+    document.getElementById("baixarJson").addEventListener("click", () => {
+      if (!ultimoResultado) return;
+      const base = `${normalizar(ultimoResultado.payload.empresa).replace(/\s+/g, "-")}-${normalizar(ultimoResultado.payload.referencia).replace(/\s+/g, "-")}`;
+      baixarArquivo(`${base || "proposta"}-resumo.json`, JSON.stringify(ultimoResultado, null, 2), "application/json;charset=utf-8");
+    });
+
+    document.getElementById("copiarTexto").addEventListener("click", async () => {
+      if (!ultimoResultado) return;
+      try {
+        await navigator.clipboard.writeText(ultimoResultado.texto_proposta);
+        const status = document.getElementById("status");
+        status.className = "ok";
+        status.textContent = "Texto da proposta copiado para a area de transferencia.";
+      } catch (_e) {
+        const status = document.getElementById("status");
+        status.className = "error";
+        status.textContent = "Nao foi possivel copiar automaticamente. Use Ctrl+C no preview.";
+      }
+    });
+
+    gerarProposta();
+  </script>
+</body>
+</html>

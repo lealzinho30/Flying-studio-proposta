@@ -30,6 +30,20 @@ Escopo desta versao:
 
 ## Como usar
 
+## Opcao sem Python (abre direto no navegador)
+
+Se voce nao quiser instalar Python, use o arquivo:
+
+- `proposta_ia_sem_python.html`
+
+Como usar:
+1. Abra esse arquivo diretamente no navegador (duplo clique).
+2. Cole o briefing no campo de texto.
+3. Clique em **Gerar proposta**.
+4. Baixe os arquivos em **TXT**, **DOC** ou **JSON**.
+
+Essa versao roda 100% no navegador e nao precisa instalar nada.
+
 ### 1) Analisar historico
 
 ```bash
