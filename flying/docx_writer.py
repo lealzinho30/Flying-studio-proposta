@@ -290,14 +290,17 @@ def _setup_footer(doc):
 # ---------- componentes ----------
 
 
-def _caixa_capa(doc, *, cliente, qtd_img, valor_bruto, valor_final, desconto_pct, desconto_label):
+def _caixa_capa(doc, *, cliente, qtd_img, valor_bruto, valor_final, desconto_pct, desconto_label, qtd_extras=0):
     """Tabela 2-colunas com fundo roxo dando o resumo da proposta."""
     linhas = [
         ("CLIENTE", cliente["empresa"].upper(), False),
         ("PROJETO", cliente["ref"].upper(), False),
         ("AOS CUIDADOS DE", cliente["contato"].upper(), False),
-        ("IMAGENS", f"{qtd_img} unidades", False),
     ]
+    if qtd_img:
+        linhas.append(("IMAGENS", f"{qtd_img} unidades", False))
+    if qtd_extras:
+        linhas.append(("SERVIÇOS EXTRAS", f"{qtd_extras} {'item' if qtd_extras == 1 else 'itens'}", False))
     if desconto_pct > 0:
         linhas.append(("VALOR BRUTO", _brl(valor_bruto), False))
         linhas.append((f"DESCONTO ({desconto_label or f'{desconto_pct}%'})", "-" + _brl(valor_bruto - valor_final), False))
@@ -434,6 +437,109 @@ def _tabela_categoria(doc, numero, categoria, *, mostra_precos):
 # ---------- documento principal ----------
 
 
+def _tabela_extra_subsecao(doc, numero: str, subsec: dict[str, Any]):
+    """Tabela do estilo dos screenshots: cabeçalho roxo claro com título completo,
+    sub-cabeçalho de colunas, itens numerados, valor total no rodapé."""
+    itens = subsec.get("itens") or [subsec.get("rotulo_curto", "")]
+    sem_preco = subsec.get("sem_preco", False)
+
+    # 1 (cabeçalho de subseção) + 1 (cabec colunas) + N + 1 (rodapé)
+    linhas_total = 3 + len(itens)
+    tab = doc.add_table(rows=linhas_total, cols=2)
+    tab.autofit = False
+    tab.columns[0].width = Cm(2.5)
+    tab.columns[1].width = Cm(13.5)
+
+    # Linha 0: cabeçalho da subseção (lavanda claro com título completo)
+    linha_cab = tab.rows[0]
+    # Mescla as 2 células
+    cell_a = linha_cab.cells[0]
+    cell_b = linha_cab.cells[1]
+    cell_merged = cell_a.merge(cell_b)
+    _shade_cell(cell_merged, "EFEBFF")  # roxo bem claro
+    # Bordas: linha roxa em cima e embaixo
+    tc_pr = cell_merged._tc.get_or_add_tcPr()
+    existing = tc_pr.find(qn("w:tcBorders"))
+    if existing is not None:
+        tc_pr.remove(existing)
+    borders = OxmlElement("w:tcBorders")
+    for side, color in (("top", HEX_PRIMARIA), ("bottom", HEX_PRIMARIA)):
+        b = OxmlElement(f"w:{side}")
+        b.set(qn("w:val"), "single")
+        b.set(qn("w:sz"), "8")
+        b.set(qn("w:color"), color)
+        borders.append(b)
+    for side in ("left", "right"):
+        b = OxmlElement(f"w:{side}")
+        b.set(qn("w:val"), "nil")
+        borders.append(b)
+    tc_pr.append(borders)
+    cell_merged.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+    p = cell_merged.paragraphs[0]
+    p.paragraph_format.space_before = Pt(6)
+    p.paragraph_format.space_after = Pt(6)
+    _run(p, f"{numero}  ", bold=True, size=11, color=COR_PRIMARIA_DARK)
+    _run(p, subsec["rotulo_secao"], bold=True, size=11, color=COR_PRIMARIA_DARK)
+
+    # Linha 1: cabeçalho de colunas (Itens / Descrição)
+    linha_col = tab.rows[1]
+    for c in linha_col.cells:
+        _set_cell_borders(c, bottom_color="E7E9EE", bottom_size=4)
+        c.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+    p1 = linha_col.cells[0].paragraphs[0]
+    p1.paragraph_format.space_before = Pt(3)
+    p1.paragraph_format.space_after = Pt(3)
+    _run(p1, "Itens", bold=True, size=9, color=COR_TEXTO_SOFT)
+    p2 = linha_col.cells[1].paragraphs[0]
+    p2.paragraph_format.space_before = Pt(3)
+    p2.paragraph_format.space_after = Pt(3)
+    _run(p2, "Descrição dos Serviços", bold=True, size=9, color=COR_TEXTO_SOFT)
+
+    # Linhas de itens
+    for idx, texto_item in enumerate(itens, start=1):
+        row = tab.rows[1 + idx]
+        for c in row.cells:
+            _set_cell_borders(c, bottom_color="E7E9EE", bottom_size=4)
+            c.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+        p1 = row.cells[0].paragraphs[0]
+        p1.paragraph_format.space_before = Pt(3)
+        p1.paragraph_format.space_after = Pt(3)
+        _run(p1, f"{numero}.{idx}", bold=True, size=10, color=COR_PRIMARIA_DARK)
+        p2 = row.cells[1].paragraphs[0]
+        p2.paragraph_format.space_before = Pt(3)
+        p2.paragraph_format.space_after = Pt(3)
+        _run(p2, texto_item, size=11, color=COR_TEXTO)
+
+    # Rodapé: contagem + Valor Total
+    rod = tab.rows[-1]
+    for c in rod.cells:
+        _shade_cell(c, HEX_PRIMARIA_DARK)
+        _set_cell_no_borders(c)
+        c.vertical_alignment = WD_ALIGN_VERTICAL.CENTER
+    p1 = rod.cells[0].paragraphs[0]
+    p1.paragraph_format.space_before = Pt(4)
+    p1.paragraph_format.space_after = Pt(4)
+    _run(p1, str(len(itens)), bold=True, size=11, color=COR_BRANCO)
+    p2 = rod.cells[1].paragraphs[0]
+    p2.paragraph_format.space_before = Pt(4)
+    p2.paragraph_format.space_after = Pt(4)
+    if sem_preco:
+        _run(p2, "Valor Total — A DEFINIR", bold=True, size=11, color=COR_BRANCO)
+    else:
+        # Valor total na direita: usa um tab stop simulando alinhamento
+        _run(p2, "Valor Total", bold=True, size=11, color=COR_BRANCO)
+        # Tab + valor
+        from docx.shared import Twips
+        from docx.enum.text import WD_TAB_ALIGNMENT
+        tab_stops = p2.paragraph_format.tab_stops
+        tab_stops.add_tab_stop(Cm(13.0), WD_TAB_ALIGNMENT.RIGHT)
+        run = p2.add_run("\t" + _brl(subsec["preco"]))
+        run.font.name = FONTE
+        run.font.size = Pt(11)
+        run.bold = True
+        run.font.color.rgb = COR_BRANCO
+
+
 def gerar_docx(
     *,
     cliente: dict[str, str],
@@ -446,6 +552,7 @@ def gerar_docx(
     extras: list[dict[str, Any]] | None = None,
     creditos: list[dict[str, Any]] | None = None,
     desconto_label: str | None = None,
+    extras_estruturados: dict[str, Any] | None = None,
 ) -> Path:
     data = data or _dt.date.today()
     doc = Document()
@@ -461,7 +568,11 @@ def gerar_docx(
     _setup_header(doc)
     _setup_footer(doc)
 
-    subtotal = orc.subtotal
+    subtotal_imagens = orc.subtotal
+    total_extras = (extras_estruturados or {}).get("total", 0)
+    qtd_extras = (extras_estruturados or {}).get("qtd", 0)
+    qtd_imagens = orc.total_imagens
+    subtotal = subtotal_imagens + total_extras
     desconto_valor = subtotal * (orc.desconto_pct / 100.0)
     valor_final = subtotal - desconto_valor
 
@@ -473,7 +584,8 @@ def gerar_docx(
     _caixa_capa(
         doc,
         cliente=cliente,
-        qtd_img=orc.total_imagens,
+        qtd_img=qtd_imagens,
+        qtd_extras=qtd_extras,
         valor_bruto=subtotal,
         valor_final=valor_final,
         desconto_pct=orc.desconto_pct,
@@ -501,25 +613,44 @@ def gerar_docx(
     # ===== ITENS =====
     _add_titulo_secao(doc, "02", "Itens a Serem Desenvolvidos")
 
+    secao_num = 0
     if orc.externas.qtd:
+        secao_num += 1
         _add_par(doc, "ILUSTRAÇÕES EXTERNAS", bold=True, size=11, color=COR_PRIMARIA_DARK, space_before=8, space_after=4)
-        _tabela_categoria(doc, "2.1", orc.externas, mostra_precos=mostra_precos_individuais)
+        _tabela_categoria(doc, f"2.{secao_num}", orc.externas, mostra_precos=mostra_precos_individuais)
         _add_par(doc, "", space_after=8)
     if orc.internas.qtd:
+        secao_num += 1
         _add_par(doc, "ILUSTRAÇÕES INTERNAS", bold=True, size=11, color=COR_PRIMARIA_DARK, space_before=8, space_after=4)
-        _tabela_categoria(doc, "2.2", orc.internas, mostra_precos=mostra_precos_individuais)
+        _tabela_categoria(doc, f"2.{secao_num}", orc.internas, mostra_precos=mostra_precos_individuais)
         _add_par(doc, "", space_after=8)
     if orc.plantas.qtd:
+        secao_num += 1
         _add_par(doc, "PLANTAS HUMANIZADAS", bold=True, size=11, color=COR_PRIMARIA_DARK, space_before=8, space_after=4)
-        _tabela_categoria(doc, "2.3", orc.plantas, mostra_precos=mostra_precos_individuais)
+        _tabela_categoria(doc, f"2.{secao_num}", orc.plantas, mostra_precos=mostra_precos_individuais)
         _add_par(doc, "", space_after=8)
+
+    # ===== EXTRAS (Tour Virtual / Filmes / Apps / Maquete / Drone / Estudo Fachada) =====
+    if extras_estruturados and extras_estruturados.get("qtd", 0) > 0:
+        for grupo_chave in ("tour_virtual", "filmes", "apps", "maquete", "drone", "estudo_fachada", "diversos"):
+            grupo = extras_estruturados.get(grupo_chave) or {}
+            for sub in grupo.get("subsecoes", []):
+                secao_num += 1
+                _tabela_extra_subsecao(doc, f"2.{secao_num}", sub)
+                _add_par(doc, "", space_after=8)
 
     # Totais inline
     p = doc.add_paragraph()
     p.paragraph_format.space_before = Pt(6)
     p.paragraph_format.space_after = Pt(2)
-    _run(p, "Total de imagens: ", color=COR_TEXTO_SOFT)
-    _run(p, str(orc.total_imagens), bold=True)
+    if qtd_imagens:
+        _run(p, "Imagens: ", color=COR_TEXTO_SOFT)
+        _run(p, str(qtd_imagens), bold=True)
+    if qtd_extras:
+        if qtd_imagens:
+            _run(p, "    ·    ", color=COR_TEXTO_SOFT)
+        _run(p, "Serviços extras: ", color=COR_TEXTO_SOFT)
+        _run(p, str(qtd_extras), bold=True)
     _run(p, "    ·    Valor bruto: ", color=COR_TEXTO_SOFT)
     _run(p, _brl(subtotal), bold=True)
 

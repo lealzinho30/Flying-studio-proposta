@@ -27,7 +27,7 @@ from flask import (
 from flying.ai_parser import parse as ai_parse
 from flying.docx_writer import _brl, gerar_docx
 from flying.historico import Historico
-from flying.orcamento import comparar
+from flying.orcamento import comparar, montar_extras
 
 BASE = Path(__file__).resolve().parent
 SAIDA = BASE / "saida"
@@ -109,6 +109,8 @@ def gerar() -> Response | str:
     plan = levantamentos["planilha"]
     hist = levantamentos["historico"]
 
+    extras_struct = montar_extras(parsed)
+
     estrategia = parsed.get("estrategia", "auto")
     if estrategia == "auto":
         estrategia = "historico" if hist is not None else "planilha"
@@ -143,6 +145,7 @@ def gerar() -> Response | str:
         prazos=prazos,
         extras=extras,
         desconto_label=desconto_label,
+        extras_estruturados=extras_struct,
     )
 
     token = secrets.token_urlsafe(8)

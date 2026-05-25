@@ -44,6 +44,38 @@
       "plantas? baixas?",
       "implanta(?:c|ç)(?:o|õ)es?",
     ],
+    tour_virtual: [
+      "tour virtual",
+      "visita virtual( web)?",
+      "vr 360",
+      "panoramas? 360",
+    ],
+    filmes: [
+      "filmes?",
+      "v[ií]deos?",
+      "anima[cç][oõ]es?",
+    ],
+    apps: [
+      "apps?",
+      "aplica[cç][oõ]es?",
+      "aplicativos?",
+      "experi[eê]ncias? digitais",
+      "tela touch",
+      "stand digital",
+      "estande digital",
+    ],
+    drone: [
+      "drones?",
+      "fotografia a[eé]rea",
+      "voo de drone",
+    ],
+    extras: [
+      "extras?",
+      "outros",
+      "adicionais?",
+      "tecnologias?",
+      "servi[cç]os? extras?",
+    ],
   };
 
   function splitSecoes(texto) {
@@ -155,8 +187,20 @@
     const internas = extraiLista(blocos.internas || "");
     const plantas = extraiLista(blocos.plantas || "");
 
-    if (!externas.length && !internas.length && !plantas.length) {
-      avisos.push("Não consegui identificar nenhuma seção (Externas/Internas/Plantas). Use cabeçalhos tipo 'Externas:' seguidos da lista.");
+    // Extras (tour virtual, filmes, apps, drone, extras genéricos)
+    const tour_virtual = extraiLista(blocos.tour_virtual || "");
+    const filmes = extraiLista(blocos.filmes || "");
+    const apps = extraiLista(blocos.apps || "");
+    const drone = extraiLista(blocos.drone || "");
+    const extras_diversos = extraiLista(blocos.extras || "");
+
+    // Detecções soltas (sem cabeçalho explícito) — vasculha o texto inteiro
+    const detSolta = detectarExtrasSoltos(texto, { tour_virtual, filmes, apps, drone, extras_diversos });
+
+    if (!externas.length && !internas.length && !plantas.length &&
+        !tour_virtual.length && !filmes.length && !apps.length && !drone.length &&
+        !extras_diversos.length && !detSolta.length) {
+      avisos.push("Não consegui identificar nenhuma seção (Externas/Internas/Plantas/Tour Virtual/Filmes/Apps). Use cabeçalhos tipo 'Externas:' seguidos da lista.");
     }
 
     return {
@@ -166,6 +210,9 @@
         contato: contato || "—",
       },
       externas, internas, plantas,
+      tour_virtual, filmes, apps, drone,
+      extras_diversos,
+      extras_detectados: detSolta,
       desconto_pct,
       desconto_label: null,
       estrategia,
@@ -173,6 +220,102 @@
       _origem: "local",
       _avisos: avisos,
     };
+  }
+
+  // Detecta menções soltas (sem cabeçalho) de extras no texto inteiro.
+  // Útil pra prompts curtos tipo "...e D.Brave, filme produto 1:30, tour virtual áreas de lazer".
+  function detectarExtrasSoltos(texto, jaMencionados) {
+    const PRECOS = window.FLYING_PRECOS;
+    if (!PRECOS) return [];
+    const det = [];
+    const alvo = norm(texto);
+
+    function jaTem(lista, item) {
+      return (lista || []).some((x) => norm(x).includes(item) || item.includes(norm(x)));
+    }
+
+    // Tour virtual: detecta variantes específicas
+    for (const amb of (PRECOS.tour_virtual && PRECOS.tour_virtual.ambientes) || []) {
+      if (amb.chave === "outro") continue;
+      for (const pad of amb.padroes) {
+        if (new RegExp(pad).test(alvo)) {
+          // Confere se não veio de uma seção explícita "Tour Virtual:"
+          if (!jaTem(jaMencionados.tour_virtual, amb.rotulo.toLowerCase())) {
+            // E não duplica
+            if (!det.some((d) => d.tipo === "tour_virtual" && d.chave === amb.chave)) {
+              det.push({ tipo: "tour_virtual", chave: amb.chave, rotulo: amb.rotulo, preco: amb.preco });
+            }
+          }
+          break;
+        }
+      }
+    }
+
+    // Filmes
+    for (const f of (PRECOS.filmes && PRECOS.filmes.catalogo) || []) {
+      for (const pad of f.padroes) {
+        if (new RegExp(pad).test(alvo)) {
+          if (!jaTem(jaMencionados.filmes, f.rotulo.toLowerCase()) &&
+              !det.some((d) => d.tipo === "filme" && d.chave === f.chave)) {
+            det.push({ tipo: "filme", chave: f.chave, rotulo: f.rotulo, preco: f.preco });
+          }
+          break;
+        }
+      }
+    }
+
+    // Apps
+    for (const a of (PRECOS.apps && PRECOS.apps.catalogo) || []) {
+      for (const pad of a.padroes) {
+        if (new RegExp(pad).test(alvo)) {
+          if (!jaTem(jaMencionados.apps, a.rotulo.toLowerCase()) &&
+              !det.some((d) => d.tipo === "app" && d.chave === a.chave)) {
+            det.push({ tipo: "app", chave: a.chave, rotulo: a.rotulo, preco: a.preco });
+          }
+          break;
+        }
+      }
+    }
+
+    // Maquete eletrônica (só se ainda não detectado)
+    const mq = PRECOS.maquete_eletronica;
+    if (mq) {
+      for (const pad of mq.padroes) {
+        if (new RegExp(pad).test(alvo)) {
+          det.push({ tipo: "maquete", chave: mq.chave, rotulo: mq.rotulo, preco: mq.preco });
+          break;
+        }
+      }
+    }
+
+    // Estudo de fachada
+    const ef = PRECOS.estudo_fachada;
+    if (ef) {
+      for (const pad of ef.padroes) {
+        if (new RegExp(pad).test(alvo)) {
+          // Só se NÃO houver imagens externas — evita confusão
+          // (estudo de fachada é serviço separado, não perspectiva)
+          if (/estudo.*fachada|estudo cromatic|cromatic.*fachada/i.test(texto)) {
+            det.push({ tipo: "estudo_fachada", chave: ef.chave, rotulo: ef.rotulo, preco: ef.preco });
+            break;
+          }
+        }
+      }
+    }
+
+    // Drone (só se houver "voo de drone" claro)
+    for (const d of (PRECOS.drone && PRECOS.drone.catalogo) || []) {
+      for (const pad of d.padroes) {
+        if (new RegExp(pad).test(alvo)) {
+          if (!det.some((x) => x.tipo === "drone" && x.chave === d.chave)) {
+            det.push({ tipo: "drone", chave: d.chave, rotulo: d.rotulo, preco: d.preco });
+          }
+          break;
+        }
+      }
+    }
+
+    return det;
   }
 
   window.FlyingParser = { parse, norm, limpaItem };

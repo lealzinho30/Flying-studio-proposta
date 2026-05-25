@@ -25,9 +25,10 @@ from typing import Any
 
 import yaml
 
+from flying.ai_parser import parse as ai_parse
 from flying.docx_writer import _brl, gerar_docx
 from flying.historico import Historico
-from flying.orcamento import Orcamento, comparar
+from flying.orcamento import Orcamento, comparar, montar_extras
 
 
 def _carregar_entrada(caminho: Path) -> dict[str, Any]:
@@ -79,6 +80,16 @@ def main(argv: list[str] | None = None) -> int:
         "plantas":  cfg.get("plantas", [])  or [],
     }
     desconto_pct = float(cfg.get("desconto_pct", 0))
+
+    # Extras: o YAML pode definir tour_virtual, filmes, apps, drone diretamente.
+    extras_struct = montar_extras({
+        "tour_virtual": cfg.get("tour_virtual", []) or [],
+        "filmes":       cfg.get("filmes", []) or [],
+        "apps":         cfg.get("apps", []) or [],
+        "drone":        cfg.get("drone", []) or [],
+        "extras_diversos":  cfg.get("extras", []) or [],
+        "extras_detectados": [],
+    })
 
     levantamentos = comparar(cliente["empresa"], descricoes, desconto_pct=desconto_pct)
     plan = levantamentos["planilha"]
@@ -144,6 +155,7 @@ def main(argv: list[str] | None = None) -> int:
         extras=extras,
         creditos=creditos,
         desconto_label=desconto_label,
+        extras_estruturados=extras_struct,
     )
 
     print(f"\n✅ DOCX gerado em: {saida}")

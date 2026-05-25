@@ -52,6 +52,38 @@ SECOES_CABEC = {
         r"plantas? baixas?",
         r"implanta(?:c|ç)(?:o|õ)es?",
     ],
+    "tour_virtual": [
+        r"tour virtual",
+        r"visita virtual( web)?",
+        r"vr 360",
+        r"panoramas? 360",
+    ],
+    "filmes": [
+        r"filmes?",
+        r"v[ií]deos?",
+        r"anima[cç][oõ]es?",
+    ],
+    "apps": [
+        r"apps?",
+        r"aplica[cç][oõ]es?",
+        r"aplicativos?",
+        r"experi[eê]ncias? digitais",
+        r"tela touch",
+        r"stand digital",
+        r"estande digital",
+    ],
+    "drone": [
+        r"drones?",
+        r"fotografia a[eé]rea",
+        r"voo de drone",
+    ],
+    "extras": [
+        r"extras?",
+        r"outros",
+        r"adicionais?",
+        r"tecnologias?",
+        r"servi[cç]os? extras?",
+    ],
 }
 
 # --- helpers de normalização ---
@@ -177,10 +209,20 @@ def parse_local(texto: str) -> dict[str, Any]:
     externas = _extrai_lista(blocos.get("externas", ""))
     internas = _extrai_lista(blocos.get("internas", ""))
     plantas = _extrai_lista(blocos.get("plantas", ""))
+    tour_virtual = _extrai_lista(blocos.get("tour_virtual", ""))
+    filmes = _extrai_lista(blocos.get("filmes", ""))
+    apps = _extrai_lista(blocos.get("apps", ""))
+    drone = _extrai_lista(blocos.get("drone", ""))
+    extras_diversos = _extrai_lista(blocos.get("extras", ""))
 
-    if not (externas or internas or plantas):
-        avisos.append("Não consegui identificar nenhuma seção (Externas/Internas/Plantas). "
-                      "Use cabeçalhos tipo 'Externas:' seguidos de uma lista por linha ou vírgula.")
+    extras_detectados = _detectar_extras_soltos(texto, jaMencionados={
+        "tour_virtual": tour_virtual, "filmes": filmes, "apps": apps,
+        "drone": drone, "extras_diversos": extras_diversos,
+    })
+
+    if not (externas or internas or plantas or tour_virtual or filmes or apps or drone or extras_diversos or extras_detectados):
+        avisos.append("Não consegui identificar nenhuma seção (Externas/Internas/Plantas/Tour Virtual/Filmes/Apps). "
+                      "Use cabeçalhos tipo 'Externas:' seguidos de uma lista.")
 
     return {
         "cliente": {
@@ -191,6 +233,12 @@ def parse_local(texto: str) -> dict[str, Any]:
         "externas": externas,
         "internas": internas,
         "plantas":  plantas,
+        "tour_virtual": tour_virtual,
+        "filmes": filmes,
+        "apps": apps,
+        "drone": drone,
+        "extras_diversos": extras_diversos,
+        "extras_detectados": extras_detectados,
         "desconto_pct": desconto_pct,
         "desconto_label": None,
         "estrategia": estrategia,
@@ -200,6 +248,82 @@ def parse_local(texto: str) -> dict[str, Any]:
         "_origem": "local",
         "_avisos": avisos,
     }
+
+
+def _detectar_extras_soltos(texto: str, jaMencionados: dict[str, list[str]]) -> list[dict[str, Any]]:
+    """Vasculha o texto inteiro buscando menções a tour virtual / filmes / apps / etc
+    que não estejam dentro de uma seção explícita."""
+    import json
+    from pathlib import Path
+
+    PRECOS_PATH = Path(__file__).resolve().parent.parent / "data" / "precos_planilha.json"
+    try:
+        with open(PRECOS_PATH, encoding="utf-8") as f:
+            precos = json.load(f)
+    except Exception:
+        return []
+
+    alvo = _norm(texto)
+    det: list[dict[str, Any]] = []
+
+    def _ja_tem(lista, item_norm):
+        return any(item_norm in _norm(x) or _norm(x) in item_norm for x in (lista or []))
+
+    # Tour virtual
+    for amb in (precos.get("tour_virtual", {}).get("ambientes") or []):
+        if amb["chave"] == "outro":
+            continue
+        for pad in amb.get("padroes", []):
+            if re.search(pad, alvo):
+                if not _ja_tem(jaMencionados.get("tour_virtual"), _norm(amb["rotulo"])):
+                    if not any(d["tipo"] == "tour_virtual" and d["chave"] == amb["chave"] for d in det):
+                        det.append({"tipo": "tour_virtual", "chave": amb["chave"], "rotulo": amb["rotulo"], "preco": amb["preco"]})
+                break
+
+    # Filmes
+    for f in (precos.get("filmes", {}).get("catalogo") or []):
+        for pad in f.get("padroes", []):
+            if re.search(pad, alvo):
+                if not _ja_tem(jaMencionados.get("filmes"), _norm(f["rotulo"])):
+                    if not any(d["tipo"] == "filme" and d["chave"] == f["chave"] for d in det):
+                        det.append({"tipo": "filme", "chave": f["chave"], "rotulo": f["rotulo"], "preco": f["preco"]})
+                break
+
+    # Apps
+    for a in (precos.get("apps", {}).get("catalogo") or []):
+        for pad in a.get("padroes", []):
+            if re.search(pad, alvo):
+                if not _ja_tem(jaMencionados.get("apps"), _norm(a["rotulo"])):
+                    if not any(d["tipo"] == "app" and d["chave"] == a["chave"] for d in det):
+                        det.append({"tipo": "app", "chave": a["chave"], "rotulo": a["rotulo"], "preco": a["preco"]})
+                break
+
+    # Maquete eletrônica
+    mq = precos.get("maquete_eletronica")
+    if mq:
+        for pad in mq.get("padroes", []):
+            if re.search(pad, alvo):
+                det.append({"tipo": "maquete", "chave": mq["chave"], "rotulo": mq["rotulo"], "preco": mq["preco"]})
+                break
+
+    # Estudo de fachada
+    ef = precos.get("estudo_fachada")
+    if ef:
+        for pad in ef.get("padroes", []):
+            if re.search(pad, alvo):
+                if re.search(r"estudo.*fachada|estudo cromatic|cromatic.*fachada", texto, re.I):
+                    det.append({"tipo": "estudo_fachada", "chave": ef["chave"], "rotulo": ef["rotulo"], "preco": ef["preco"]})
+                    break
+
+    # Drone
+    for d in (precos.get("drone", {}).get("catalogo") or []):
+        for pad in d.get("padroes", []):
+            if re.search(pad, alvo):
+                if not any(x["tipo"] == "drone" and x["chave"] == d["chave"] for x in det):
+                    det.append({"tipo": "drone", "chave": d["chave"], "rotulo": d["rotulo"], "preco": d["preco"]})
+                break
+
+    return det
 
 
 # --- camada OpenAI (opcional) ---

@@ -61,6 +61,44 @@
     $(`total-${prefixoId}`).textContent = brl(orc.total_final);
   }
 
+  function renderExtras(extras) {
+    const wrap = $("r-extras");
+    if (!wrap) return;
+    wrap.innerHTML = "";
+    if (!extras || !extras.qtd) {
+      wrap.classList.add("hidden");
+      return;
+    }
+    wrap.classList.remove("hidden");
+    const { brl } = window.FlyingDocx;
+
+    const grupos = [
+      ["tour_virtual", "Tour Virtual"],
+      ["filmes", "Filmes"],
+      ["apps", "Aplicações"],
+      ["maquete", "Maquete"],
+      ["drone", "Drone"],
+      ["estudo_fachada", "Estudo de Fachada"],
+      ["diversos", "Outros"],
+    ];
+
+    let html = `<h2>Serviços extras <span class="muted">${extras.qtd} item(ns) · total ${brl(extras.total)}</span></h2>`;
+    for (const [chave, nome] of grupos) {
+      const g = extras[chave];
+      if (!g || !g.subsecoes.length) continue;
+      html += `<div class="bloco-cat"><h3>${nome} · <span class="muted">${g.qtd} item(ns)</span></h3><table class="itens">`;
+      html += `<thead><tr><th>#</th><th>Serviço</th><th>Detalhamento</th><th>Preço</th></tr></thead><tbody>`;
+      g.subsecoes.forEach((sub, i) => {
+        const det = (sub.itens && sub.itens.length) ? sub.itens.join(" · ") : "";
+        const preco = sub.sem_preco ? `<span style="color:var(--orange)">a definir</span>` : brl(sub.preco);
+        html += `<tr><td class="num">${i+1}</td><td>${sub.rotulo_secao || sub.rotulo_curto}</td><td class="fonte" style="font-family:inherit">${det}</td><td class="preco">${preco}</td></tr>`;
+      });
+      html += `</tbody><tfoot><tr><td colspan="3"><strong>Subtotal ${nome}</strong></td><td class="preco"><strong>${brl(g.total)}</strong></td></tr></tfoot>`;
+      html += `</table></div>`;
+    }
+    wrap.innerHTML = html;
+  }
+
   function renderTabelas(orc) {
     const { brl } = window.FlyingDocx;
     const wrap = $("r-tabelas");
@@ -113,6 +151,7 @@
     const descontoPct = parseFloat(parsed.desconto_pct) || 0;
 
     const { planilha: plan, historico: hist } = window.FlyingOrc.comparar(cliente.empresa, descricoes, descontoPct);
+    const extrasEstr = window.FlyingOrc.montarExtras(parsed);
 
     let estrategia = parsed.estrategia;
     if (estrategia === "auto") estrategia = hist ? "historico" : "planilha";
@@ -125,7 +164,8 @@
     // ===== render do resultado =====
     $("r-titulo").innerHTML = `${cliente.empresa} <span class="grad">· ${cliente.ref}</span>`;
     const total = (descricoes.externas.length + descricoes.internas.length + descricoes.plantas.length);
-    $("r-meta").innerHTML = `A/C: <strong>${cliente.contato}</strong> · ${total} imagens · Desconto ${descontoPct}% · Estratégia escolhida: <strong>${estrategia}</strong> <span class="origem-tag">parser: ${parsed._origem}</span>`;
+    const extrasInfo = extrasEstr.qtd ? ` · <strong>${extrasEstr.qtd}</strong> serviço(s) extra(s)` : "";
+    $("r-meta").innerHTML = `A/C: <strong>${cliente.contato}</strong> · ${total} imagens${extrasInfo} · Desconto ${descontoPct}% · Estratégia escolhida: <strong>${estrategia}</strong> <span class="origem-tag">parser: ${parsed._origem}</span>`;
 
     const av = $("r-avisos");
     av.innerHTML = "";
@@ -160,6 +200,7 @@
 
     $("r-estrategia-rotulo").textContent = `(estratégia ${estrategia})`;
     renderTabelas(orc);
+    renderExtras(extrasEstr);
     $("r-texto-original").textContent = texto;
 
     // ===== gera o DOCX em memória =====
@@ -175,6 +216,7 @@
       prazos,
       descontoLabel: parsed.desconto_label,
       extras: null,
+      extrasEstruturados: extrasEstr,
     });
 
     docxBlob = blob;

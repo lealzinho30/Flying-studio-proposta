@@ -9,6 +9,7 @@ Faz os 2 levantamentos pedidos pelo usuário:
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -227,3 +228,160 @@ def comparar(
         hist.desconto_pct = desconto_pct
 
     return {"planilha": plan, "historico": hist}
+
+
+# ===================== EXTRAS (espelha web/orcamento.js) =====================
+
+
+def _match_variante(texto: str, catalogo: list[dict[str, Any]] | None) -> dict[str, Any] | None:
+    if not catalogo:
+        return None
+    alvo = _norm(texto)
+    for item in catalogo:
+        for padrao in item.get("padroes", []):
+            if re.search(padrao, alvo):
+                return item
+    fallback = next((x for x in catalogo if x.get("chave") == "outro"), None)
+    return fallback
+
+
+def montar_extras(parsed: dict[str, Any]) -> dict[str, Any]:
+    """Constrói estrutura de extras (tour virtual/filmes/apps/maquete/drone/estudo)
+    a partir do dict do parser. Retorno espelha o formato JS para fácil paridade."""
+    import json
+    from pathlib import Path
+
+    PRECOS_PATH = Path(__file__).resolve().parent.parent / "data" / "precos_planilha.json"
+    with open(PRECOS_PATH, encoding="utf-8") as f:
+        precos = json.load(f)
+
+    out = {
+        "tour_virtual":   {"titulo": "VISITA VIRTUAL WEB – MULTIPLATAFORMA", "subsecoes": []},
+        "filmes":         {"titulo": "FILMES E ANIMAÇÕES", "subsecoes": []},
+        "apps":           {"titulo": "APLICAÇÕES E EXPERIÊNCIAS DIGITAIS", "subsecoes": []},
+        "drone":          {"titulo": "DRONE / FOTOGRAFIA AÉREA", "subsecoes": []},
+        "maquete":        {"titulo": "MAQUETE ELETRÔNICA", "subsecoes": []},
+        "estudo_fachada": {"titulo": "ESTUDO DE FACHADA / CROMÁTICA", "subsecoes": []},
+        "diversos":       {"titulo": "OUTROS SERVIÇOS", "subsecoes": []},
+        "total": 0.0, "qtd": 0,
+    }
+
+    TV = precos.get("tour_virtual", {})
+    FL = precos.get("filmes", {})
+    APP = precos.get("apps", {})
+    DR = precos.get("drone", {})
+    MQ = precos.get("maquete_eletronica", {})
+    EF = precos.get("estudo_fachada", {})
+
+    for desc in parsed.get("tour_virtual") or []:
+        v = _match_variante(desc, TV.get("ambientes"))
+        if v:
+            out["tour_virtual"]["subsecoes"].append({
+                "chave": v["chave"], "rotulo_secao": f"{TV['_titulo_secao']} – {v['rotulo']}",
+                "rotulo_curto": v["rotulo"], "preco": v["preco"],
+                "itens": list(TV.get("_itens_padrao", [])), "desc_original": desc,
+            })
+
+    for desc in parsed.get("filmes") or []:
+        v = _match_variante(desc, FL.get("catalogo"))
+        if v and "chave" in v:
+            out["filmes"]["subsecoes"].append({
+                "chave": v["chave"], "rotulo_secao": v["rotulo"], "rotulo_curto": v["rotulo"],
+                "preco": v["preco"], "itens": list(v.get("itens", [])), "desc_original": desc,
+            })
+
+    for desc in parsed.get("apps") or []:
+        v = _match_variante(desc, APP.get("catalogo"))
+        if v:
+            out["apps"]["subsecoes"].append({
+                "chave": v["chave"], "rotulo_secao": v["rotulo"], "rotulo_curto": v["rotulo"],
+                "preco": v["preco"], "itens": list(v.get("itens", [])), "desc_original": desc,
+            })
+
+    for desc in parsed.get("drone") or []:
+        v = _match_variante(desc, DR.get("catalogo"))
+        if v:
+            out["drone"]["subsecoes"].append({
+                "chave": v["chave"], "rotulo_secao": v["rotulo"], "rotulo_curto": v["rotulo"],
+                "preco": v["preco"], "itens": [], "desc_original": desc,
+            })
+
+    # Detectados soltos
+    for det in parsed.get("extras_detectados") or []:
+        subsec = {
+            "chave": det["chave"], "rotulo_secao": det["rotulo"],
+            "rotulo_curto": det["rotulo"], "preco": det["preco"],
+            "itens": [], "desc_original": det["rotulo"],
+        }
+        if det["tipo"] == "tour_virtual":
+            if any(s["chave"] == det["chave"] for s in out["tour_virtual"]["subsecoes"]):
+                continue
+            subsec["rotulo_secao"] = f"{TV['_titulo_secao']} – {det['rotulo']}"
+            subsec["itens"] = list(TV.get("_itens_padrao", []))
+            out["tour_virtual"]["subsecoes"].append(subsec)
+        elif det["tipo"] == "filme":
+            if any(s["chave"] == det["chave"] for s in out["filmes"]["subsecoes"]):
+                continue
+            meta = next((x for x in FL.get("catalogo", []) if x["chave"] == det["chave"]), None)
+            subsec["itens"] = list((meta or {}).get("itens", []))
+            out["filmes"]["subsecoes"].append(subsec)
+        elif det["tipo"] == "app":
+            if any(s["chave"] == det["chave"] for s in out["apps"]["subsecoes"]):
+                continue
+            meta = next((x for x in APP.get("catalogo", []) if x["chave"] == det["chave"]), None)
+            subsec["itens"] = list((meta or {}).get("itens", []))
+            out["apps"]["subsecoes"].append(subsec)
+        elif det["tipo"] == "drone":
+            if any(s["chave"] == det["chave"] for s in out["drone"]["subsecoes"]):
+                continue
+            out["drone"]["subsecoes"].append(subsec)
+        elif det["tipo"] == "maquete":
+            subsec["itens"] = list(MQ.get("itens", []))
+            if not out["maquete"]["subsecoes"]:
+                out["maquete"]["subsecoes"].append(subsec)
+        elif det["tipo"] == "estudo_fachada":
+            subsec["itens"] = list(EF.get("itens", []))
+            if not out["estudo_fachada"]["subsecoes"]:
+                out["estudo_fachada"]["subsecoes"].append(subsec)
+
+    # Diversos (com dedupe)
+    todas = (out["tour_virtual"]["subsecoes"] + out["filmes"]["subsecoes"]
+             + out["apps"]["subsecoes"] + out["drone"]["subsecoes"]
+             + out["maquete"]["subsecoes"] + out["estudo_fachada"]["subsecoes"])
+
+    def _bate_cat(catalogos, alvo_norm):
+        return any(re.search(p, alvo_norm) for cat in catalogos for p in (cat.get("padroes", []) if cat else []))
+
+    for desc in parsed.get("extras_diversos") or []:
+        d_norm = _norm(desc)
+        ja_processado = any(d_norm in _norm(s.get("desc_original", "") or s["rotulo_curto"])
+                             or _norm(s.get("desc_original", "") or s["rotulo_curto"]) in d_norm
+                             for s in todas)
+        conhecido = (
+            ja_processado
+            or _bate_cat(TV.get("ambientes", []), d_norm)
+            or _bate_cat(FL.get("catalogo", []), d_norm)
+            or _bate_cat(APP.get("catalogo", []), d_norm)
+            or _bate_cat(DR.get("catalogo", []), d_norm)
+            or any(re.search(p, d_norm) for p in MQ.get("padroes", []))
+            or any(re.search(p, d_norm) for p in EF.get("padroes", []))
+        )
+        if conhecido:
+            continue
+        out["diversos"]["subsecoes"].append({
+            "chave": "diverso", "rotulo_secao": desc.upper(),
+            "rotulo_curto": desc, "preco": 0, "itens": [],
+            "desc_original": desc, "sem_preco": True,
+        })
+
+    # Totais
+    for grupo in list(out.keys()):
+        if grupo in ("total", "qtd"):
+            continue
+        subs = out[grupo]["subsecoes"]
+        out[grupo]["total"] = sum(x.get("preco", 0) for x in subs)
+        out[grupo]["qtd"] = len(subs)
+        out["total"] += out[grupo]["total"]
+        out["qtd"] += out[grupo]["qtd"]
+
+    return out

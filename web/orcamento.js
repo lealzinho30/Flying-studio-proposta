@@ -167,5 +167,171 @@
     return _ultimaProposta(empresa);
   }
 
-  window.FlyingOrc = { comparar, orcarPelaPlanilha, orcarPeloHistorico, ultimaPropostaDe };
+  // ================== EXTRAS (Tour Virtual / Filmes / Apps / Drone) ==================
+
+  // Tenta achar a melhor variante na lista do catálogo dado uma descrição livre.
+  function _matchVariante(texto, catalogo) {
+    if (!catalogo) return null;
+    const alvo = norm(texto);
+    for (const item of catalogo) {
+      for (const padrao of item.padroes || []) {
+        if (new RegExp(padrao).test(alvo)) return item;
+      }
+    }
+    return catalogo.find((x) => x.chave === "outro") || null;
+  }
+
+  // Constrói a estrutura de extras a partir do que o parser entregou.
+  function montarExtras(parsed) {
+    const PRECOS = window.FLYING_PRECOS;
+    const out = {
+      tour_virtual: { titulo: "VISITA VIRTUAL WEB – MULTIPLATAFORMA", subsecoes: [] },
+      filmes:       { titulo: "FILMES E ANIMAÇÕES", subsecoes: [] },
+      apps:         { titulo: "APLICAÇÕES E EXPERIÊNCIAS DIGITAIS", subsecoes: [] },
+      drone:        { titulo: "DRONE / FOTOGRAFIA AÉREA", subsecoes: [] },
+      maquete:      { titulo: "MAQUETE ELETRÔNICA", subsecoes: [] },
+      estudo_fachada: { titulo: "ESTUDO DE FACHADA / CROMÁTICA", subsecoes: [] },
+      diversos:     { titulo: "OUTROS SERVIÇOS", subsecoes: [] },
+      total: 0,
+      qtd: 0,
+    };
+
+    const TV = PRECOS.tour_virtual;
+    const FL = PRECOS.filmes;
+    const APP = PRECOS.apps;
+    const DR = PRECOS.drone;
+    const MQ = PRECOS.maquete_eletronica;
+    const EF = PRECOS.estudo_fachada;
+
+    // Tour Virtual
+    for (const desc of parsed.tour_virtual || []) {
+      const v = _matchVariante(desc, TV.ambientes);
+      if (v) {
+        out.tour_virtual.subsecoes.push({
+          chave: v.chave,
+          rotulo_secao: `${TV._titulo_secao} – ${v.rotulo}`,
+          rotulo_curto: v.rotulo,
+          preco: v.preco,
+          itens: TV._itens_padrao.slice(),
+          desc_original: desc,
+        });
+      }
+    }
+    // Filmes (cabeçalho explícito)
+    for (const desc of parsed.filmes || []) {
+      const v = _matchVariante(desc, FL.catalogo);
+      if (v && v.chave !== undefined) {
+        out.filmes.subsecoes.push({
+          chave: v.chave, rotulo_secao: v.rotulo, rotulo_curto: v.rotulo,
+          preco: v.preco, itens: (v.itens || []).slice(),
+          desc_original: desc,
+        });
+      }
+    }
+    // Apps
+    for (const desc of parsed.apps || []) {
+      const v = _matchVariante(desc, APP.catalogo);
+      if (v) {
+        out.apps.subsecoes.push({
+          chave: v.chave, rotulo_secao: v.rotulo, rotulo_curto: v.rotulo,
+          preco: v.preco, itens: (v.itens || []).slice(),
+          desc_original: desc,
+        });
+      }
+    }
+    // Drone
+    for (const desc of parsed.drone || []) {
+      const v = _matchVariante(desc, DR.catalogo);
+      if (v) {
+        out.drone.subsecoes.push({
+          chave: v.chave, rotulo_secao: v.rotulo, rotulo_curto: v.rotulo,
+          preco: v.preco, itens: [], desc_original: desc,
+        });
+      }
+    }
+
+    // Detectados soltos (catch-all do parser)
+    for (const det of parsed.extras_detectados || []) {
+      const subsec = {
+        chave: det.chave,
+        rotulo_secao: det.rotulo,
+        rotulo_curto: det.rotulo,
+        preco: det.preco,
+        itens: [],
+        desc_original: det.rotulo,
+      };
+      if (det.tipo === "tour_virtual") {
+        if (out.tour_virtual.subsecoes.some((s) => s.chave === det.chave)) continue;
+        subsec.rotulo_secao = `${TV._titulo_secao} – ${det.rotulo}`;
+        subsec.itens = TV._itens_padrao.slice();
+        out.tour_virtual.subsecoes.push(subsec);
+      } else if (det.tipo === "filme") {
+        if (out.filmes.subsecoes.some((s) => s.chave === det.chave)) continue;
+        const meta = (FL.catalogo || []).find((x) => x.chave === det.chave);
+        subsec.itens = (meta && meta.itens) || [];
+        out.filmes.subsecoes.push(subsec);
+      } else if (det.tipo === "app") {
+        if (out.apps.subsecoes.some((s) => s.chave === det.chave)) continue;
+        const meta = (APP.catalogo || []).find((x) => x.chave === det.chave);
+        subsec.itens = (meta && meta.itens) || [];
+        out.apps.subsecoes.push(subsec);
+      } else if (det.tipo === "drone") {
+        if (out.drone.subsecoes.some((s) => s.chave === det.chave)) continue;
+        out.drone.subsecoes.push(subsec);
+      } else if (det.tipo === "maquete") {
+        subsec.itens = MQ.itens.slice();
+        if (!out.maquete.subsecoes.length) out.maquete.subsecoes.push(subsec);
+      } else if (det.tipo === "estudo_fachada") {
+        subsec.itens = EF.itens.slice();
+        if (!out.estudo_fachada.subsecoes.length) out.estudo_fachada.subsecoes.push(subsec);
+      }
+    }
+
+    // Diversos (não categorizados — preço a definir).
+    // Antes de adicionar, descarta itens que já viraram tour virtual/filme/app/etc.
+    const _todasSubsecoes = []
+      .concat(out.tour_virtual.subsecoes, out.filmes.subsecoes, out.apps.subsecoes,
+              out.drone.subsecoes, out.maquete.subsecoes, out.estudo_fachada.subsecoes);
+    for (const desc of parsed.extras_diversos || []) {
+      const descNorm = norm(desc);
+      const jaProcessado = _todasSubsecoes.some((sub) => {
+        const target = norm(sub.desc_original || sub.rotulo_curto || "");
+        return target && (descNorm.includes(target) || target.includes(descNorm));
+      });
+      // Também ignora se bate com algum padrão conhecido do catálogo
+      const baterCat = (cats) => (cats || []).some((c) => (c.padroes || []).some((p) => new RegExp(p).test(descNorm)));
+      const conhecido = jaProcessado
+        || baterCat(PRECOS.tour_virtual && PRECOS.tour_virtual.ambientes)
+        || baterCat(PRECOS.filmes && PRECOS.filmes.catalogo)
+        || baterCat(PRECOS.apps && PRECOS.apps.catalogo)
+        || baterCat(PRECOS.drone && PRECOS.drone.catalogo)
+        || (MQ && (MQ.padroes || []).some((p) => new RegExp(p).test(descNorm)))
+        || (EF && (EF.padroes || []).some((p) => new RegExp(p).test(descNorm)));
+      if (conhecido) continue;
+      // Senão, adiciona como diverso
+      out.diversos.subsecoes.push({
+        chave: "diverso",
+        rotulo_secao: desc.toUpperCase(),
+        rotulo_curto: desc,
+        preco: 0,
+        itens: [],
+        desc_original: desc,
+        sem_preco: true,
+      });
+    }
+
+    // Totais
+    for (const grupo of Object.keys(out)) {
+      if (grupo === "total" || grupo === "qtd") continue;
+      const subs = out[grupo].subsecoes;
+      out[grupo].total = subs.reduce((s, x) => s + (x.preco || 0), 0);
+      out[grupo].qtd = subs.length;
+      out.total += out[grupo].total;
+      out.qtd += out[grupo].qtd;
+    }
+
+    return out;
+  }
+
+  window.FlyingOrc = { comparar, orcarPelaPlanilha, orcarPeloHistorico, ultimaPropostaDe, montarExtras };
 })();

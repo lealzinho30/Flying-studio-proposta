@@ -295,7 +295,7 @@
 
   // ---------- caixa de "investimento total" (capa) ----------
 
-  function caixaResumoCapa({ cliente, qtdImg, valorBruto, valorFinal, descontoPct, descontoLabel }) {
+  function caixaResumoCapa({ cliente, qtdImg, qtdExtras, valorBruto, valorFinal, descontoPct, descontoLabel }) {
     const { Paragraph, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType, ShadingType, BorderStyle } = window.docx;
     const borderHidden = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
 
@@ -335,8 +335,9 @@
       row("CLIENTE", cliente.empresa.toUpperCase()),
       row("PROJETO", cliente.ref.toUpperCase()),
       row("AOS CUIDADOS DE", cliente.contato.toUpperCase()),
-      row("IMAGENS", `${qtdImg} unidades`),
     ];
+    if (qtdImg > 0) linhas.push(row("IMAGENS", `${qtdImg} unidades`));
+    if (qtdExtras && qtdExtras > 0) linhas.push(row("SERVIÇOS EXTRAS", `${qtdExtras} ${qtdExtras === 1 ? "item" : "itens"}`));
     if (descontoPct > 0) {
       linhas.push(row("VALOR BRUTO", brl(valorBruto)));
       linhas.push(row(`DESCONTO (${descontoLabel || (descontoPct + "%")})`, "-" + brl(valorBruto - valorFinal)));
@@ -352,7 +353,118 @@
 
   // ---------- DOCUMENTO PRINCIPAL ----------
 
-  async function gerarDocxBlob({ cliente, orc, data, mostrarPrecos, formaPagamento, prazos, descontoLabel, extras }) {
+  // ---------- tabela de subseção EXTRA (Tour Virtual, Filme, App, etc) ----------
+  // Estilo idêntico aos screenshots: header roxo claro com título da subseção,
+  // linhas internas com numeração 2.X.Y, valor total ao final.
+  function tabelaExtraSubsecao(numero, subsec) {
+    const { Paragraph, Table, TableRow, TableCell, WidthType, BorderStyle, TextRun, AlignmentType, ShadingType } = window.docx;
+    const borderHidden = { style: BorderStyle.NONE, size: 0, color: COR.branco };
+    const borderSoft = { style: BorderStyle.SINGLE, size: 4, color: COR.cinzaLight };
+
+    function cell(text, opts = {}) {
+      return new TableCell({
+        width: { size: opts.width || 30, type: WidthType.PERCENTAGE },
+        shading: opts.shading ? { type: ShadingType.CLEAR, color: "auto", fill: opts.shading } : undefined,
+        verticalAlign: "center",
+        margins: { top: 110, bottom: 110, left: 160, right: 160 },
+        borders: {
+          top: opts.borderTop ?? borderSoft,
+          bottom: opts.borderBottom ?? borderSoft,
+          left: borderHidden, right: borderHidden,
+        },
+        children: [new Paragraph({
+          alignment: opts.alignment || AlignmentType.LEFT,
+          spacing: { before: 0, after: 0, line: 240 },
+          children: [new TextRun({ text, bold: !!opts.bold, size: opts.size || 22, color: opts.color || COR.texto, font: FONTE })],
+        })],
+      });
+    }
+
+    const rows = [];
+
+    // Cabeçalho da subseção (fundo roxo claro com TÍTULO COMPLETO)
+    rows.push(new TableRow({
+      tableHeader: true,
+      children: [
+        new TableCell({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          shading: { type: ShadingType.CLEAR, color: "auto", fill: "EFEBFF" }, // roxo bem claro
+          margins: { top: 130, bottom: 130, left: 200, right: 200 },
+          borders: {
+            top: { style: BorderStyle.SINGLE, size: 8, color: COR.primaria },
+            bottom: { style: BorderStyle.SINGLE, size: 8, color: COR.primaria },
+            left: borderHidden, right: borderHidden,
+          },
+          children: [new Paragraph({
+            children: [
+              new TextRun({ text: `${numero}  `, bold: true, size: 22, color: COR.primariaDark, font: FONTE }),
+              new TextRun({ text: subsec.rotulo_secao, bold: true, size: 22, color: COR.primariaDark, font: FONTE }),
+            ],
+          })],
+          columnSpan: 2,
+        }),
+      ],
+    }));
+
+    // Cabeçalho colunas (cinza escuro)
+    rows.push(new TableRow({
+      children: [
+        cell("Itens", { bold: true, width: 18, size: 18, color: COR.textoSoft }),
+        cell("Descrição dos Serviços", { bold: true, width: 82, size: 18, color: COR.textoSoft }),
+      ],
+    }));
+
+    // Itens
+    const itens = (subsec.itens && subsec.itens.length) ? subsec.itens : [subsec.rotulo_curto];
+    itens.forEach((it, idx) => {
+      rows.push(new TableRow({
+        children: [
+          cell(`${numero}.${idx + 1}`, { width: 18, color: COR.primariaDark, bold: true }),
+          cell(it, { width: 82 }),
+        ],
+      }));
+    });
+
+    // Rodapé com valor total
+    if (subsec.sem_preco) {
+      rows.push(new TableRow({
+        children: [
+          cell(String(itens.length), { bold: true, width: 18, color: COR.branco, shading: COR.primariaDark }),
+          cell("Valor Total — A DEFINIR", { bold: true, width: 82, color: COR.branco, shading: COR.primariaDark }),
+        ],
+      }));
+    } else {
+      rows.push(new TableRow({
+        children: [
+          cell(String(itens.length), { bold: true, width: 18, color: COR.branco, shading: COR.primariaDark }),
+          new TableCell({
+            width: { size: 82, type: WidthType.PERCENTAGE },
+            shading: { type: ShadingType.CLEAR, color: "auto", fill: COR.primariaDark },
+            margins: { top: 110, bottom: 110, left: 160, right: 160 },
+            borders: { top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden },
+            children: [new Paragraph({
+              children: [
+                new TextRun({ text: "Valor Total", bold: true, size: 22, color: COR.branco, font: FONTE }),
+                new TextRun({ text: "                                                                                                            ", size: 22 }),
+                new TextRun({ text: brl(subsec.preco), bold: true, size: 22, color: COR.branco, font: FONTE }),
+              ],
+            })],
+          }),
+        ],
+      }));
+    }
+
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows,
+      borders: {
+        top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden,
+        insideHorizontal: borderSoft, insideVertical: borderHidden,
+      },
+    });
+  }
+
+  async function gerarDocxBlob({ cliente, orc, data, mostrarPrecos, formaPagamento, prazos, descontoLabel, extras, extrasEstruturados }) {
     const {
       Document, Packer, Paragraph, TextRun, AlignmentType, PageBreak,
       LevelFormat,
@@ -361,9 +473,14 @@
     data = data || new Date();
     const logoBuffer = await carregarLogoBuffer();
 
-    const subtotal = orc.subtotal;
+    // Subtotal de imagens + extras estruturados
+    const subtotalImagens = orc.subtotal;
+    const totalExtras = (extrasEstruturados && extrasEstruturados.total) || 0;
+    const subtotal = subtotalImagens + totalExtras;
     const descontoValor = subtotal * (orc.desconto_pct / 100);
     const valorFinal = subtotal - descontoValor;
+    const qtdImagens = orc.total_imagens;
+    const qtdExtras = (extrasEstruturados && extrasEstruturados.qtd) || 0;
 
     const children = [];
 
@@ -375,7 +492,8 @@
     // Caixa cliente / investimento
     children.push(caixaResumoCapa({
       cliente,
-      qtdImg: orc.total_imagens,
+      qtdImg: qtdImagens,
+      qtdExtras,
       valorBruto: subtotal,
       valorFinal,
       descontoPct: orc.desconto_pct,
@@ -405,32 +523,62 @@
     children.push(P("02.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
     children.push(P("ITENS A SEREM DESENVOLVIDOS", { bold: true, size: 36, color: COR.texto, after: 320 }));
 
+    let secaoNum = 0;
     if (orc.externas.qtd) {
+      secaoNum++;
       children.push(P("ILUSTRAÇÕES EXTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: 120, before: 200 }));
-      children.push(tabelaCategoria("2.1", orc.externas, mostrarPrecos));
+      children.push(tabelaCategoria(`2.${secaoNum}`, orc.externas, mostrarPrecos));
       children.push(P("", { after: 200 }));
     }
     if (orc.internas.qtd) {
+      secaoNum++;
       children.push(P("ILUSTRAÇÕES INTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: 120, before: 200 }));
-      children.push(tabelaCategoria("2.2", orc.internas, mostrarPrecos));
+      children.push(tabelaCategoria(`2.${secaoNum}`, orc.internas, mostrarPrecos));
       children.push(P("", { after: 200 }));
     }
     if (orc.plantas.qtd) {
+      secaoNum++;
       children.push(P("PLANTAS HUMANIZADAS", { bold: true, size: 22, color: COR.primariaDark, after: 120, before: 200 }));
-      children.push(tabelaCategoria("2.3", orc.plantas, mostrarPrecos));
+      children.push(tabelaCategoria(`2.${secaoNum}`, orc.plantas, mostrarPrecos));
       children.push(P("", { after: 200 }));
     }
 
+    // ====== EXTRAS (Tour Virtual / Filmes / Apps / Maquete / Drone / Estudo Fachada) ======
+    if (extrasEstruturados && extrasEstruturados.qtd > 0) {
+      const grupos = [
+        ["tour_virtual", extrasEstruturados.tour_virtual],
+        ["filmes", extrasEstruturados.filmes],
+        ["apps", extrasEstruturados.apps],
+        ["maquete", extrasEstruturados.maquete],
+        ["drone", extrasEstruturados.drone],
+        ["estudo_fachada", extrasEstruturados.estudo_fachada],
+        ["diversos", extrasEstruturados.diversos],
+      ];
+      for (const [_chave, grupo] of grupos) {
+        if (!grupo || !grupo.subsecoes.length) continue;
+        for (const sub of grupo.subsecoes) {
+          secaoNum++;
+          children.push(tabelaExtraSubsecao(`2.${secaoNum}`, sub));
+          children.push(P("", { after: 160 }));
+        }
+      }
+    }
+
     // Totais
-    children.push(PRich(
-      [
-        R("Total de imagens: ", { color: COR.textoSoft }),
-        R(`${orc.total_imagens}`, { bold: true }),
-        R("    ·    Valor bruto: ", { color: COR.textoSoft }),
-        R(brl(subtotal), { bold: true }),
-      ],
-      { before: 240, after: 60 }
-    ));
+    const totaisRuns = [];
+    if (qtdImagens) {
+      totaisRuns.push(R("Imagens: ", { color: COR.textoSoft }));
+      totaisRuns.push(R(`${qtdImagens}`, { bold: true }));
+    }
+    if (qtdExtras) {
+      if (totaisRuns.length) totaisRuns.push(R("    ·    ", { color: COR.textoSoft }));
+      totaisRuns.push(R("Serviços extras: ", { color: COR.textoSoft }));
+      totaisRuns.push(R(`${qtdExtras}`, { bold: true }));
+    }
+    if (totaisRuns.length) totaisRuns.push(R("    ·    ", { color: COR.textoSoft }));
+    totaisRuns.push(R("Valor bruto: ", { color: COR.textoSoft }));
+    totaisRuns.push(R(brl(subtotal), { bold: true }));
+    children.push(PRich(totaisRuns, { before: 240, after: 60 }));
 
     if (orc.desconto_pct > 0) {
       const rotulo = descontoLabel || `${orc.desconto_pct}% de Desconto`;

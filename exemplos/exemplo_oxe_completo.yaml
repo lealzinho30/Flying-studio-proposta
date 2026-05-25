@@ -1,0 +1,32 @@
+cliente:
+  empresa: OXE
+  ref: JD. SÃO PAULO
+  contato: RICHARD
+
+desconto_pct: 8
+
+externas:
+  - Fachada
+  - Fotomontagem
+  - Voo de Pássaro
+
+internas:
+  - Lobby
+  - Salão de Festas
+
+plantas:
+  - Implantação Térreo
+  - Apartamento Tipo
+
+tour_virtual:
+  - Áreas de Lazer
+  - Apartamento 1 dorm
+  - Apartamento 2 dorms
+
+filmes:
+  - Filme Produto 1:30
+  - Pacote Rinno
+
+apps:
+  - D.Brave
+  - Aplicação Web Touch

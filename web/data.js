@@ -2,6 +2,7 @@
 // Espelha data/precos_planilha.json e data/historico_clientes.json.
 
 window.FLYING_PRECOS = {
+  // ============== IMAGENS ==============
   externas: {
     _default: 1900,
     _descricao_padrao: "Perspectiva Externa",
@@ -27,6 +28,147 @@ window.FLYING_PRECOS = {
       { chave: "planta_tipo", descricao: "Planta Humanizada Tipo", preco: 1200, padroes: [".*"] },
     ],
   },
+
+  // ============== TOUR VIRTUAL / VISITA VIRTUAL WEB ==============
+  // Cada "ambiente" é uma sub-seção da proposta com 3 itens padrão.
+  tour_virtual: {
+    _titulo_secao: "VISITA VIRTUAL WEB – MULTIPLATAFORMA",
+    _itens_padrao: [
+      "Elaboração 3d (Arquitetura / Decoração)",
+      "Render 360° VR",
+      "Versão Mobile Offline – Panos 360º",
+    ],
+    ambientes: [
+      { chave: "areas_lazer", rotulo: "ÁREAS DE LAZER", preco: 27000,
+        padroes: ["areas? de lazer", "lazer comum", "\\blazer\\b"] },
+      { chave: "apto_1_dorm", rotulo: "APARTAMENTO 1 DORM", preco: 10000,
+        padroes: ["apto.*1.*dorm", "apartamento 1.*dorm", "1 dorm", "studio", "stúdio"] },
+      { chave: "apto_2_dorms", rotulo: "APARTAMENTO 2 DORMS", preco: 12500,
+        padroes: ["apto.*2.*dorm", "apartamento 2.*dorm", "2 dorm"] },
+      { chave: "apto_3_dorms", rotulo: "APARTAMENTO 3 DORMS", preco: 14500,
+        padroes: ["apto.*3.*dorm", "apartamento 3.*dorm", "3 dorm"] },
+      { chave: "apto_4_dorms", rotulo: "APARTAMENTO 4 DORMS", preco: 16500,
+        padroes: ["apto.*4.*dorm", "apartamento 4.*dorm", "4 dorm"] },
+      { chave: "garden", rotulo: "GARDEN / DUPLEX", preco: 14500,
+        padroes: ["\\bgarden\\b", "duplex", "cobertura"] },
+      { chave: "outro", rotulo: "AMBIENTE EXTRA", preco: 10000,
+        padroes: [".*"] },
+    ],
+    // Custos unitários da planilha (caso queira tabela detalhada)
+    componentes: {
+      elaboracao_ambiente:  { descricao: "Tour Virtual / VR 360 - Elaboração por ambiente", preco: 2500 },
+      render_ambiente:      { descricao: "Tour Virtual / VR 360 - Render por ambiente", preco: 1200 },
+      web_mobile_ambiente:  { descricao: "Tour Virtual / VR 360 - Web/Mobile/PC por ambiente", preco: 450 },
+    },
+  },
+
+  // ============== MAQUETE ELETRÔNICA ==============
+  maquete_eletronica: {
+    chave: "maquete_eletronica",
+    rotulo: "MAQUETE ELETRÔNICA",
+    preco: 18000,
+    itens: [
+      "Produção e modelagem 3d (Arquitetura / Decoração / Paisagismo / Urbanismo)",
+      "Render 360°",
+      "Versão Offline",
+      "Insolação",
+    ],
+    padroes: ["maquete eletronica", "maquete digital", "maquete 3d"],
+  },
+
+  // ============== FILMES ==============
+  filmes: {
+    _titulo_secao: "FILMES E ANIMAÇÕES",
+    catalogo: [
+      { chave: "filme_produto_90s", rotulo: "FILME PRODUTO – ATÉ 1:30 MIN", preco: 10000,
+        itens: ["Estrutura: Localização, Conceito e Produto", "Roteiro Cliente ou Flying", "Edição e Composição", "Trilha sonora + locução (se necessário)", "Banco de imagens de humanização e respiros"],
+        padroes: ["filme.*produto.*1[:.]?30", "filme.*produto.*90", "filme.*produto.*1\\s*minuto.*meio", "filme.*produto(?!.*takes)(?!.*10)"] },
+      { chave: "filme_produto_10takes", rotulo: "FILME PRODUTO – ATÉ 10 TAKES", preco: 21000,
+        itens: ["10 Takes de 6\u201D à 7\u201D segundos cada + Edição"],
+        padroes: ["filme.*produto.*10.*takes", "10.*takes.*produto"] },
+      { chave: "filme_conceito_150s", rotulo: "FILME CONCEITO – ATÉ 2:30 MIN", preco: 14000,
+        itens: ["Estrutura: Localização, Conceito e Produto", "Roteiro Cliente ou Flying", "Edição e Composição", "Trilha sonora + locução"],
+        padroes: ["filme.*conceito.*2[:.]?30", "filme.*conceito"] },
+      { chave: "filme_viral_60s", rotulo: "FILME VIRAL – ATÉ 1:00 MIN", preco: 3900,
+        itens: ["Estrutura: Localização, Conceito e Produto", "Edição e Composição", "Trilha sonora", "Banco de imagens"],
+        padroes: ["filme.*viral.*(?:1[:.]?00|60s|1 min)", "filme.*viral(?!.*45)"] },
+      { chave: "filme_viral_45s", rotulo: "FILME VIRAL – ATÉ 0:45", preco: 3900,
+        itens: ["Estrutura: Localização, Conceito e Produto", "Edição e Composição", "Trilha sonora", "Banco de imagens"],
+        padroes: ["filme.*viral.*(?:0[:.]?45|45s|45 seg)"] },
+      { chave: "filme_institucional", rotulo: "FILME INSTITUCIONAL – ATÉ 3:30 MIN", preco: 18000,
+        itens: ["Estrutura: Localização, Conceito e Produto", "Roteiro Cliente ou Flying", "Edição e Composição", "Trilha sonora + locução"],
+        padroes: ["filme.*institucional"] },
+      { chave: "filme_doc", rotulo: "FILME DOC – ATÉ 1:00 / EPISÓDIO", preco: 5900,
+        itens: ["Documentário do empreendimento por episódio (1 minuto cada)"],
+        padroes: ["filme.*doc(?:umentar)?", "documentar"] },
+      { chave: "filme_3d_60s", rotulo: "FILME 3D ANIMADO – 60 SEGUNDOS", preco: 18000,
+        itens: ["Animação 3D completa", "Edição e composição", "Trilha sonora"],
+        padroes: ["filme.*3d.*(?:60s|60 seg|60s|1 min)", "filme.*3d(?!.*30)"] },
+      { chave: "filme_3d_30s", rotulo: "FILME 3D ANIMADO – 30 SEGUNDOS", preco: 8000,
+        itens: ["Animação 3D", "Edição e composição"],
+        padroes: ["filme.*3d.*(?:30s|30 seg)"] },
+      { chave: "takes_3d_9s", rotulo: "TAKES 3D ANIMADOS – ATÉ 9 SEG", preco: 1300,
+        itens: ["Take animado 3D para redes sociais e mobile (9 segundos)"],
+        padroes: ["takes? 3d", "takes? animados? 3d"] },
+      { chave: "takes_ia_12s", rotulo: "TAKES I.A ANIMADOS – ATÉ 12 SEG", preco: 650,
+        itens: ["Take animado em I.A para redes sociais e mobile (12 segundos)"],
+        padroes: ["takes? i\\.?a", "takes? ia", "takes? em ia"] },
+      { chave: "takes_7s", rotulo: "TAKES DE 7 SEGUNDOS", preco: 1300,
+        itens: ["Take de 7 segundos para redes sociais"],
+        padroes: ["takes? 7", "takes? de 7"] },
+      { chave: "pacote_rinno", rotulo: "PACOTE RINNO FILMES", preco: 28000,
+        itens: ["Filme Conceito", "Filme Produto", "2 Filmes Virais", "Takes Animados em I.A das áreas de lazer"],
+        padroes: ["pacote.*rinno", "rinno.*pacote", "pacote.*completo.*filme"] },
+    ],
+  },
+
+  // ============== APPS / D.BRAVE / TOUCH ==============
+  apps: {
+    _titulo_secao: "APLICAÇÕES E EXPERIÊNCIAS DIGITAIS",
+    catalogo: [
+      { chave: "dbrave", rotulo: "DESENVOLVIMENTO D.BRAVE", preco: 39000,
+        itens: [
+          "Catálogo Digital Interativo, permitindo ao usuário uma experiência ao interagir na tela touch screen",
+          "Apresentação Completa do Empreendimento",
+          "Informações Institucional",
+          "Implantação",
+          "Perspectivas / Imagens",
+          "Localização Empreendimento",
+          "Vídeo – Descanso de tela",
+          "Filme Conceito",
+        ],
+        padroes: ["d\\.?brave", "explorador d\\.?brave", "explorador dbrave"] },
+      { chave: "app_web_touch", rotulo: "DESENVOLVIMENTO APLICAÇÃO WEB – PARA TELA TOUCH", preco: 22800,
+        itens: [
+          "Aplicação web responsiva para tela touch screen do estande de vendas",
+          "Layout customizado de acordo com identidade do empreendimento",
+          "Integração com material gráfico do produto",
+        ],
+        padroes: ["aplica[cç][aã]o web.*touch", "app.*touch", "app web touch", "tela touch", "stand touch", "estande touch"] },
+    ],
+  },
+
+  // ============== DRONE ==============
+  drone: {
+    _titulo_secao: "DRONE / FOTOGRAFIA AÉREA",
+    catalogo: [
+      { chave: "fotografia_aerea_drone", rotulo: "Fotografia aérea Drone p/ Fotomontagem", preco: 2200,
+        padroes: ["fotografia a[eé]rea", "foto a[eé]rea"] },
+      { chave: "voo_drone_hora", rotulo: "Voo de Drone (por hora / endereço SP)", preco: 1800,
+        padroes: ["voo.*drone", "drone.*hora"] },
+    ],
+  },
+
+  // ============== ESTUDO DE FACHADA ==============
+  estudo_fachada: {
+    chave: "estudo_fachada",
+    rotulo: "ESTUDO DE FACHADA / CROMÁTICA",
+    preco: 18000,
+    itens: ["Estudo de fachada e cromática completo do empreendimento"],
+    padroes: ["estudo.*fachada", "estudo cromatic", "cromatic.*fachada"],
+  },
+
+  // ============== FORMA DE PAGAMENTO + PRAZOS ==============
   forma_pagamento_padrao: [
     { percentual: 50, marco: "Na aprovação desta Proposta" },
     { percentual: 25, marco: "Envio dos Shades" },
@@ -39,6 +181,7 @@ window.FLYING_PRECOS = {
   },
 };
 
+// ============== HISTÓRICO ==============
 window.FLYING_HISTORICO = {
   GALLI: {
     nome_padrao: "GALLI",
@@ -209,6 +352,21 @@ window.FLYING_HISTORICO = {
         { desc: "Planta tipo Humanizada", preco: 1200 },
         { desc: "Planta Mosca Pavimento Completo", preco: 1200 },
       ]},
+    }],
+  },
+  OXE: {
+    nome_padrao: "OXE",
+    contato_padrao: "RICHARD",
+    propostas: [{
+      ref: "JD. SÃO PAULO",
+      data: "2026-04-09",
+      tipo_proposta: "tecnologias",
+      tour_virtual: [
+        { ambiente: "areas_lazer", preco: 27000 },
+        { ambiente: "apto_1_dorm", preco: 10000 },
+        { ambiente: "apto_2_dorms", preco: 12500 },
+      ],
+      maquete_eletronica: { preco: 18000 },
     }],
   },
 };

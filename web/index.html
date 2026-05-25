@@ -126,13 +126,28 @@ Plantas:
 
         <details class="dica">
           <summary>Como descrever (clique para ver dicas)</summary>
-          <ul>
-            <li>Cabeçalhos reconhecidos: <code>Cliente:</code>, <code>Ref:</code>, <code>A/C:</code>, <code>Desconto:</code>.</li>
-            <li>Listas: <code>Externas:</code> seguidas de itens em linha (com ou sem <code>-</code>) ou separados por vírgula.</li>
-            <li>Idem para <code>Internas:</code> e <code>Plantas:</code>.</li>
-            <li>Para forçar a estratégia direto no texto: escreva <em>"use preço de planilha"</em> ou <em>"siga o histórico do cliente"</em>.</li>
-            <li>Para mostrar preço por item (estilo BRNPAR): escreva <em>"preços individuais por imagem"</em>.</li>
-          </ul>
+          <p><strong>Identificação:</strong> use <code>Cliente:</code>, <code>Ref:</code>, <code>A/C:</code>, <code>Desconto:</code>.</p>
+          <p><strong>Imagens (preço por item):</strong> <code>Externas:</code>, <code>Internas:</code>, <code>Plantas:</code> com lista por linha ou vírgula.</p>
+          <p><strong>Tour Virtual / VR (preço por ambiente):</strong></p>
+          <pre>Tour Virtual:
+- Áreas de Lazer       (R$27.000)
+- Apartamento 1 dorm   (R$10.000)
+- Apartamento 2 dorms  (R$12.500)</pre>
+          <p><strong>Filmes (preço por tipo):</strong></p>
+          <pre>Filmes:
+- Filme Produto 1:30        (R$10.000)
+- Filme Conceito 2:30       (R$14.000)
+- Filme Viral 1:00          (R$3.900)
+- Filme Institucional 3:30  (R$18.000)
+- Pacote Rinno              (R$28.000)
+- Takes 3D                  (R$1.300/un)
+- Takes I.A                 (R$650/un)</pre>
+          <p><strong>Apps & Touch (preço por escopo):</strong></p>
+          <pre>Apps:
+- D.Brave                              (R$39.000)
+- Aplicação Web Touch                  (R$22.800)</pre>
+          <p><strong>Outros:</strong> <code>Drone:</code>, <code>Maquete eletrônica</code>, <code>Estudo de fachada</code> são reconhecidos automaticamente.</p>
+          <p><strong>Estratégia inline:</strong> <em>"use preço de planilha"</em> / <em>"siga o histórico"</em> / <em>"preços individuais por imagem"</em>.</p>
         </details>
       </form>
     </section>
@@ -174,6 +189,8 @@ Plantas:
         <h2>Itens da proposta gerada <span class="muted" id="r-estrategia-rotulo"></span></h2>
         <div id="r-tabelas"></div>
       </section>
+
+      <section class="detalhe" id="r-extras"></section>
 
       <section class="texto-original">
         <details>
