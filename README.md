@@ -15,19 +15,53 @@ Tem **três formas de usar**:
 
 ## 🌐 Versão estática (sem Python)
 
-A pasta `web/` contém uma aplicação 100% client-side. Para usar:
+A pasta `web/` contém uma aplicação 100% client-side. O `.docx` é gerado direto
+no navegador via a biblioteca [docx](https://docx.js.org/) carregada por CDN.
+Não tem build step.
 
-**Opção 1 — Abrir local:**
-1. Baixe a pasta `web/` (basta `index.html`, `app.js`, `data.js`, `parser.js`, `orcamento.js`, `docx_gen.js` e `styles.css`).
-2. Dê duplo clique em `web/index.html` — abre em qualquer navegador.
+### Opção A — Netlify drag-and-drop (sem precisar de conta GitHub conectada)
+
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/lealzinho30/Flying-studio-proposta)
+
+Caminho **mais rápido** quando você só quer o link público:
+
+1. Baixe `dist/flying-studio-web.zip` (gerado neste repositório) ou compacte a pasta `web/` num zip.
+2. Vá em [app.netlify.com/drop](https://app.netlify.com/drop).
+3. Arraste o zip para a página. Em ~30s o Netlify te dá uma URL tipo
+   `https://flying-studio-xxxx.netlify.app/`.
+4. Pronto — clique no nome do site → "Domain settings" pra trocar o subdomínio
+   (ex.: `flying-studio.netlify.app`).
+
+### Opção B — Conectar o repositório (auto-deploy a cada push)
+
+1. [app.netlify.com](https://app.netlify.com) → "Add new site" → "Import an existing project"
+2. Escolha GitHub → `Flying-studio-proposta`
+3. Branch: `main` (ou a branch da PR depois do merge).
+4. **Não precisa configurar nada** — o `netlify.toml` na raiz já diz:
+   - Publish directory: `web`
+   - Build command: (vazio, é estático)
+5. "Deploy site". A cada `git push` o Netlify atualiza sozinho.
+
+### Opção C — Netlify CLI (deploy via terminal)
+
+```bash
+npm i -g netlify-cli
+netlify login                 # abre o browser pra autenticar
+netlify deploy --dir=web --prod
+```
+
+A primeira vez ele pergunta o nome do site. Depois é só rodar `netlify deploy --prod` pra atualizar.
+
+### Opção D — Abrir o arquivo local (sem hospedar nada)
+
+1. Baixe a pasta `web/` (basta `index.html`, `app.js`, `data.js`, `parser.js`, `orcamento.js`, `docx_gen.js`, `styles.css`).
+2. Duplo-clique em `web/index.html` — abre em qualquer navegador.
 3. Descreva o projeto, clique em **Gerar proposta**, depois em **Baixar**.
 
-**Opção 2 — Hospedar no GitHub Pages (grátis, com link público):**
-1. Settings → Pages → Source: `Deploy from a branch`
-2. Branch: `main` · Folder: `/web` (ou copie `web/` para a raiz)
-3. Acesse `https://seuusuario.github.io/Flying-studio-proposta/`
+### Opção E — GitHub Pages
 
-O `.docx` é gerado direto no navegador via a biblioteca [docx](https://docx.js.org/) carregada por CDN.
+Settings → Pages → Source: `Deploy from a branch` → Branch `main`, Folder `/web`.
+Em ~1 min fica em `https://lealzinho30.github.io/Flying-studio-proposta/`.
 
 A lógica de preço sempre faz **dois levantamentos lado a lado**:
 

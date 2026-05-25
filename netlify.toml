@@ -1,0 +1,25 @@
+# Configuração do Netlify para a versão estática (pasta web/).
+# Não tem build step — é só HTML+CSS+JS estático.
+[build]
+  publish = "web"
+  command = ""
+
+# Headers úteis: aceita o CDN docx.js, segurança razoável e cache curto no HTML.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Content-Type-Options = "nosniff"
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Cache longo para os assets estáticos (.js / .css)
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

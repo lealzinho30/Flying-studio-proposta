@@ -10,3 +10,9 @@ venv/
 # Saídas geradas (não versionar DOCX de teste)
 saida/*.docx
 !saida/.gitkeep
+
+# Netlify (auto-gerado)
+.netlify/
+
+# Node
+node_modules/
