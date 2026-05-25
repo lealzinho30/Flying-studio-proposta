@@ -78,9 +78,15 @@
     return orc;
   }
 
+  function _historicoPdf() {
+    return window.FlyingHistoricoPdf || null;
+  }
+
   function _achaCliente(nome) {
     if (!nome) return null;
     const alvo = nome.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const hp = _historicoPdf();
+    if (hp && hp.temCliente(nome)) return alvo;
     for (const k of Object.keys(HIST)) {
       const kn = k.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
       if (kn === alvo) return k;
@@ -89,8 +95,13 @@
   }
 
   function _ultimaProposta(nome) {
+    const hp = _historicoPdf();
+    if (hp) {
+      const imp = hp.ultimaProposta(nome);
+      if (imp && imp.externas) return imp;
+    }
     const k = _achaCliente(nome);
-    if (!k) return null;
+    if (!k || !HIST[k]) return null;
     const props = (HIST[k].propostas || []).filter((p) => p.externas);
     if (!props.length) return null;
     return props.slice().sort((a, b) => (a.data || "").localeCompare(b.data || "")).pop();
@@ -119,7 +130,7 @@
   }
 
   function orcarPeloHistorico(empresa, descricoes, descontoPct) {
-    if (!_achaCliente(empresa)) return null;
+    if (!_ultimaProposta(empresa)) return null;
     const tab = tabelaInferida(empresa) || { externas: {}, internas: {}, plantas: {} };
     const medias = mediasCategoria(empresa) || {};
     const orc = buildOrcamento("historico:" + empresa, descricoes, descontoPct);

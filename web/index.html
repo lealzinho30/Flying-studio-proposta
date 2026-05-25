@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Flying Studio · Propostas IA</title>
-  <link rel="stylesheet" href="styles.css?v=20260525c">
+  <link rel="stylesheet" href="styles.css?v=20260525d">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -110,7 +110,7 @@ Plantas:
               </div>
             </label>
 
-            <label class="opt-card" data-valor="historico">
+            <label class="opt-card opt-card-historico" data-valor="historico">
               <input type="radio" name="estrategia" value="historico">
               <div class="opt-conteudo">
                 <div class="opt-titulo">Histórico do Cliente</div>
@@ -118,6 +118,14 @@ Plantas:
                 no último projeto (item a item). Cliente como o BRNPAR mantém R$1.800/interna,
                 R$3.500/fachada — exatamente como ele já está acostumado.</p>
                 <p class="opt-quando">Quando usar: cliente recorrente, manter coerência da tabela dele.</p>
+                <div class="hist-upload" id="hist-upload-bloco">
+                  <input type="file" id="arquivo-historico" accept=".pdf" hidden>
+                  <button type="button" class="btn-upload btn-upload-hist" id="btn-historico-pdf">
+                    📄 Último orçamento enviado (PDF)
+                  </button>
+                  <span class="upload-formatos">a IA lê preços médios e forma de pagamento</span>
+                  <div class="upload-status hidden" id="hist-upload-status"></div>
+                </div>
               </div>
             </label>
           </div>
@@ -223,11 +231,12 @@ Plantas:
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 
   <!-- Dados + lógica (query string força revalidação após deploy) -->
-  <script src="data.js?v=20260525c"></script>
-  <script src="parser.js?v=20260525c"></script>
-  <script src="orcamento.js?v=20260525c"></script>
-  <script src="docx_gen.js?v=20260525c"></script>
-  <script src="leitor_arquivo.js?v=20260525c"></script>
-  <script src="app.js?v=20260525c"></script>
+  <script src="data.js?v=20260525d"></script>
+  <script src="parser.js?v=20260525d"></script>
+  <script src="leitor_historico_pdf.js?v=20260525d"></script>
+  <script src="orcamento.js?v=20260525d"></script>
+  <script src="docx_gen.js?v=20260525d"></script>
+  <script src="leitor_arquivo.js?v=20260525d"></script>
+  <script src="app.js?v=20260525d"></script>
 </body>
 </html>

@@ -152,12 +152,17 @@
 
     const { planilha: plan, historico: hist } = window.FlyingOrc.comparar(cliente.empresa, descricoes, descontoPct);
     const extrasEstr = window.FlyingOrc.montarExtras(parsed);
+    const ultProp = window.FlyingOrc.ultimaPropostaDe(cliente.empresa);
+    const histVeioDoPdf = ultProp && ultProp.origem === "pdf_upload";
 
     let estrategia = parsed.estrategia;
     if (estrategia === "auto") estrategia = hist ? "historico" : "planilha";
     if (estrategia === "historico" && !hist) {
-      parsed._avisos.push(`Cliente '${cliente.empresa}' não está no histórico — usando planilha.`);
+      parsed._avisos.push(`Cliente '${cliente.empresa}' sem histórico — envie o PDF do último orçamento ou use planilha.`);
       estrategia = "planilha";
+    }
+    if (estrategia === "historico" && histVeioDoPdf) {
+      parsed._avisos.push(`Preços e pagamento baseados no PDF do último orçamento (${ultProp._resumo && ultProp._resumo.itens} itens).`);
     }
     const orc = estrategia === "historico" ? hist : plan;
 
@@ -186,16 +191,27 @@
     cartaoHist.classList.toggle("destaque", estrategia === "historico");
     cartaoHist.classList.toggle("desabilitado", !hist);
     if (hist) {
+      const badgePdf = histVeioDoPdf
+        ? `<p class="hist-pdf-badge">📄 Lido do último orçamento em PDF</p>`
+        : "";
+      const parcelas =
+        ultProp && ultProp.forma_pagamento && ultProp.forma_pagamento.length
+          ? `<ul class="hist-parcelas">${ultProp.forma_pagamento
+              .map((p) => `<li><strong>${p.percentual}%</strong> — ${p.marco}</li>`)
+              .join("")}</ul>`
+          : "";
       histDiv.innerHTML = `
+        ${badgePdf}
         <ul class="resumo" id="resumo-hist"></ul>
         <p class="subtotal" id="subtotal-hist"></p>
         <p class="desc" id="desc-hist"></p>
-        <p class="total" id="total-hist"></p>`;
+        <p class="total" id="total-hist"></p>
+        ${parcelas ? `<p class="hist-pag-label">Forma de pagamento (último projeto):</p>${parcelas}` : ""}`;
       renderResumo(hist, "hist");
     } else {
       histDiv.innerHTML = `
         <p class="sem-hist">Cliente <strong>${cliente.empresa}</strong> não está no histórico ainda.</p>
-        <p class="sem-hist-sub">A próxima vez que esse cliente fizer uma proposta, esse cartão já vai mostrar o preço dele.</p>`;
+        <p class="sem-hist-sub">Envie o PDF do último orçamento no card <em>Histórico do Cliente</em> ou cadastre o cliente no sistema.</p>`;
     }
 
     $("r-estrategia-rotulo").textContent = `(estratégia ${estrategia})`;
@@ -204,7 +220,7 @@
     $("r-texto-original").textContent = texto;
 
     // ===== gera o DOCX em memória =====
-    const ult = window.FlyingOrc.ultimaPropostaDe(cliente.empresa);
+    const ult = ultProp || window.FlyingOrc.ultimaPropostaDe(cliente.empresa);
     const formaPagamento = ult && ult.forma_pagamento;
     const prazos = ult && ult.prazos;
     const blob = await window.FlyingDocx.gerarDocxBlob({
@@ -272,6 +288,57 @@
     e.target.value = ""; // permite re-importar o mesmo arquivo
   }
 
+  async function handleHistoricoPdf(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const status = $("hist-upload-status");
+    status.classList.remove("hidden");
+    status.innerHTML = `<span class="upload-loading">⏳ Lendo <strong>${file.name}</strong>...</span>`;
+
+    try {
+      const r = await window.FlyingFileReader.lerArquivo(file);
+      if (!r.texto) {
+        status.innerHTML = `<span class="upload-erro">❌ Não extraí texto do PDF.${r.aviso ? " " + r.aviso : ""}</span>`;
+        return;
+      }
+      const proposta = window.FlyingHistoricoPdf.parseTexto(r.texto);
+      if (!proposta) {
+        status.innerHTML = `<span class="upload-erro">❌ Não identifiquei itens com preço (R$) no PDF. Confira se é o orçamento Flying completo.</span>`;
+        return;
+      }
+
+      const parsedMini = window.FlyingParser.parse($("descricao").value.trim());
+      let empresa = (parsedMini.cliente && parsedMini.cliente.empresa) || "";
+      const refFromPdf = (function () {
+        const m = r.texto.match(/(?:ref(?:er[eê]ncia)?|projeto)\s*[:\-]?\s*([^\n]{3,60})/i);
+        return m ? m[1].trim() : "";
+      })();
+      if (!empresa) {
+        const mEmp = r.texto.match(/(?:cliente|para)\s*[:\-]?\s*([A-ZÁÉÍÓÚÃÕÇ][A-ZÁÉÍÓÚÃÕÇ0-9\s.&-]{2,40})/i);
+        if (mEmp) empresa = mEmp[1].split(/\n|ref/i)[0].trim();
+      }
+      if (!empresa) {
+        status.innerHTML = `<span class="upload-erro">❌ Informe <code>Cliente: NOME</code> na descrição antes de enviar o PDF.</span>`;
+        return;
+      }
+
+      if (refFromPdf && !proposta.ref) proposta.ref = refFromPdf;
+      window.FlyingHistoricoPdf.registrar(empresa, proposta);
+
+      const radioHist = document.querySelector('input[name="estrategia"][value="historico"]');
+      if (radioHist) {
+        radioHist.checked = true;
+        document.querySelectorAll(".opt-card").forEach((c) => c.classList.remove("selecionado"));
+        radioHist.closest(".opt-card").classList.add("selecionado");
+      }
+
+      status.innerHTML = `<span class="upload-ok">✓ ${window.FlyingHistoricoPdf.resumoHtml(proposta)}<br><span class="upload-aviso">Cliente: <strong>${empresa}</strong> — pronto para gerar com histórico.</span></span>`;
+    } catch (err) {
+      status.innerHTML = `<span class="upload-erro">❌ Erro: ${err.message}</span>`;
+    }
+    e.target.value = "";
+  }
+
   // Cards de estratégia: clique anywhere marca o radio
   function setupCardsEstrategia() {
     document.querySelectorAll(".opt-card").forEach((card) => {
@@ -297,5 +364,11 @@
   $("voltar-2").addEventListener("click", voltar);
   $("btn-upload").addEventListener("click", () => $("arquivo-cliente").click());
   $("arquivo-cliente").addEventListener("change", handleArquivoCliente);
+  $("btn-historico-pdf").addEventListener("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    $("arquivo-historico").click();
+  });
+  $("arquivo-historico").addEventListener("change", handleHistoricoPdf);
   setupCardsEstrategia();
 })();
