@@ -38,7 +38,18 @@
       <div id="erro" class="alerta hidden"></div>
 
       <form class="form-card" id="form-proposta">
-        <label class="rotulo" for="descricao">Descrição do projeto</label>
+        <div class="campo-superior">
+          <label class="rotulo" for="descricao">Descrição do projeto</label>
+          <div class="upload-bar">
+            <input type="file" id="arquivo-cliente" accept=".txt,.csv,.pdf,.docx,.xlsx,.xls,.doc" hidden>
+            <button type="button" class="btn-upload" id="btn-upload">
+              📎 Importar lista do cliente
+            </button>
+            <span class="upload-formatos">aceita .txt · .csv · .pdf · .docx · .xlsx</span>
+          </div>
+        </div>
+        <div class="upload-status hidden" id="upload-status"></div>
+
         <textarea id="descricao" rows="22" spellcheck="false">Cliente: GALLI
 Ref: Said Aiach
 A/C: Daniel Pucci
@@ -69,13 +80,47 @@ Plantas:
 - Implantação rooftop
 - Apartamento Tipo</textarea>
 
-        <div class="opcoes">
-          <fieldset class="estrategia">
-            <legend>Estratégia de preço</legend>
-            <label><input type="radio" name="estrategia" value="auto" checked> Auto (histórico se existir)</label>
-            <label><input type="radio" name="estrategia" value="planilha"> Planilha</label>
-            <label><input type="radio" name="estrategia" value="historico"> Histórico do cliente</label>
-          </fieldset>
+        <div class="estrategia-bloco">
+          <div class="estrategia-titulo">
+            <span class="rotulo">Estratégia de preço</span>
+            <span class="estrategia-sub">Como o sistema vai precificar cada imagem</span>
+          </div>
+          <div class="estrategia-cards">
+            <label class="opt-card" data-valor="auto">
+              <input type="radio" name="estrategia" value="auto" checked>
+              <div class="opt-conteudo">
+                <div class="opt-titulo">Automático <span class="opt-tag">recomendado</span></div>
+                <p class="opt-desc">Se o cliente já tiver projetos no histórico, usa o preço dele.
+                Caso contrário, usa a tabela padrão da Flying.</p>
+                <p class="opt-quando">Quando usar: quase sempre — o sistema decide pra você.</p>
+              </div>
+            </label>
+
+            <label class="opt-card" data-valor="planilha">
+              <input type="radio" name="estrategia" value="planilha">
+              <div class="opt-conteudo">
+                <div class="opt-titulo">Tabela Padrão</div>
+                <p class="opt-desc">Aplica os preços fixos da nossa <strong>Planilha de Custos</strong>:
+                R$1.900 por externa, R$1.750 por interna, R$3.000 por implantação,
+                R$1.200 por planta tipo, R$3.000 para fachada/voo de pássaro etc.</p>
+                <p class="opt-quando">Quando usar: cliente novo, ou para "trazer o cliente para o padrão".</p>
+              </div>
+            </label>
+
+            <label class="opt-card" data-valor="historico">
+              <input type="radio" name="estrategia" value="historico">
+              <div class="opt-conteudo">
+                <div class="opt-titulo">Histórico do Cliente</div>
+                <p class="opt-desc">Reaplica <strong>os mesmos preços</strong> que esse cliente pagou
+                no último projeto (item a item). Cliente como o BRNPAR mantém R$1.800/interna,
+                R$3.500/fachada — exatamente como ele já está acostumado.</p>
+                <p class="opt-quando">Quando usar: cliente recorrente, manter coerência da tabela dele.</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="rodape-form">
           <button type="submit" class="cta" id="btn-gerar">Gerar proposta →</button>
         </div>
 
@@ -151,12 +196,18 @@ Plantas:
 
   <!-- Biblioteca docx.js (geração de Word) via CDN -->
   <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+  <!-- Leitura de arquivos enviados pelo cliente -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; }</script>
+  <script src="https://unpkg.com/mammoth@1.7.2/mammoth.browser.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 
   <!-- Dados + lógica -->
   <script src="data.js"></script>
   <script src="parser.js"></script>
   <script src="orcamento.js"></script>
   <script src="docx_gen.js"></script>
+  <script src="leitor_arquivo.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

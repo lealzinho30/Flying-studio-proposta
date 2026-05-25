@@ -1,21 +1,35 @@
-// Geração do DOCX no navegador via biblioteca docx.js (UMD) — carregada via CDN.
-// Reproduz fielmente o layout das propostas Flying Studio.
+// Geração do DOCX no navegador via biblioteca docx.js (UMD).
+// Layout profissional com identidade Flying Studio (logo + paleta + tipografia).
+//
+// Paleta (timbrado oficial):
+//   primary roxo:       #7C5CFF
+//   primary roxo dark:  #5B3CFF
+//   acento verde lima:  #C2F542
+//   cinza texto:        #1F2330
+//   cinza médio:        #5C6473
+//   cinza light:        #E7E9EE
+//   off-white:          #F7F8FB
+//
+// Endereço/contato (do timbrado):
+//   www.flyingstudio.com.br
+//   Av. Eng. Luís Carlos Berrini, 936, 7º andar - Novo Brooklin, São Paulo
+//   Telefone: (11) 2351-4138
 
 (function () {
   "use strict";
+
+  // ---------- helpers de moeda / data / extenso ----------
 
   function brl(valor) {
     const s = (Math.round(valor * 100) / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     return `R$${s}`;
   }
-
   const MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
   function dataExtenso(d) { return `${String(d.getDate()).padStart(2, "0")} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`; }
 
   const UN = ["", "Um", "Dois", "Três", "Quatro", "Cinco", "Seis", "Sete", "Oito", "Nove", "Dez", "Onze", "Doze", "Treze", "Quatorze", "Quinze", "Dezesseis", "Dezessete", "Dezoito", "Dezenove"];
   const DZ = ["", "", "Vinte", "Trinta", "Quarenta", "Cinquenta", "Sessenta", "Setenta", "Oitenta", "Noventa"];
   const CT = ["", "Cento", "Duzentos", "Trezentos", "Quatrocentos", "Quinhentos", "Seiscentos", "Setecentos", "Oitocentos", "Novecentos"];
-
   function ate999(n) {
     if (n === 0) return "";
     if (n === 100) return "Cem";
@@ -31,7 +45,6 @@
     }
     return partes.join(" e ");
   }
-
   function extenso(valor) {
     const inteiro = Math.round(valor);
     if (inteiro === 0) return "Zero Reais";
@@ -47,174 +60,509 @@
     return `${txt} ${inteiro === 1 ? "Real" : "Reais"}`;
   }
 
-  // ---- Geração DOCX usando a lib docx (window.docx) ----
+  // ---------- paleta ----------
+  const COR = {
+    primaria: "7C5CFF",
+    primariaDark: "5B3CFF",
+    acento: "9DDB1A",
+    texto: "1F2330",
+    textoSoft: "5C6473",
+    cinzaLight: "E7E9EE",
+    offWhite: "F7F8FB",
+    branco: "FFFFFF",
+  };
+  const FONTE = "Calibri";
+
+  // ---------- atalhos para geração ----------
 
   function P(texto, opts = {}) {
     const { TextRun, Paragraph } = window.docx;
     return new Paragraph({
-      spacing: { after: opts.after ?? 80 },
+      spacing: { after: opts.after ?? 80, before: opts.before ?? 0, line: opts.line ?? 300 },
       alignment: opts.alignment,
-      children: [new TextRun({ text: texto, bold: !!opts.bold, size: (opts.size || 22), font: "Calibri" })],
+      indent: opts.indent,
+      children: [new TextRun({
+        text: texto,
+        bold: !!opts.bold,
+        italics: !!opts.italics,
+        size: opts.size || 22,
+        color: opts.color || COR.texto,
+        font: FONTE,
+      })],
     });
   }
 
-  function H(texto, size = 26) { return P(texto, { bold: true, size }); }
+  function PRich(runs, opts = {}) {
+    const { Paragraph } = window.docx;
+    return new Paragraph({
+      spacing: { after: opts.after ?? 80, before: opts.before ?? 0, line: opts.line ?? 300 },
+      alignment: opts.alignment,
+      children: runs,
+    });
+  }
 
-  function tabelaCategoria(numero, titulo, categoria, mostraPrecos) {
-    const { Paragraph, Table, TableRow, TableCell, WidthType, BorderStyle, TextRun, AlignmentType } = window.docx;
-    const borders = {
-      top: { style: BorderStyle.SINGLE, size: 4, color: "888888" },
-      bottom: { style: BorderStyle.SINGLE, size: 4, color: "888888" },
-      left: { style: BorderStyle.SINGLE, size: 4, color: "888888" },
-      right: { style: BorderStyle.SINGLE, size: 4, color: "888888" },
-    };
+  function R(texto, opts = {}) {
+    const { TextRun } = window.docx;
+    return new TextRun({
+      text: texto,
+      bold: !!opts.bold,
+      italics: !!opts.italics,
+      size: opts.size || 22,
+      color: opts.color || COR.texto,
+      font: FONTE,
+    });
+  }
+
+  function bullet(texto, opts = {}) {
+    const { Paragraph, TextRun } = window.docx;
+    return new Paragraph({
+      spacing: { after: 60, line: 280 },
+      indent: { left: 360, hanging: 200 },
+      children: [
+        new TextRun({ text: "•  ", color: COR.primaria, bold: true, size: 22, font: FONTE }),
+        new TextRun({ text: texto, size: 22, color: COR.texto, font: FONTE }),
+      ],
+    });
+  }
+
+  function bulletRich(label, restoTexto) {
+    const { Paragraph, TextRun } = window.docx;
+    return new Paragraph({
+      spacing: { after: 80, line: 280 },
+      indent: { left: 360, hanging: 200 },
+      children: [
+        new TextRun({ text: "•  ", color: COR.primaria, bold: true, size: 22, font: FONTE }),
+        new TextRun({ text: label + ": ", bold: true, size: 22, color: COR.texto, font: FONTE }),
+        new TextRun({ text: restoTexto, size: 22, color: COR.texto, font: FONTE }),
+      ],
+    });
+  }
+
+  // ---------- header / footer ----------
+
+  async function carregarLogoBuffer() {
+    try {
+      const resp = await fetch("assets/flying_logo.png");
+      if (!resp.ok) throw new Error("logo http " + resp.status);
+      return await resp.arrayBuffer();
+    } catch (e) {
+      console.warn("Logo não pôde ser carregado:", e);
+      return null;
+    }
+  }
+
+  function montarHeader(logoBuffer) {
+    const { Header, Paragraph, ImageRun, AlignmentType, TextRun, BorderStyle } = window.docx;
+    const children = [];
+
+    // Logo no canto superior direito (se carregou)
+    if (logoBuffer) {
+      children.push(new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        spacing: { before: 0, after: 80 },
+        children: [new ImageRun({
+          data: logoBuffer,
+          transformation: { width: 110, height: 43 }, // pixels — proporção do logo (305x119)
+        })],
+      }));
+    } else {
+      children.push(new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        spacing: { before: 0, after: 80 },
+        children: [new TextRun({ text: "FLYING studio", bold: true, size: 28, color: COR.primaria, font: FONTE })],
+      }));
+    }
+
+    // Linha lavanda fina abaixo
+    children.push(new Paragraph({
+      spacing: { before: 0, after: 0 },
+      border: { bottom: { color: COR.primaria, space: 1, style: BorderStyle.SINGLE, size: 8 } },
+      children: [new TextRun({ text: "" })],
+    }));
+
+    return new Header({ children });
+  }
+
+  function montarFooter() {
+    const { Footer, Paragraph, TextRun, AlignmentType, BorderStyle } = window.docx;
+
+    // Linha fina lavanda
+    const linha = new Paragraph({
+      spacing: { before: 0, after: 60 },
+      border: { top: { color: COR.primaria, space: 1, style: BorderStyle.SINGLE, size: 8 } },
+      children: [new TextRun({ text: "" })],
+    });
+
+    const site = new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 30 },
+      children: [new TextRun({ text: "www.flyingstudio.com.br", size: 18, color: COR.primaria, font: FONTE, bold: true })],
+    });
+
+    const endereco = new Paragraph({
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 0 },
+      children: [new TextRun({
+        text: "Av. Eng. Luís Carlos Berrini, 936, 7º andar  ·  Novo Brooklin, São Paulo  ·  Telefone: (11) 2351-4138",
+        size: 16, color: COR.textoSoft, font: FONTE,
+      })],
+    });
+
+    return new Footer({ children: [linha, site, endereco] });
+  }
+
+  // ---------- tabelas estilizadas ----------
+
+  function tabelaCategoria(numero, categoria, mostraPrecos) {
+    const { Paragraph, Table, TableRow, TableCell, WidthType, BorderStyle, TextRun, AlignmentType, ShadingType } = window.docx;
+
+    const borderHidden = { style: BorderStyle.NONE, size: 0, color: COR.branco };
+    const borderSoft = { style: BorderStyle.SINGLE, size: 4, color: COR.cinzaLight };
+
     function cell(text, opts = {}) {
       return new TableCell({
         width: { size: opts.width || 30, type: WidthType.PERCENTAGE },
+        shading: opts.shading ? { type: ShadingType.CLEAR, color: "auto", fill: opts.shading } : undefined,
+        verticalAlign: "center",
+        margins: { top: 110, bottom: 110, left: 160, right: 160 },
+        borders: {
+          top: opts.borderTop ?? borderSoft,
+          bottom: opts.borderBottom ?? borderSoft,
+          left: borderHidden, right: borderHidden,
+        },
         children: [new Paragraph({
           alignment: opts.alignment || AlignmentType.LEFT,
-          children: [new TextRun({ text, bold: !!opts.bold, size: 22, font: "Calibri" })],
+          spacing: { before: 0, after: 0, line: 240 },
+          children: [new TextRun({ text, bold: !!opts.bold, size: opts.size || 22, color: opts.color || COR.texto, font: FONTE })],
         })],
       });
     }
 
     const linhas = [];
+
+    // Cabeçalho (roxo + texto branco)
     const cabec = mostraPrecos
-      ? new TableRow({ children: [cell("Itens", { bold: true, width: 12 }), cell("Descrição dos Serviços", { bold: true, width: 64 }), cell("Valor", { bold: true, width: 24, alignment: AlignmentType.RIGHT })] })
-      : new TableRow({ children: [cell("Itens", { bold: true, width: 15 }), cell("Descrição dos Serviços", { bold: true, width: 85 })] });
+      ? new TableRow({ tableHeader: true, children: [
+          cell("ITEM", { bold: true, color: COR.branco, shading: COR.primaria, width: 12, size: 18 }),
+          cell("DESCRIÇÃO DO SERVIÇO", { bold: true, color: COR.branco, shading: COR.primaria, width: 64, size: 18 }),
+          cell("VALOR", { bold: true, color: COR.branco, shading: COR.primaria, width: 24, size: 18, alignment: AlignmentType.RIGHT }),
+        ]})
+      : new TableRow({ tableHeader: true, children: [
+          cell("ITEM", { bold: true, color: COR.branco, shading: COR.primaria, width: 15, size: 18 }),
+          cell("DESCRIÇÃO DO SERVIÇO", { bold: true, color: COR.branco, shading: COR.primaria, width: 85, size: 18 }),
+        ]});
     linhas.push(cabec);
 
+    // Linhas (zebra)
     categoria.itens.forEach((it, idx) => {
-      const rowCells = mostraPrecos
-        ? [cell(`${numero}.${idx + 1}`, { width: 12 }), cell(it.descricao_normalizada, { width: 64 }), cell(brl(it.preco), { width: 24, alignment: AlignmentType.RIGHT })]
-        : [cell(`${numero}.${idx + 1}`, { width: 15 }), cell(it.descricao_normalizada, { width: 85 })];
-      linhas.push(new TableRow({ children: rowCells }));
+      const zebra = idx % 2 === 1 ? COR.offWhite : null;
+      const cells = mostraPrecos
+        ? [
+            cell(`${numero}.${idx + 1}`, { width: 12, color: COR.primariaDark, bold: true, shading: zebra }),
+            cell(it.descricao_normalizada, { width: 64, shading: zebra }),
+            cell(brl(it.preco), { width: 24, alignment: AlignmentType.RIGHT, bold: true, shading: zebra }),
+          ]
+        : [
+            cell(`${numero}.${idx + 1}`, { width: 15, color: COR.primariaDark, bold: true, shading: zebra }),
+            cell(it.descricao_normalizada, { width: 85, shading: zebra }),
+          ];
+      linhas.push(new TableRow({ children: cells }));
     });
 
+    // Rodapé (subtotal da categoria)
     const rodape = mostraPrecos
-      ? new TableRow({ children: [cell(String(categoria.qtd), { bold: true, width: 12 }), cell("Valor Total", { bold: true, width: 64 }), cell(brl(categoria.total), { bold: true, width: 24, alignment: AlignmentType.RIGHT })] })
-      : new TableRow({ children: [cell(String(categoria.qtd), { bold: true, width: 15 }), cell(`Valor Total ${brl(categoria.total)}`, { bold: true, width: 85 })] });
+      ? new TableRow({ children: [
+          cell(`${categoria.qtd}`, { bold: true, color: COR.branco, shading: COR.primariaDark, width: 12 }),
+          cell("Subtotal", { bold: true, color: COR.branco, shading: COR.primariaDark, width: 64 }),
+          cell(brl(categoria.total), { bold: true, color: COR.branco, shading: COR.primariaDark, width: 24, alignment: AlignmentType.RIGHT }),
+        ]})
+      : new TableRow({ children: [
+          cell(`${categoria.qtd}`, { bold: true, color: COR.branco, shading: COR.primariaDark, width: 15 }),
+          cell(`Subtotal     ${brl(categoria.total)}`, { bold: true, color: COR.branco, shading: COR.primariaDark, width: 85 }),
+        ]});
     linhas.push(rodape);
 
-    return new Table({ width: { size: 100, type: WidthType.PERCENTAGE }, rows: linhas, borders });
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: linhas,
+      borders: {
+        top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden,
+        insideHorizontal: borderSoft,
+        insideVertical: borderHidden,
+      },
+    });
   }
 
+  // ---------- caixa de "investimento total" (capa) ----------
+
+  function caixaResumoCapa({ cliente, qtdImg, valorBruto, valorFinal, descontoPct, descontoLabel }) {
+    const { Paragraph, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType, ShadingType, BorderStyle } = window.docx;
+    const borderHidden = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+
+    function row(label, valor, opts = {}) {
+      return new TableRow({
+        children: [
+          new TableCell({
+            width: { size: 35, type: WidthType.PERCENTAGE },
+            shading: { type: ShadingType.CLEAR, color: "auto", fill: COR.primaria },
+            margins: { top: 110, bottom: 110, left: 200, right: 100 },
+            borders: { top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden },
+            children: [new Paragraph({
+              children: [new TextRun({ text: label, bold: true, size: 18, color: COR.branco, font: FONTE })],
+            })],
+          }),
+          new TableCell({
+            width: { size: 65, type: WidthType.PERCENTAGE },
+            shading: { type: ShadingType.CLEAR, color: "auto", fill: opts.destaque ? COR.primariaDark : COR.primaria },
+            margins: { top: 110, bottom: 110, left: 100, right: 200 },
+            borders: { top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden },
+            children: [new Paragraph({
+              alignment: AlignmentType.RIGHT,
+              children: [new TextRun({
+                text: valor,
+                bold: true,
+                size: opts.destaque ? 32 : 22,
+                color: opts.destaque ? COR.acento : COR.branco,
+                font: FONTE,
+              })],
+            })],
+          }),
+        ],
+      });
+    }
+
+    const linhas = [
+      row("CLIENTE", cliente.empresa.toUpperCase()),
+      row("PROJETO", cliente.ref.toUpperCase()),
+      row("AOS CUIDADOS DE", cliente.contato.toUpperCase()),
+      row("IMAGENS", `${qtdImg} unidades`),
+    ];
+    if (descontoPct > 0) {
+      linhas.push(row("VALOR BRUTO", brl(valorBruto)));
+      linhas.push(row(`DESCONTO (${descontoLabel || (descontoPct + "%")})`, "-" + brl(valorBruto - valorFinal)));
+    }
+    linhas.push(row("INVESTIMENTO", brl(valorFinal), { destaque: true }));
+
+    return new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: linhas,
+      borders: { top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden, insideHorizontal: { style: BorderStyle.SINGLE, size: 8, color: COR.primariaDark }, insideVertical: borderHidden },
+    });
+  }
+
+  // ---------- DOCUMENTO PRINCIPAL ----------
+
   async function gerarDocxBlob({ cliente, orc, data, mostrarPrecos, formaPagamento, prazos, descontoLabel, extras }) {
-    const { Document, Packer, Paragraph } = window.docx;
+    const {
+      Document, Packer, Paragraph, TextRun, AlignmentType, PageBreak,
+      LevelFormat,
+    } = window.docx;
+
     data = data || new Date();
-    const children = [];
-
-    children.push(H("PROPOSTA DE IMAGENS, FILMES E TECNOLOGIAS 3D", 28));
-    children.push(P(`${cliente.empresa} - REF: ${cliente.ref}`, { bold: true, size: 24 }));
-    children.push(P(`A/C: ${cliente.contato}`, { bold: true, size: 24 }));
-    children.push(new Paragraph(""));
-
-    children.push(H("1 – APRESENTAÇÃO FLYING STUDIO", 24));
-    children.push(P("A Flying Studio presta serviços de computação gráfica e tecnologias que se aplicam aos lançamentos imobiliário e remanescentes. Em nosso atendimento diário, desenvolvemos laços com projeto e auxiliamos em layout, estudos de projetos e fachadas, de decoração e paisagismo de acordo com cada necessidade, consulte a NID STUDIO para projetos."));
-    children.push(new Paragraph(""));
-
-    children.push(H("2 – ITENS A SEREM DESENVOLVIDOS / INVESTIMENTOS:", 24));
-
-    if (orc.externas.qtd) {
-      children.push(H("2.1 ILUSTRAÇÕES EXTERNAS", 22));
-      children.push(tabelaCategoria("2.1", "Externas", orc.externas, mostrarPrecos));
-      children.push(new Paragraph(""));
-    }
-    if (orc.internas.qtd) {
-      children.push(H("2.2 ILUSTRAÇÕES INTERNAS", 22));
-      children.push(tabelaCategoria("2.2", "Internas", orc.internas, mostrarPrecos));
-      children.push(new Paragraph(""));
-    }
-    if (orc.plantas.qtd) {
-      children.push(H("2.3 PLANTAS HUMANIZADAS", 22));
-      children.push(tabelaCategoria("2.3", "Plantas", orc.plantas, mostrarPrecos));
-      children.push(new Paragraph(""));
-    }
+    const logoBuffer = await carregarLogoBuffer();
 
     const subtotal = orc.subtotal;
     const descontoValor = subtotal * (orc.desconto_pct / 100);
     const valorFinal = subtotal - descontoValor;
 
-    children.push(P(`${orc.total_imagens} Valor Final ${brl(subtotal)}`, { bold: true }));
+    const children = [];
+
+    // ===== CAPA =====
+    children.push(P("PROPOSTA COMERCIAL", { bold: true, size: 56, color: COR.primaria, before: 800, after: 60 }));
+    children.push(P("Imagens, Filmes e Tecnologias 3D", { size: 26, color: COR.textoSoft, after: 600 }));
+    children.push(P(dataExtenso(data).toUpperCase(), { size: 18, color: COR.textoSoft, after: 800 }));
+
+    // Caixa cliente / investimento
+    children.push(caixaResumoCapa({
+      cliente,
+      qtdImg: orc.total_imagens,
+      valorBruto: subtotal,
+      valorFinal,
+      descontoPct: orc.desconto_pct,
+      descontoLabel,
+    }));
+    children.push(P("", { after: 200 }));
+
+    children.push(P(`Por extenso: ${extenso(valorFinal)}.`, { italics: true, size: 18, color: COR.textoSoft, alignment: AlignmentType.CENTER, after: 600 }));
+
+    // Quebra de página
+    children.push(new Paragraph({ children: [new PageBreak()] }));
+
+    // ===== PÁGINA 2: APRESENTAÇÃO =====
+    children.push(P("01.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
+    children.push(P("APRESENTAÇÃO", { bold: true, size: 36, color: COR.texto, after: 240 }));
+
+    children.push(P(
+      "A Flying Studio presta serviços de computação gráfica e tecnologias que se aplicam aos lançamentos imobiliários e remanescentes. Em nosso atendimento diário, desenvolvemos laços com projeto e auxiliamos em layout, estudos de projetos e fachadas, de decoração e paisagismo de acordo com cada necessidade.",
+      { color: COR.textoSoft, after: 200 }
+    ));
+    children.push(P(
+      "Para projetos de arquitetura, decoração e paisagismo, consulte a NID STUDIO.",
+      { color: COR.textoSoft, italics: true, after: 600 }
+    ));
+
+    // ===== PÁGINA 2: ITENS / INVESTIMENTO =====
+    children.push(P("02.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
+    children.push(P("ITENS A SEREM DESENVOLVIDOS", { bold: true, size: 36, color: COR.texto, after: 320 }));
+
+    if (orc.externas.qtd) {
+      children.push(P("ILUSTRAÇÕES EXTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: 120, before: 200 }));
+      children.push(tabelaCategoria("2.1", orc.externas, mostrarPrecos));
+      children.push(P("", { after: 200 }));
+    }
+    if (orc.internas.qtd) {
+      children.push(P("ILUSTRAÇÕES INTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: 120, before: 200 }));
+      children.push(tabelaCategoria("2.2", orc.internas, mostrarPrecos));
+      children.push(P("", { after: 200 }));
+    }
+    if (orc.plantas.qtd) {
+      children.push(P("PLANTAS HUMANIZADAS", { bold: true, size: 22, color: COR.primariaDark, after: 120, before: 200 }));
+      children.push(tabelaCategoria("2.3", orc.plantas, mostrarPrecos));
+      children.push(P("", { after: 200 }));
+    }
+
+    // Totais
+    children.push(PRich(
+      [
+        R("Total de imagens: ", { color: COR.textoSoft }),
+        R(`${orc.total_imagens}`, { bold: true }),
+        R("    ·    Valor bruto: ", { color: COR.textoSoft }),
+        R(brl(subtotal), { bold: true }),
+      ],
+      { before: 240, after: 60 }
+    ));
+
     if (orc.desconto_pct > 0) {
       const rotulo = descontoLabel || `${orc.desconto_pct}% de Desconto`;
-      children.push(P(`Valor Total do Projeto com ${rotulo} = ${brl(valorFinal)}`, { bold: true }));
-    } else {
-      children.push(P(`Valor Total do Projeto = ${brl(valorFinal)}`, { bold: true }));
+      children.push(PRich(
+        [
+          R("Desconto aplicado: ", { color: COR.textoSoft }),
+          R(rotulo, { bold: true }),
+          R("    ·    Valor do desconto: ", { color: COR.textoSoft }),
+          R("-" + brl(descontoValor), { bold: true, color: COR.primariaDark }),
+        ],
+        { after: 60 }
+      ));
     }
-    children.push(new Paragraph(""));
 
+    children.push(P("", { after: 100 }));
+
+    // Faixa "Investimento total" destacada
+    children.push(PRich(
+      [R("INVESTIMENTO TOTAL  ", { bold: true, size: 26, color: COR.primaria }),
+       R(brl(valorFinal), { bold: true, size: 36, color: COR.primariaDark })],
+      { alignment: AlignmentType.LEFT, after: 60 }
+    ));
+    children.push(P(`(${extenso(valorFinal)})`, { italics: true, color: COR.textoSoft, after: 400 }));
+
+    // Extras
     if (extras && extras.length) {
-      children.push(H("2.4 EXTRAS / FILMES", 22));
+      children.push(P("EXTRAS / FILMES", { bold: true, size: 22, color: COR.primariaDark, after: 120, before: 200 }));
       for (const ex of extras) {
         const cortesia = ex.cortesia ? " (CORTESIA)" : "";
-        const preco = ex.cortesia ? "" : ` - ${brl(ex.preco)}`;
-        children.push(P(`• ${ex.descricao}${preco}${cortesia}`));
+        const preco = ex.cortesia ? "" : ` — ${brl(ex.preco)}`;
+        children.push(bullet(`${ex.descricao}${preco}${cortesia}`));
       }
-      children.push(new Paragraph(""));
+      children.push(P("", { after: 200 }));
     }
 
-    children.push(P("INVESTIMENTO PARA O DESENVOLVIMENTOS DOS ITENS ACIMA DESCRITOS:", { bold: true }));
-    children.push(P(`${brl(valorFinal)} (${extenso(valorFinal)})`, { bold: true }));
-    children.push(new Paragraph(""));
+    // ===== PÁGINA 3: FORMA DE PAGAMENTO + PRAZOS =====
+    children.push(new Paragraph({ children: [new PageBreak()] }));
 
-    children.push(P("FORMA DE PAGAMENTO:", { bold: true }));
+    children.push(P("03.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
+    children.push(P("FORMA DE PAGAMENTO", { bold: true, size: 36, color: COR.texto, after: 240 }));
+
     const fp = formaPagamento || [
       { percentual: 50, marco: "Na aprovação desta Proposta" },
       { percentual: 25, marco: "Envio dos Shades" },
-      { percentual: 25, marco: "Envio HR - Imagens finais" },
+      { percentual: 25, marco: "Envio HR — Imagens finais" },
     ];
-    for (const parc of fp) children.push(P(`${parc.percentual}% - ${parc.marco}.`));
-    children.push(new Paragraph(""));
+    for (const parc of fp) {
+      const valorParc = valorFinal * (parc.percentual / 100);
+      children.push(bulletRich(`${parc.percentual}%  (${brl(valorParc)})`, parc.marco));
+    }
+    children.push(P("", { after: 400 }));
 
-    children.push(H("3 – PRAZOS / SOLICITAÇÕES / CONSIDERAÇÕES / ENTREGAS", 24));
+    children.push(P("04.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
+    children.push(P("PRAZOS DE ENTREGA", { bold: true, size: 36, color: COR.texto, after: 240 }));
+
     const pr = prazos || { shades: "20 (Vinte) dias", primeiro_tiro: "15 (Quinze) dias após a aprovação dos Shades", revisoes: "10 (Dez) dias para contemplar e enviar novos tiros" };
-    children.push(P(`Shades – ${pr.shades}`));
-    children.push(P(`1º Tiro – ${pr.primeiro_tiro},`));
-    children.push(P(`Revisões – ${pr.revisoes}.`));
-    children.push(P("OBS: Prazos passam a contar após recebimento de todos os projetos, informações e aprovações de etapas para o desenvolvimento de cada item. Não iniciamos os trabalhos sem recebermos o DWG e aprovações necessárias dessa proposta."));
-    children.push(new Paragraph(""));
+    children.push(bulletRich("Shades", pr.shades));
+    children.push(bulletRich("1º Tiro de Apresentação", pr.primeiro_tiro));
+    children.push(bulletRich("Revisões", pr.revisoes));
+    children.push(P("Os prazos passam a contar após o recebimento de todos os projetos, informações e aprovações de etapas para o desenvolvimento de cada item. Não iniciamos os trabalhos sem o DWG e as aprovações necessárias desta proposta.",
+      { italics: true, size: 18, color: COR.textoSoft, before: 160, after: 400 }));
 
-    children.push(P("SOLICITAÇÕES: Arquivos e definições necessários à execução do serviço.", { bold: true }));
-    children.push(P("Arquitetura: • Plantas • Elevação da Fachada • Estudo de Cores da Fachada • Cortes;"));
-    children.push(P("Paisagismo: • Implantação • Detalhamentos • Especificação de Revestimentos • Estudo de Vegetação com Especificação de Espécies • Referências do Mobiliário;"));
-    children.push(P("Decoração: • Plantas com Layout • Desenhos de Pisos • Elevações de Paredes • Especificações de materiais • Projeto de Forro e Iluminação • Descrição ou book de mobiliários."));
-    children.push(new Paragraph(""));
+    // ===== PÁGINA 4: SOLICITAÇÕES DE PROJETO =====
+    children.push(new Paragraph({ children: [new PageBreak()] }));
 
-    children.push(P("CONSIDERAÇÕES IMAGENS:", { bold: true }));
+    children.push(P("05.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
+    children.push(P("MATERIAIS NECESSÁRIOS", { bold: true, size: 36, color: COR.texto, after: 240 }));
+
+    children.push(bulletRich("Arquitetura", "Plantas · Elevação da Fachada · Estudo de Cores da Fachada · Cortes."));
+    children.push(bulletRich("Paisagismo", "Implantação · Detalhamentos · Especificação de Revestimentos · Estudo de Vegetação com Especificação de Espécies · Referências do Mobiliário."));
+    children.push(bulletRich("Decoração", "Plantas com Layout · Desenhos de Pisos · Elevações de Paredes · Especificações de Materiais · Projeto de Forro e Iluminação · Descrição ou book de mobiliários."));
+    children.push(P("", { after: 400 }));
+
+    // ===== CONSIDERAÇÕES =====
+    children.push(P("06.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
+    children.push(P("CONSIDERAÇÕES", { bold: true, size: 36, color: COR.texto, after: 240 }));
+
     const consideracoes = [
-      "Etapas e Tiros de Aprovação: Esta proposta contempla o envio inicial do tiro de Shade, seguido do tiro de apresentação denominado \u201CR00\u201D. Estão inclusas no escopo 03 (três) rodadas de revisões, denominadas \u201CR01\u201D, \u201CR02\u201D e \u201CR03\u201D, culminando na entrega final denominada \u201CHR\u201D (High Resolution).",
-      "Ajustes Finos e Adicionais: Damos ênfase que, a partir do tiro \u201CR00\u201D, as rodadas seguintes consistem exclusivamente em ajustes finos. A partir de um eventual quarto tiro de apresentação (denominado \u201CR04\u201D), será cobrado um adicional de 25% do valor da imagem por tiro extra solicitado, bem como quaisquer tiros adicionais solicitados após a entrega do HR.",
-      "Plataforma Oficial de Revisão: Para garantir a organização, a agilidade e a precisão técnica das refações, todo o processo de feedback, comentários e aprovações (tanto dos filmes quanto das imagens 3D) será realizado exclusivamente através do software especializado Frame.io/Adobe.",
-      "Mecânica de Apontamentos: A Contratada fornecerá à Contratante um link de acesso seguro à plataforma. Através do Frame.io/Adobe, o cliente poderá inserir comentários, desenhar marcações, anexar informações (pdf, foto, dwg, etc) e solicitar ajustes exatamente no frame do vídeo ou no ponto específico da imagem estática que deseja alterar, eliminando ruídos de comunicação.",
-      "Alterações de Projeto: Quaisquer alterações nos projetos originais (sejam de design de interiores, arquitetônico ou paisagismo) fornecidos inicialmente implicam em cobranças extras de modelagem, que serão orçadas e aprovadas em comum acordo.",
-      "Refação e Remodelagem: No decorrer das rodadas de tiros, havendo mudanças significativas no projeto que resultem na perda de até 50% da imagem já construída (sendo necessária a remodelagem ou retrocesso na etapa de produção), o trabalho será considerado e cobrado como uma imagem nova.",
-      "Paralisação do Projeto: Em caso de paralisação total ou parcial do escopo por um período de até 60 (sessenta) dias, deverá ser feito o acerto financeiro imediato das etapas já executadas. Para este cálculo de acerto, considera-se que cada tiro enviado após a aprovação do R00 corresponde a 25% do valor total da imagem.",
-      "Cancelamento: Em caso de descontinuidade e cancelamento do produto ou lançamento por qualquer motivo por parte da Contratante, considera-se justa e devida a quitação integral do saldo previsto nesta proposta.",
-      "Direitos de Uso: A Contratada cede à Contratante os direitos de uso das imagens produzidas para uso promocional em todo o seu material publicitário, única e exclusivamente vinculadas ao empreendimento contratado, não havendo débitos/atrasos financeiros.",
+      ["Etapas e Tiros de Aprovação", "Esta proposta contempla o envio inicial do tiro de Shade, seguido do tiro de apresentação denominado \u201CR00\u201D. Estão inclusas no escopo 03 (três) rodadas de revisões, denominadas \u201CR01\u201D, \u201CR02\u201D e \u201CR03\u201D, culminando na entrega final denominada \u201CHR\u201D (High Resolution)."],
+      ["Ajustes Finos e Adicionais", "A partir do tiro \u201CR00\u201D, as rodadas seguintes consistem exclusivamente em ajustes finos. A partir de um eventual quarto tiro de apresentação (\u201CR04\u201D), será cobrado um adicional de 25% do valor da imagem por tiro extra solicitado, bem como quaisquer tiros adicionais solicitados após a entrega do HR."],
+      ["Plataforma Oficial de Revisão", "Para garantir a organização, a agilidade e a precisão técnica das refações, todo o processo de feedback, comentários e aprovações (filmes e imagens 3D) será realizado exclusivamente através do software Frame.io/Adobe."],
+      ["Mecânica de Apontamentos", "A Contratada fornecerá à Contratante um link de acesso seguro à plataforma. Pelo Frame.io/Adobe, o cliente poderá inserir comentários, desenhar marcações, anexar informações (pdf, foto, dwg, etc.) e solicitar ajustes exatamente no frame do vídeo ou no ponto específico da imagem estática que deseja alterar."],
+      ["Alterações de Projeto", "Quaisquer alterações nos projetos originais (sejam de design de interiores, arquitetônico ou paisagismo) fornecidos inicialmente implicam em cobranças extras de modelagem, que serão orçadas e aprovadas em comum acordo."],
+      ["Refação e Remodelagem", "Havendo mudanças significativas no projeto que resultem na perda de até 50% da imagem já construída, o trabalho será considerado e cobrado como uma imagem nova."],
+      ["Paralisação do Projeto", "Em caso de paralisação total ou parcial do escopo por um período de até 60 (sessenta) dias, deverá ser feito o acerto financeiro imediato das etapas já executadas. Considera-se que cada tiro enviado após a aprovação do R00 corresponde a 25% do valor total da imagem."],
+      ["Cancelamento", "Em caso de descontinuidade e cancelamento do produto ou lançamento por qualquer motivo por parte da Contratante, considera-se justa e devida a quitação integral do saldo previsto nesta proposta."],
+      ["Direitos de Uso", "A Contratada cede à Contratante os direitos de uso das imagens produzidas para uso promocional em todo o seu material publicitário, única e exclusivamente vinculadas ao empreendimento contratado, não havendo débitos/atrasos financeiros."],
     ];
-    for (const c of consideracoes) children.push(P(`• ${c}`));
-    children.push(new Paragraph(""));
+    for (const [titulo, texto] of consideracoes) children.push(bulletRich(titulo, texto));
+    children.push(P("", { after: 400 }));
 
-    children.push(P("ENTREGA FINAL:", { bold: true }));
+    // ===== ENTREGA FINAL =====
+    children.push(P("07.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
+    children.push(P("ENTREGA FINAL", { bold: true, size: 36, color: COR.texto, after: 240 }));
+
     const entregas = [
-      "Formato e Envio: Todo o material finalizado será enviado digitalmente via servidor FTP, link seguro para download ou cadastrados no Frame.io/Adobe.",
-      "Resolução das Imagens Estáticas: As imagens finais (denominadas \u201CHR\u201D) serão entregues com 6000px em seu lado maior a 300dpi. Após a entrega do HR, o projeto é considerado concluído. Caso surja a necessidade de novas configurações nessa etapa, ficamos à disposição para avaliar e orçar as alterações como um novo serviço.",
-      "Caso a Contratante necessite de imagens configuradas para impressões de até 1 (um) metro, a solicitação deve ser feita com antecedência à renderização final, sem custo adicional.",
-      "Para imagens com medidas de impressão superiores a 1 (um) metro (como outdoors ou grandes painéis), favor consultar previamente os valores adicionais de render, com custo estimado de 20% do valor da imagem, consultar.",
-      "Resolução das Animações/Filmes: Os passeios virtuais e filmes integrados serão entregues finalizados no formato Full HD a 30 FPS ou propostas via RINNO FILMS, consultar.",
+      ["Formato e Envio", "Todo o material finalizado será enviado digitalmente via servidor FTP, link seguro para download ou cadastrados no Frame.io/Adobe."],
+      ["Resolução das Imagens Estáticas", "As imagens finais (\u201CHR\u201D) serão entregues com 6000px no lado maior a 300dpi. Após a entrega do HR, o projeto é considerado concluído. Caso surja a necessidade de novas configurações nessa etapa, ficamos à disposição para avaliar e orçar como um novo serviço."],
+      ["Impressão de até 1m", "Caso a Contratante necessite de imagens configuradas para impressões de até 1 (um) metro, a solicitação deve ser feita com antecedência à renderização final, sem custo adicional."],
+      ["Impressão acima de 1m", "Para outdoors ou grandes painéis (acima de 1m), favor consultar previamente os valores adicionais de render — custo estimado de 20% do valor da imagem."],
+      ["Animações / Filmes", "Os passeios virtuais e filmes integrados serão entregues em Full HD a 30 FPS, ou propostas via RINNO FILMS, consultar."],
     ];
-    for (const e of entregas) children.push(P(`• ${e}`));
-    children.push(new Paragraph(""));
+    for (const [titulo, texto] of entregas) children.push(bulletRich(titulo, texto));
+    children.push(P("", { after: 600 }));
 
-    children.push(P(`São Paulo, ${dataExtenso(data)}.`));
-    children.push(P("De acordo,"));
-    children.push(P(cliente.empresa, { bold: true }));
+    // ===== ASSINATURA =====
+    children.push(P(`São Paulo, ${dataExtenso(data)}.`, { color: COR.textoSoft, after: 600 }));
+    children.push(P("De acordo,", { after: 800 }));
+    children.push(P("____________________________________________________", { color: COR.textoSoft, after: 60 }));
+    children.push(P(cliente.empresa.toUpperCase(), { bold: true, size: 24, color: COR.primaria, after: 60 }));
+    children.push(P(`A/C: ${cliente.contato}`, { color: COR.textoSoft, size: 18 }));
 
+    // ===== DOCUMENTO =====
     const doc = new Document({
       creator: "Flying Studio",
       title: `Proposta ${cliente.empresa} - ${cliente.ref}`,
-      sections: [{ properties: { page: { margin: { top: 1134, bottom: 1134, left: 1418, right: 1418 } } }, children }],
+      description: "Proposta comercial Flying Studio",
+      styles: {
+        default: {
+          document: { run: { font: FONTE, size: 22, color: COR.texto } },
+        },
+      },
+      sections: [{
+        properties: {
+          page: {
+            margin: { top: 1700, bottom: 1300, left: 1418, right: 1418, header: 720, footer: 600 },
+          },
+        },
+        headers: { default: montarHeader(logoBuffer) },
+        footers: { default: montarFooter() },
+        children,
+      }],
     });
 
     return await Packer.toBlob(doc);

@@ -201,10 +201,59 @@
 
   function voltar() { trocarTela("form"); }
 
+  // Upload de arquivo do cliente
+  async function handleArquivoCliente(e) {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    const status = $("upload-status");
+    status.classList.remove("hidden");
+    status.innerHTML = `<span class="upload-loading">⏳ Lendo <strong>${file.name}</strong>...</span>`;
+
+    try {
+      const r = await window.FlyingFileReader.lerArquivo(file);
+      if (!r.texto) {
+        status.innerHTML = `<span class="upload-erro">❌ Não consegui extrair texto de ${file.name}.${r.aviso ? " " + r.aviso : ""}</span>`;
+        return;
+      }
+      const ta = $("descricao");
+      const atual = ta.value.trim();
+      if (!atual) {
+        ta.value = r.texto;
+      } else {
+        ta.value = atual + "\n\n# === Importado de " + file.name + " ===\n" + r.texto;
+      }
+      status.innerHTML = `<span class="upload-ok">✓ Importado <strong>${file.name}</strong> (${r.linhas} linhas).${r.aviso ? "<br><span class='upload-aviso'>⚠ " + r.aviso + "</span>" : ""}</span>`;
+      ta.focus();
+    } catch (err) {
+      status.innerHTML = `<span class="upload-erro">❌ Erro: ${err.message}</span>`;
+    }
+    e.target.value = ""; // permite re-importar o mesmo arquivo
+  }
+
+  // Cards de estratégia: clique anywhere marca o radio
+  function setupCardsEstrategia() {
+    document.querySelectorAll(".opt-card").forEach((card) => {
+      const sync = () => {
+        const sel = card.querySelector('input[type="radio"]').checked;
+        document.querySelectorAll(".opt-card").forEach((c) => c.classList.remove("selecionado"));
+        if (sel) card.classList.add("selecionado");
+      };
+      const radio = card.querySelector('input[type="radio"]');
+      radio.addEventListener("change", () => {
+        document.querySelectorAll(".opt-card").forEach((c) => c.classList.remove("selecionado"));
+        card.classList.add("selecionado");
+      });
+      if (radio.checked) card.classList.add("selecionado");
+    });
+  }
+
   form.addEventListener("submit", gerar);
   $("btn-download").addEventListener("click", baixar);
   $("btn-download-2").addEventListener("click", baixar);
   $("link-novo").addEventListener("click", voltar);
   $("voltar").addEventListener("click", voltar);
   $("voltar-2").addEventListener("click", voltar);
+  $("btn-upload").addEventListener("click", () => $("arquivo-cliente").click());
+  $("arquivo-cliente").addEventListener("change", handleArquivoCliente);
+  setupCardsEstrategia();
 })();
