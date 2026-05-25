@@ -41,7 +41,7 @@
       "Versão Mobile Offline – Panos 360º"
     ],
     "ambientes": [
-      {"chave": "areas_lazer", "rotulo": "ÁREAS DE LAZER", "preco": 27000, "padroes": ["areas? de lazer", "lazer comum", "\\blazer\\b"]},
+      {"chave": "areas_lazer", "rotulo": "ÁREAS DE LAZER", "preco": 27000, "padroes": ["areas? de lazer", "lazer comum", "area.*lazer", "espaco.*lazer"]},
       {"chave": "apto_1_dorm", "rotulo": "APARTAMENTO 1 DORM", "preco": 10000, "padroes": ["apto.*1.*dorm", "apartamento 1.*dorm", "1 dorm", "studio", "stúdio"]},
       {"chave": "apto_2_dorms", "rotulo": "APARTAMENTO 2 DORMS", "preco": 12500, "padroes": ["apto.*2.*dorm", "apartamento 2.*dorm", "2 dorm"]},
       {"chave": "apto_3_dorms", "rotulo": "APARTAMENTO 3 DORMS", "preco": 14500, "padroes": ["apto.*3.*dorm", "apartamento 3.*dorm", "3 dorm"]},
@@ -87,7 +87,7 @@
     "_titulo_secao": "APLICAÇÕES E EXPERIÊNCIAS DIGITAIS",
     "catalogo": [
       {"chave": "dbrave", "rotulo": "DESENVOLVIMENTO D.BRAVE", "preco": 39000, "itens": ["Catálogo Digital Interativo, permitindo ao usuário uma experiência ao interagir na tela touch screen", "Apresentação Completa do Empreendimento", "Informações Institucional", "Implantação", "Perspectivas / Imagens", "Localização Empreendimento", "Vídeo – Descanso de tela", "Filme Conceito"], "padroes": ["d\\.?brave", "explorador d\\.?brave", "explorador dbrave"]},
-      {"chave": "app_web_touch", "rotulo": "DESENVOLVIMENTO APLICAÇÃO WEB – PARA TELA TOUCH", "preco": 22800, "itens": ["Aplicação web responsiva para tela touch screen do estande de vendas", "Layout customizado de acordo com identidade do empreendimento", "Integração com material gráfico do produto"], "padroes": ["aplica[cç][aã]o web.*touch", "app.*touch", "app web touch", "tela touch", "stand touch", "estande touch"]}
+      {"chave": "app_web_touch", "rotulo": "DESENVOLVIMENTO APLICAÇÃO WEB – PARA TELA TOUCH", "preco": 22800, "itens": ["Aplicação web responsiva para tela touch screen do estande de vendas", "Layout customizado de acordo com identidade do empreendimento", "Integração com material gráfico do produto"], "padroes": ["aplica[cç][aã]o web.*touch", "app web touch", "aplica[cç][aã]o web touch", "estande.*touch", "stand.*touch"]}
     ]
   },
 

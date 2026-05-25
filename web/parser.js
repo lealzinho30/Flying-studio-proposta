@@ -57,23 +57,24 @@
     ],
     apps: [
       "apps?",
-      "aplica[cç][oõ]es?",
+      "aplica[cç][oõ]es?(?:\\s+digitais)?",
       "aplicativos?",
       "experi[eê]ncias? digitais",
-      "tela touch",
-      "stand digital",
-      "estande digital",
     ],
     drone: [
       "drones?",
       "fotografia a[eé]rea",
       "voo de drone",
     ],
+    escopo: [
+      "escopo(?:\\s+de)?\\s+tecnologias?",
+      "tecnologias?(?:\\s+do\\s+escopo)?",
+      "servi[cç]os?\\s+de\\s+tecnolog",
+    ],
     extras: [
       "extras?",
       "outros",
       "adicionais?",
-      "tecnologias?",
       "servi[cç]os? extras?",
     ],
   };
@@ -194,8 +195,13 @@
     const drone = extraiLista(blocos.drone || "");
     const extras_diversos = extraiLista(blocos.extras || "");
 
-    // Detecções soltas (sem cabeçalho explícito) — vasculha o texto inteiro
-    const detSolta = detectarExtrasSoltos(texto, { tour_virtual, filmes, apps, drone, extras_diversos });
+    // Só interpreta tecnologias dentro do bloco "Escopo:" / "Tecnologias:" (nunca no texto inteiro)
+    const blocoEscopo = [blocos.escopo, blocos.tour_virtual, blocos.filmes, blocos.apps, blocos.drone]
+      .filter(Boolean)
+      .join("\n");
+    const detSolta = blocoEscopo
+      ? detectarExtrasSoltos(blocoEscopo, { tour_virtual, filmes, apps, drone, extras_diversos })
+      : [];
 
     if (!externas.length && !internas.length && !plantas.length &&
         !tour_virtual.length && !filmes.length && !apps.length && !drone.length &&
@@ -238,6 +244,7 @@
     for (const amb of (PRECOS.tour_virtual && PRECOS.tour_virtual.ambientes) || []) {
       if (amb.chave === "outro") continue;
       for (const pad of amb.padroes) {
+        if (pad === ".*" || pad === ".\\*") continue;
         if (new RegExp(pad).test(alvo)) {
           // Confere se não veio de uma seção explícita "Tour Virtual:"
           if (!jaTem(jaMencionados.tour_virtual, amb.rotulo.toLowerCase())) {

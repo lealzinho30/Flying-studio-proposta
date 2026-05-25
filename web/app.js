@@ -137,6 +137,10 @@
 
     const estrategiaForm = document.querySelector('input[name="estrategia"]:checked').value;
     const parsed = window.FlyingParser.parse(texto);
+    const escopoSel = window.FlyingEscopo ? window.FlyingEscopo.getSelecionados() : [];
+    if (escopoSel.length) {
+      window.FlyingEscopo.aplicarNoParsed(parsed, escopoSel);
+    }
 
     if (estrategiaForm !== "auto" || parsed.estrategia === "auto") {
       parsed.estrategia = estrategiaForm;
@@ -428,4 +432,8 @@
   });
   setupCardsEstrategia();
   atualizarUiHistoricoPdf();
+  if (window.FlyingEscopo) {
+    window.FlyingEscopo.render("escopo-tecnologias-grid");
+    $("btn-escopo-limpar").addEventListener("click", () => window.FlyingEscopo.limpar());
+  }
 })();

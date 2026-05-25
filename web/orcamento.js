@@ -298,28 +298,83 @@
       }
     }
 
-    // Diversos (não categorizados — preço a definir).
-    // Antes de adicionar, descarta itens que já viraram tour virtual/filme/app/etc.
+    // Extras em "Escopo:" / diversos: se bater no catálogo, inclui na categoria certa
     const _todasSubsecoes = []
       .concat(out.tour_virtual.subsecoes, out.filmes.subsecoes, out.apps.subsecoes,
               out.drone.subsecoes, out.maquete.subsecoes, out.estudo_fachada.subsecoes);
+
+    function _pushCatalogo(tipo, subsec) {
+      if (tipo === "tour_virtual") {
+        if (out.tour_virtual.subsecoes.some((s) => s.chave === subsec.chave)) return;
+        subsec.rotulo_secao = `${TV._titulo_secao} – ${subsec.rotulo_curto}`;
+        subsec.itens = TV._itens_padrao.slice();
+        out.tour_virtual.subsecoes.push(subsec);
+      } else if (tipo === "filme") {
+        if (out.filmes.subsecoes.some((s) => s.chave === subsec.chave)) return;
+        const meta = (FL.catalogo || []).find((x) => x.chave === subsec.chave);
+        subsec.itens = (meta && meta.itens) || [];
+        out.filmes.subsecoes.push(subsec);
+      } else if (tipo === "app") {
+        if (out.apps.subsecoes.some((s) => s.chave === subsec.chave)) return;
+        const meta = (APP.catalogo || []).find((x) => x.chave === subsec.chave);
+        subsec.itens = (meta && meta.itens) || [];
+        out.apps.subsecoes.push(subsec);
+      } else if (tipo === "drone") {
+        if (out.drone.subsecoes.some((s) => s.chave === subsec.chave)) return;
+        out.drone.subsecoes.push(subsec);
+      } else if (tipo === "maquete") {
+        if (out.maquete.subsecoes.length) return;
+        subsec.itens = MQ.itens.slice();
+        out.maquete.subsecoes.push(subsec);
+      } else if (tipo === "estudo_fachada") {
+        if (out.estudo_fachada.subsecoes.length) return;
+        subsec.itens = EF.itens.slice();
+        out.estudo_fachada.subsecoes.push(subsec);
+      }
+    }
+
     for (const desc of parsed.extras_diversos || []) {
       const descNorm = norm(desc);
       const jaProcessado = _todasSubsecoes.some((sub) => {
         const target = norm(sub.desc_original || sub.rotulo_curto || "");
         return target && (descNorm.includes(target) || target.includes(descNorm));
       });
-      // Também ignora se bate com algum padrão conhecido do catálogo
-      const baterCat = (cats) => (cats || []).some((c) => (c.padroes || []).some((p) => new RegExp(p).test(descNorm)));
-      const conhecido = jaProcessado
-        || baterCat(PRECOS.tour_virtual && PRECOS.tour_virtual.ambientes)
-        || baterCat(PRECOS.filmes && PRECOS.filmes.catalogo)
-        || baterCat(PRECOS.apps && PRECOS.apps.catalogo)
-        || baterCat(PRECOS.drone && PRECOS.drone.catalogo)
-        || (MQ && (MQ.padroes || []).some((p) => new RegExp(p).test(descNorm)))
-        || (EF && (EF.padroes || []).some((p) => new RegExp(p).test(descNorm)));
-      if (conhecido) continue;
-      // Senão, adiciona como diverso
+      if (jaProcessado) continue;
+
+      let promovido = false;
+      for (const amb of (TV.ambientes || [])) {
+        if (amb.chave === "outro") continue;
+        if ((amb.padroes || []).some((p) => p !== ".*" && new RegExp(p).test(descNorm))) {
+          _pushCatalogo("tour_virtual", { chave: amb.chave, rotulo_secao: amb.rotulo, rotulo_curto: amb.rotulo, preco: amb.preco, desc_original: desc });
+          promovido = true;
+          break;
+        }
+      }
+      if (promovido) continue;
+      const vf = _matchVariante(desc, FL.catalogo);
+      if (vf && vf.chave) {
+        _pushCatalogo("filme", { chave: vf.chave, rotulo_secao: vf.rotulo, rotulo_curto: vf.rotulo, preco: vf.preco, desc_original: desc });
+        continue;
+      }
+      const va = _matchVariante(desc, APP.catalogo);
+      if (va && va.chave) {
+        _pushCatalogo("app", { chave: va.chave, rotulo_secao: va.rotulo, rotulo_curto: va.rotulo, preco: va.preco, desc_original: desc });
+        continue;
+      }
+      const vd = _matchVariante(desc, DR.catalogo);
+      if (vd && vd.chave) {
+        _pushCatalogo("drone", { chave: vd.chave, rotulo_secao: vd.rotulo, rotulo_curto: vd.rotulo, preco: vd.preco, desc_original: desc });
+        continue;
+      }
+      if (MQ && (MQ.padroes || []).some((p) => new RegExp(p).test(descNorm))) {
+        _pushCatalogo("maquete", { chave: MQ.chave, rotulo_secao: MQ.rotulo, rotulo_curto: MQ.rotulo, preco: MQ.preco, desc_original: desc });
+        continue;
+      }
+      if (EF && (EF.padroes || []).some((p) => new RegExp(p).test(descNorm))) {
+        _pushCatalogo("estudo_fachada", { chave: EF.chave, rotulo_secao: EF.rotulo, rotulo_curto: EF.rotulo, preco: EF.preco, desc_original: desc });
+        continue;
+      }
+
       out.diversos.subsecoes.push({
         chave: "diverso",
         rotulo_secao: desc.toUpperCase(),

@@ -40,7 +40,7 @@ window.FLYING_PRECOS = {
     ],
     ambientes: [
       { chave: "areas_lazer", rotulo: "ÁREAS DE LAZER", preco: 27000,
-        padroes: ["areas? de lazer", "lazer comum", "\\blazer\\b"] },
+        padroes: ["areas? de lazer", "lazer comum", "area.*lazer", "espaco.*lazer"] },
       { chave: "apto_1_dorm", rotulo: "APARTAMENTO 1 DORM", preco: 10000,
         padroes: ["apto.*1.*dorm", "apartamento 1.*dorm", "1 dorm", "studio", "stúdio"] },
       { chave: "apto_2_dorms", rotulo: "APARTAMENTO 2 DORMS", preco: 12500,
@@ -144,7 +144,7 @@ window.FLYING_PRECOS = {
           "Layout customizado de acordo com identidade do empreendimento",
           "Integração com material gráfico do produto",
         ],
-        padroes: ["aplica[cç][aã]o web.*touch", "app.*touch", "app web touch", "tela touch", "stand touch", "estande touch"] },
+        padroes: ["aplica[cç][aã]o web.*touch", "app web touch", "d\\.?brave.*touch", "explorador.*touch"] },
     ],
   },
 

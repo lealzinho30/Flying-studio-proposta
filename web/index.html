@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Flying Studio · Propostas IA</title>
-  <link rel="stylesheet" href="styles.css?v=20260525e">
+  <link rel="stylesheet" href="styles.css?v=20260525f">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -82,6 +82,18 @@ Plantas:
 - Implantação Mezanino lazer
 - Implantação rooftop
 - Apartamento Tipo</textarea>
+
+        <details class="escopo-bloco" id="escopo-bloco" open>
+          <summary class="escopo-summary">
+            <span class="rotulo">Escopo de tecnologias</span>
+            <span class="estrategia-sub">marque só o que entra nesta proposta (planilha de custos)</span>
+          </summary>
+          <p class="escopo-intro">Apps, tour virtual, filmes, maquete e drone <strong>não entram automaticamente</strong>. Selecione abaixo ou liste em <code>Escopo tecnologias:</code> / <code>Tour Virtual:</code> / <code>Filmes:</code> / <code>Apps:</code> na descrição.</p>
+          <div class="escopo-acoes">
+            <button type="button" class="btn-link-escopo" id="btn-escopo-limpar">Limpar seleção</button>
+          </div>
+          <div id="escopo-tecnologias-grid" class="escopo-tecnologias-grid"></div>
+        </details>
 
         <div class="estrategia-bloco">
           <div class="estrategia-titulo">
@@ -159,10 +171,11 @@ Plantas:
 - Pacote Rinno              (R$28.000)
 - Takes 3D                  (R$1.300/un)
 - Takes I.A                 (R$650/un)</pre>
-          <p><strong>Apps & Touch (preço por escopo):</strong></p>
-          <pre>Apps:
-- D.Brave                              (R$39.000)
-- Aplicação Web Touch                  (R$22.800)</pre>
+          <p><strong>Tecnologias (só entram se marcar no painel ou listar):</strong> use o bloco <em>Escopo de tecnologias</em> na tela ou cabeçalhos <code>Escopo tecnologias:</code>, <code>Tour Virtual:</code>, <code>Filmes:</code>, <code>Apps:</code>.</p>
+          <pre>Escopo tecnologias:
+- D.Brave
+- Áreas de Lazer (tour virtual)
+- Filme Produto 1:30</pre>
           <p><strong>Outros:</strong> <code>Drone:</code>, <code>Maquete eletrônica</code>, <code>Estudo de fachada</code> são reconhecidos automaticamente.</p>
           <p><strong>Estratégia inline:</strong> <em>"use preço de planilha"</em> / <em>"siga o histórico"</em> / <em>"preços individuais por imagem"</em>.</p>
         </details>
@@ -237,12 +250,13 @@ Plantas:
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 
   <!-- Dados + lógica (query string força revalidação após deploy) -->
-  <script src="data.js?v=20260525e"></script>
-  <script src="parser.js?v=20260525e"></script>
-  <script src="leitor_historico_pdf.js?v=20260525e"></script>
-  <script src="orcamento.js?v=20260525e"></script>
-  <script src="docx_gen.js?v=20260525e"></script>
-  <script src="leitor_arquivo.js?v=20260525e"></script>
-  <script src="app.js?v=20260525e"></script>
+  <script src="data.js?v=20260525f"></script>
+  <script src="parser.js?v=20260525f"></script>
+  <script src="escopo_tecnologias.js?v=20260525f"></script>
+  <script src="leitor_historico_pdf.js?v=20260525f"></script>
+  <script src="orcamento.js?v=20260525f"></script>
+  <script src="docx_gen.js?v=20260525f"></script>
+  <script src="leitor_arquivo.js?v=20260525f"></script>
+  <script src="app.js?v=20260525f"></script>
 </body>
 </html>
