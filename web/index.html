@@ -3,8 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>Flying Studio · Propostas IA</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20260525c">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -219,12 +222,12 @@ Plantas:
   <script src="https://unpkg.com/mammoth@1.7.2/mammoth.browser.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 
-  <!-- Dados + lógica -->
-  <script src="data.js"></script>
-  <script src="parser.js"></script>
-  <script src="orcamento.js"></script>
-  <script src="docx_gen.js"></script>
-  <script src="leitor_arquivo.js"></script>
-  <script src="app.js"></script>
+  <!-- Dados + lógica (query string força revalidação após deploy) -->
+  <script src="data.js?v=20260525c"></script>
+  <script src="parser.js?v=20260525c"></script>
+  <script src="orcamento.js?v=20260525c"></script>
+  <script src="docx_gen.js?v=20260525c"></script>
+  <script src="leitor_arquivo.js?v=20260525c"></script>
+  <script src="app.js?v=20260525c"></script>
 </body>
 </html>

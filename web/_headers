@@ -1,11 +1,17 @@
-# Reforço dos cabeçalhos (lido pelo Netlify direto da pasta publish).
+# Cabeçalhos lidos pelo Netlify direto da pasta publish.
+# IMPORTANTE: nossos JS/CSS não têm hash no nome — precisam revalidar a cada deploy.
+
 /*
   X-Frame-Options: SAMEORIGIN
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
+  Cache-Control: public, max-age=0, must-revalidate
 
 /*.js
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=0, must-revalidate
 
 /*.css
-  Cache-Control: public, max-age=31536000, immutable
+  Cache-Control: public, max-age=0, must-revalidate
+
+/*.png
+  Cache-Control: public, max-age=86400

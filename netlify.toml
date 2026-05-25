@@ -13,13 +13,19 @@
     X-Content-Type-Options = "nosniff"
     Cache-Control = "public, max-age=0, must-revalidate"
 
-# Cache longo para os assets estáticos (.js / .css)
+# Cache curto para os assets — como nomes dos arquivos não têm hash,
+# precisamos revalidar a cada deploy.
 [[headers]]
   for = "/*.js"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+    Cache-Control = "public, max-age=0, must-revalidate"
 
 [[headers]]
   for = "/*.css"
   [headers.values]
-    Cache-Control = "public, max-age=31536000, immutable"
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"
