@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Flying Studio · Propostas IA</title>
-  <link rel="stylesheet" href="styles.css?v=20260525d">
+  <link rel="stylesheet" href="styles.css?v=20260525e">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -125,6 +125,12 @@ Plantas:
                   </button>
                   <span class="upload-formatos">a IA lê preços médios e forma de pagamento</span>
                   <div class="upload-status hidden" id="hist-upload-status"></div>
+                  <div class="hist-pdf-ativo hidden" id="hist-pdf-ativo">
+                    <span class="hist-pdf-nome" id="hist-pdf-nome"></span>
+                    <button type="button" class="btn-remover-pdf" id="btn-remover-historico-pdf" title="Remover PDF enviado por engano">
+                      ✕ Remover PDF
+                    </button>
+                  </div>
                 </div>
               </div>
             </label>
@@ -231,12 +237,12 @@ Plantas:
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 
   <!-- Dados + lógica (query string força revalidação após deploy) -->
-  <script src="data.js?v=20260525d"></script>
-  <script src="parser.js?v=20260525d"></script>
-  <script src="leitor_historico_pdf.js?v=20260525d"></script>
-  <script src="orcamento.js?v=20260525d"></script>
-  <script src="docx_gen.js?v=20260525d"></script>
-  <script src="leitor_arquivo.js?v=20260525d"></script>
-  <script src="app.js?v=20260525d"></script>
+  <script src="data.js?v=20260525e"></script>
+  <script src="parser.js?v=20260525e"></script>
+  <script src="leitor_historico_pdf.js?v=20260525e"></script>
+  <script src="orcamento.js?v=20260525e"></script>
+  <script src="docx_gen.js?v=20260525e"></script>
+  <script src="leitor_arquivo.js?v=20260525e"></script>
+  <script src="app.js?v=20260525e"></script>
 </body>
 </html>

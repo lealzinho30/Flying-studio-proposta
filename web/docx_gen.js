@@ -78,7 +78,7 @@
   function P(texto, opts = {}) {
     const { TextRun, Paragraph } = window.docx;
     return new Paragraph({
-      spacing: { after: opts.after ?? 80, before: opts.before ?? 0, line: opts.line ?? 300 },
+      spacing: { after: opts.after ?? 50, before: opts.before ?? 0, line: opts.line ?? 260 },
       alignment: opts.alignment,
       indent: opts.indent,
       children: [new TextRun({
@@ -95,7 +95,7 @@
   function PRich(runs, opts = {}) {
     const { Paragraph } = window.docx;
     return new Paragraph({
-      spacing: { after: opts.after ?? 80, before: opts.before ?? 0, line: opts.line ?? 300 },
+      spacing: { after: opts.after ?? 50, before: opts.before ?? 0, line: opts.line ?? 260 },
       alignment: opts.alignment,
       children: runs,
     });
@@ -116,7 +116,7 @@
   function bullet(texto, opts = {}) {
     const { Paragraph, TextRun } = window.docx;
     return new Paragraph({
-      spacing: { after: 60, line: 280 },
+      spacing: { after: 40, line: 250 },
       indent: { left: 360, hanging: 200 },
       children: [
         new TextRun({ text: "•  ", color: COR.primaria, bold: true, size: 22, font: FONTE }),
@@ -128,7 +128,7 @@
   function bulletRich(label, restoTexto) {
     const { Paragraph, TextRun } = window.docx;
     return new Paragraph({
-      spacing: { after: 80, line: 280 },
+      spacing: { after: 50, line: 250 },
       indent: { left: 360, hanging: 200 },
       children: [
         new TextRun({ text: "•  ", color: COR.primaria, bold: true, size: 22, font: FONTE }),
@@ -159,17 +159,17 @@
     if (logoBuffer) {
       children.push(new Paragraph({
         alignment: AlignmentType.RIGHT,
-        spacing: { before: 0, after: 80 },
+        spacing: { before: 0, after: 120 },
         children: [new ImageRun({
           data: logoBuffer,
-          transformation: { width: 110, height: 43 }, // pixels — proporção do logo (305x119)
+          transformation: { width: 150, height: 59 },
         })],
       }));
     } else {
       children.push(new Paragraph({
         alignment: AlignmentType.RIGHT,
-        spacing: { before: 0, after: 80 },
-        children: [new TextRun({ text: "FLYING studio", bold: true, size: 28, color: COR.primaria, font: FONTE })],
+        spacing: { before: 0, after: 120 },
+        children: [new TextRun({ text: "FLYING studio", bold: true, size: 32, color: COR.primaria, font: FONTE })],
       }));
     }
 
@@ -188,23 +188,23 @@
 
     // Linha fina lavanda
     const linha = new Paragraph({
-      spacing: { before: 0, after: 60 },
-      border: { top: { color: COR.primaria, space: 1, style: BorderStyle.SINGLE, size: 8 } },
+      spacing: { before: 80, after: 100 },
+      border: { top: { color: COR.primaria, space: 1, style: BorderStyle.SINGLE, size: 10 } },
       children: [new TextRun({ text: "" })],
     });
 
     const site = new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 30 },
-      children: [new TextRun({ text: "www.flyingstudio.com.br", size: 18, color: COR.primaria, font: FONTE, bold: true })],
+      spacing: { before: 0, after: 50 },
+      children: [new TextRun({ text: "www.flyingstudio.com.br", size: 24, color: COR.primaria, font: FONTE, bold: true })],
     });
 
     const endereco = new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 0 },
+      spacing: { after: 80 },
       children: [new TextRun({
         text: "Av. Eng. Luís Carlos Berrini, 936, 7º andar  ·  Novo Brooklin, São Paulo  ·  Telefone: (11) 2351-4138",
-        size: 16, color: COR.textoSoft, font: FONTE,
+        size: 20, color: COR.textoSoft, font: FONTE,
       })],
     });
 
@@ -224,7 +224,7 @@
         width: { size: opts.width || 30, type: WidthType.PERCENTAGE },
         shading: opts.shading ? { type: ShadingType.CLEAR, color: "auto", fill: opts.shading } : undefined,
         verticalAlign: "center",
-        margins: { top: 110, bottom: 110, left: 160, right: 160 },
+        margins: { top: 70, bottom: 70, left: 140, right: 140 },
         borders: {
           top: opts.borderTop ?? borderSoft,
           bottom: opts.borderBottom ?? borderSoft,
@@ -295,7 +295,7 @@
 
   // ---------- caixa de "investimento total" (capa) ----------
 
-  function caixaResumoCapa({ cliente, qtdImg, qtdExtras, valorBruto, valorFinal, descontoPct, descontoLabel }) {
+  function caixaResumoCapa({ cliente }) {
     const { Paragraph, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType, ShadingType, BorderStyle } = window.docx;
     const borderHidden = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
 
@@ -305,7 +305,7 @@
           new TableCell({
             width: { size: 35, type: WidthType.PERCENTAGE },
             shading: { type: ShadingType.CLEAR, color: "auto", fill: COR.primaria },
-            margins: { top: 110, bottom: 110, left: 200, right: 100 },
+            margins: { top: 80, bottom: 80, left: 180, right: 100 },
             borders: { top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden },
             children: [new Paragraph({
               children: [new TextRun({ text: label, bold: true, size: 18, color: COR.branco, font: FONTE })],
@@ -314,7 +314,7 @@
           new TableCell({
             width: { size: 65, type: WidthType.PERCENTAGE },
             shading: { type: ShadingType.CLEAR, color: "auto", fill: opts.destaque ? COR.primariaDark : COR.primaria },
-            margins: { top: 110, bottom: 110, left: 100, right: 200 },
+            margins: { top: 80, bottom: 80, left: 100, right: 180 },
             borders: { top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden },
             children: [new Paragraph({
               alignment: AlignmentType.RIGHT,
@@ -336,13 +336,6 @@
       row("PROJETO", cliente.ref.toUpperCase()),
       row("AOS CUIDADOS DE", cliente.contato.toUpperCase()),
     ];
-    if (qtdImg > 0) linhas.push(row("IMAGENS", `${qtdImg} unidades`));
-    if (qtdExtras && qtdExtras > 0) linhas.push(row("SERVIÇOS EXTRAS", `${qtdExtras} ${qtdExtras === 1 ? "item" : "itens"}`));
-    if (descontoPct > 0) {
-      linhas.push(row("VALOR BRUTO", brl(valorBruto)));
-      linhas.push(row(`DESCONTO (${descontoLabel || (descontoPct + "%")})`, "-" + brl(valorBruto - valorFinal)));
-    }
-    linhas.push(row("INVESTIMENTO", brl(valorFinal), { destaque: true }));
 
     return new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
@@ -366,7 +359,7 @@
         width: { size: opts.width || 30, type: WidthType.PERCENTAGE },
         shading: opts.shading ? { type: ShadingType.CLEAR, color: "auto", fill: opts.shading } : undefined,
         verticalAlign: "center",
-        margins: { top: 110, bottom: 110, left: 160, right: 160 },
+        margins: { top: 70, bottom: 70, left: 140, right: 140 },
         borders: {
           top: opts.borderTop ?? borderSoft,
           bottom: opts.borderBottom ?? borderSoft,
@@ -440,7 +433,7 @@
           new TableCell({
             width: { size: 82, type: WidthType.PERCENTAGE },
             shading: { type: ShadingType.CLEAR, color: "auto", fill: COR.primariaDark },
-            margins: { top: 110, bottom: 110, left: 160, right: 160 },
+            margins: { top: 70, bottom: 70, left: 140, right: 140 },
             borders: { top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden },
             children: [new Paragraph({
               children: [
@@ -485,30 +478,19 @@
     const children = [];
 
     // ===== CAPA =====
-    children.push(P("PROPOSTA COMERCIAL", { bold: true, size: 56, color: COR.primaria, before: 800, after: 60 }));
-    children.push(P("Imagens, Filmes e Tecnologias 3D", { size: 26, color: COR.textoSoft, after: 600 }));
-    children.push(P(dataExtenso(data).toUpperCase(), { size: 18, color: COR.textoSoft, after: 800 }));
+    children.push(P("PROPOSTA COMERCIAL", { bold: true, size: 56, color: COR.primaria, before: 400, after: 40 }));
+    children.push(P("Imagens, Filmes e Tecnologias 3D", { size: 26, color: COR.textoSoft, after: 120 }));
+    children.push(P(dataExtenso(data).toUpperCase(), { size: 18, color: COR.textoSoft, after: 280 }));
 
-    // Caixa cliente / investimento
-    children.push(caixaResumoCapa({
-      cliente,
-      qtdImg: qtdImagens,
-      qtdExtras,
-      valorBruto: subtotal,
-      valorFinal,
-      descontoPct: orc.desconto_pct,
-      descontoLabel,
-    }));
-    children.push(P("", { after: 200 }));
-
-    children.push(P(`Por extenso: ${extenso(valorFinal)}.`, { italics: true, size: 18, color: COR.textoSoft, alignment: AlignmentType.CENTER, after: 600 }));
+    children.push(caixaResumoCapa({ cliente }));
+    children.push(P("", { after: 120 }));
 
     // Quebra de página
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
     // ===== PÁGINA 2: APRESENTAÇÃO =====
     children.push(P("01.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
-    children.push(P("APRESENTAÇÃO", { bold: true, size: 36, color: COR.texto, after: 240 }));
+    children.push(P("APRESENTAÇÃO", { bold: true, size: 36, color: COR.texto, after: 160 }));
 
     children.push(P(
       "A Flying Studio presta serviços de computação gráfica e tecnologias que se aplicam aos lançamentos imobiliários e remanescentes. Em nosso atendimento diário, desenvolvemos laços com projeto e auxiliamos em layout, estudos de projetos e fachadas, de decoração e paisagismo de acordo com cada necessidade.",
@@ -516,31 +498,30 @@
     ));
     children.push(P(
       "Para projetos de arquitetura, decoração e paisagismo, consulte a NID STUDIO.",
-      { color: COR.textoSoft, italics: true, after: 600 }
+      { color: COR.textoSoft, italics: true, after: 320 }
     ));
 
-    // ===== PÁGINA 2: ITENS / INVESTIMENTO =====
     children.push(P("02.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
-    children.push(P("ITENS A SEREM DESENVOLVIDOS", { bold: true, size: 36, color: COR.texto, after: 320 }));
+    children.push(P("ITENS A SEREM DESENVOLVIDOS", { bold: true, size: 36, color: COR.texto, after: 200 }));
 
     let secaoNum = 0;
     if (orc.externas.qtd) {
       secaoNum++;
-      children.push(P("ILUSTRAÇÕES EXTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: 120, before: 200 }));
+      children.push(P("ILUSTRAÇÕES EXTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: 80, before: 100 }));
       children.push(tabelaCategoria(`2.${secaoNum}`, orc.externas, mostrarPrecos));
-      children.push(P("", { after: 200 }));
+      children.push(P("", { after: 100 }));
     }
     if (orc.internas.qtd) {
       secaoNum++;
-      children.push(P("ILUSTRAÇÕES INTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: 120, before: 200 }));
+      children.push(P("ILUSTRAÇÕES INTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: 80, before: 100 }));
       children.push(tabelaCategoria(`2.${secaoNum}`, orc.internas, mostrarPrecos));
-      children.push(P("", { after: 200 }));
+      children.push(P("", { after: 100 }));
     }
     if (orc.plantas.qtd) {
       secaoNum++;
-      children.push(P("PLANTAS HUMANIZADAS", { bold: true, size: 22, color: COR.primariaDark, after: 120, before: 200 }));
+      children.push(P("PLANTAS HUMANIZADAS", { bold: true, size: 22, color: COR.primariaDark, after: 80, before: 100 }));
       children.push(tabelaCategoria(`2.${secaoNum}`, orc.plantas, mostrarPrecos));
-      children.push(P("", { after: 200 }));
+      children.push(P("", { after: 100 }));
     }
 
     // ====== EXTRAS (Tour Virtual / Filmes / Apps / Maquete / Drone / Estudo Fachada) ======
@@ -559,7 +540,7 @@
         for (const sub of grupo.subsecoes) {
           secaoNum++;
           children.push(tabelaExtraSubsecao(`2.${secaoNum}`, sub));
-          children.push(P("", { after: 160 }));
+          children.push(P("", { after: 80 }));
         }
       }
     }
@@ -578,7 +559,7 @@
     if (totaisRuns.length) totaisRuns.push(R("    ·    ", { color: COR.textoSoft }));
     totaisRuns.push(R("Valor bruto: ", { color: COR.textoSoft }));
     totaisRuns.push(R(brl(subtotal), { bold: true }));
-    children.push(PRich(totaisRuns, { before: 240, after: 60 }));
+    children.push(PRich(totaisRuns, { before: 120, after: 40 }));
 
     if (orc.desconto_pct > 0) {
       const rotulo = descontoLabel || `${orc.desconto_pct}% de Desconto`;
@@ -589,19 +570,18 @@
           R("    ·    Valor do desconto: ", { color: COR.textoSoft }),
           R("-" + brl(descontoValor), { bold: true, color: COR.primariaDark }),
         ],
-        { after: 60 }
+        { after: 40 }
       ));
     }
 
-    children.push(P("", { after: 100 }));
+    children.push(P("", { after: 60 }));
 
-    // Faixa "Investimento total" destacada
     children.push(PRich(
       [R("INVESTIMENTO TOTAL  ", { bold: true, size: 26, color: COR.primaria }),
        R(brl(valorFinal), { bold: true, size: 36, color: COR.primariaDark })],
-      { alignment: AlignmentType.LEFT, after: 60 }
+      { alignment: AlignmentType.LEFT, after: 40 }
     ));
-    children.push(P(`(${extenso(valorFinal)})`, { italics: true, color: COR.textoSoft, after: 400 }));
+    children.push(P(`(${extenso(valorFinal)})`, { italics: true, color: COR.textoSoft, after: 240 }));
 
     // Extras
     if (extras && extras.length) {
@@ -704,7 +684,7 @@
       sections: [{
         properties: {
           page: {
-            margin: { top: 1700, bottom: 1300, left: 1418, right: 1418, header: 720, footer: 600 },
+            margin: { top: 1400, bottom: 1100, left: 1418, right: 1418, header: 1100, footer: 950 },
           },
         },
         headers: { default: montarHeader(logoBuffer) },

@@ -288,6 +288,52 @@
     e.target.value = ""; // permite re-importar o mesmo arquivo
   }
 
+  function empresaAtualForm() {
+    const parsed = window.FlyingParser.parse($("descricao").value.trim());
+    return (parsed.cliente && parsed.cliente.empresa) || "";
+  }
+
+  function atualizarUiHistoricoPdf() {
+    const blocoAtivo = $("hist-pdf-ativo");
+    const status = $("hist-upload-status");
+    const btnUpload = $("btn-historico-pdf");
+    if (!blocoAtivo) return;
+
+    const empresa = empresaAtualForm();
+    const hp = window.FlyingHistoricoPdf;
+    const reg = empresa && hp ? hp.getRegistro(empresa) : null;
+
+    if (reg && reg.proposta) {
+      blocoAtivo.classList.remove("hidden");
+      $("hist-pdf-nome").textContent = reg.nomeArquivo
+        ? `PDF: ${reg.nomeArquivo}`
+        : `Histórico PDF — ${reg.empresa}`;
+      if (btnUpload) btnUpload.textContent = "📄 Trocar PDF do último orçamento";
+      status.classList.remove("hidden");
+      status.innerHTML = `<span class="upload-ok">✓ ${hp.resumoHtml(reg.proposta)}</span>`;
+    } else {
+      blocoAtivo.classList.add("hidden");
+      if (btnUpload) btnUpload.textContent = "📄 Último orçamento enviado (PDF)";
+      const temOutro = hp && hp.listarRegistros().length;
+      if (!temOutro) status.classList.add("hidden");
+    }
+  }
+
+  function removerHistoricoPdf() {
+    const empresa = empresaAtualForm();
+    const hp = window.FlyingHistoricoPdf;
+    if (!hp) return;
+    if (empresa) {
+      hp.limpar(empresa);
+    } else {
+      hp.limpar();
+    }
+    const status = $("hist-upload-status");
+    status.classList.remove("hidden");
+    status.innerHTML = `<span class="upload-aviso">PDF removido. Você pode enviar outro arquivo ou usar o histórico embutido.</span>`;
+    atualizarUiHistoricoPdf();
+  }
+
   async function handleHistoricoPdf(e) {
     const file = e.target.files && e.target.files[0];
     if (!file) return;
@@ -303,7 +349,7 @@
       }
       const proposta = window.FlyingHistoricoPdf.parseTexto(r.texto);
       if (!proposta) {
-        status.innerHTML = `<span class="upload-erro">❌ Não identifiquei itens com preço (R$) no PDF. Confira se é o orçamento Flying completo.</span>`;
+        status.innerHTML = `<span class="upload-erro">❌ PDF inválido ou incompleto: preciso de pelo menos 2 itens com preço (R$). Confira se é o orçamento Flying correto.</span>`;
         return;
       }
 
@@ -323,7 +369,7 @@
       }
 
       if (refFromPdf && !proposta.ref) proposta.ref = refFromPdf;
-      window.FlyingHistoricoPdf.registrar(empresa, proposta);
+      window.FlyingHistoricoPdf.registrar(empresa, proposta, { nomeArquivo: file.name });
 
       const radioHist = document.querySelector('input[name="estrategia"][value="historico"]');
       if (radioHist) {
@@ -332,7 +378,8 @@
         radioHist.closest(".opt-card").classList.add("selecionado");
       }
 
-      status.innerHTML = `<span class="upload-ok">✓ ${window.FlyingHistoricoPdf.resumoHtml(proposta)}<br><span class="upload-aviso">Cliente: <strong>${empresa}</strong> — pronto para gerar com histórico.</span></span>`;
+      atualizarUiHistoricoPdf();
+      status.innerHTML = `<span class="upload-ok">✓ ${window.FlyingHistoricoPdf.resumoHtml(proposta)}<br><span class="upload-aviso">Cliente: <strong>${empresa}</strong> — pronto para gerar. Use <strong>Remover PDF</strong> se enviou o arquivo errado.</span></span>`;
     } catch (err) {
       status.innerHTML = `<span class="upload-erro">❌ Erro: ${err.message}</span>`;
     }
@@ -370,5 +417,15 @@
     $("arquivo-historico").click();
   });
   $("arquivo-historico").addEventListener("change", handleHistoricoPdf);
+  $("btn-remover-historico-pdf").addEventListener("click", (ev) => {
+    ev.preventDefault();
+    ev.stopPropagation();
+    removerHistoricoPdf();
+  });
+  $("descricao").addEventListener("input", () => {
+    clearTimeout(window._flyingHistUiTimer);
+    window._flyingHistUiTimer = setTimeout(atualizarUiHistoricoPdf, 400);
+  });
   setupCardsEstrategia();
+  atualizarUiHistoricoPdf();
 })();

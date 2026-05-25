@@ -124,6 +124,28 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,92,
 .hist-pag-label { color: var(--muted); font-size: 12px; margin: 14px 0 6px; }
 .hist-parcelas { margin: 0; padding-left: 18px; color: var(--text-soft); font-size: 13px; line-height: 1.5; }
 .hist-parcelas li { margin-bottom: 4px; }
+.hist-pdf-ativo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  background: rgba(157, 219, 26, 0.08);
+  border: 1px solid rgba(157, 219, 26, 0.25);
+  border-radius: 8px;
+}
+.hist-pdf-nome { font-size: 12px; color: var(--green); font-weight: 600; flex: 1; min-width: 120px; }
+.btn-remover-pdf {
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 100, 100, 0.45);
+  background: rgba(255, 80, 80, 0.1);
+  color: #ff8a8a;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn-remover-pdf:hover { background: rgba(255, 80, 80, 0.2); border-color: #ff8a8a; }
 
 .rodape-form { display: flex; justify-content: flex-end; margin-top: 22px; }
 

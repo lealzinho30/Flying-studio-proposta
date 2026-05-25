@@ -171,7 +171,7 @@
       (cats.externas && cats.externas.qtd || 0) +
       (cats.internas && cats.internas.qtd || 0) +
       (cats.plantas && cats.plantas.qtd || 0);
-    if (!nItens) return null;
+    if (!nItens || nItens < 2) return null;
 
     const { pct, label } = parseDesconto(t);
     const forma_pagamento = parseFormaPagamento(t);
@@ -215,17 +215,30 @@
 
   let memStore = loadStore();
 
-  function registrar(empresa, proposta) {
+  function registrar(empresa, proposta, meta) {
     const key = normEmpresa(empresa);
     if (!key || !proposta) return;
-    memStore[key] = { empresa: key, proposta, atualizado: Date.now() };
+    memStore[key] = {
+      empresa: key,
+      proposta,
+      nomeArquivo: (meta && meta.nomeArquivo) || "",
+      atualizado: Date.now(),
+    };
     saveStore(memStore);
   }
 
-  function ultimaProposta(empresa) {
+  function getRegistro(empresa) {
     const key = normEmpresa(empresa);
     if (!key) return null;
-    const ent = memStore[key];
+    return memStore[key] || null;
+  }
+
+  function listarRegistros() {
+    return Object.values(memStore);
+  }
+
+  function ultimaProposta(empresa) {
+    const ent = getRegistro(empresa);
     return ent && ent.proposta ? ent.proposta : null;
   }
 
@@ -257,6 +270,8 @@
   window.FlyingHistoricoPdf = {
     parseTexto,
     registrar,
+    getRegistro,
+    listarRegistros,
     ultimaProposta,
     temCliente,
     limpar,
