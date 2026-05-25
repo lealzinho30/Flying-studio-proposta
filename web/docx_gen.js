@@ -73,12 +73,24 @@
   };
   const FONTE = "Calibri";
 
+  // Espaçamento compacto (valores em twips; ~20 twips ≈ 1pt)
+  const SP = {
+    corpo: 18,
+    linha: 240,
+    tituloSec: 72,
+    subtitulo: 36,
+    entreBlocos: 48,
+    entreSecoes: 64,
+  };
+
   // ---------- atalhos para geração ----------
 
   function P(texto, opts = {}) {
     const { TextRun, Paragraph } = window.docx;
+    const textoLimpo = (texto || "").trim();
+    if (!textoLimpo && !opts.forcar) return null;
     return new Paragraph({
-      spacing: { after: opts.after ?? 50, before: opts.before ?? 0, line: opts.line ?? 260 },
+      spacing: { after: opts.after ?? SP.corpo, before: opts.before ?? 0, line: opts.line ?? SP.linha },
       alignment: opts.alignment,
       indent: opts.indent,
       children: [new TextRun({
@@ -95,7 +107,7 @@
   function PRich(runs, opts = {}) {
     const { Paragraph } = window.docx;
     return new Paragraph({
-      spacing: { after: opts.after ?? 50, before: opts.before ?? 0, line: opts.line ?? 260 },
+      spacing: { after: opts.after ?? SP.corpo, before: opts.before ?? 0, line: opts.line ?? SP.linha },
       alignment: opts.alignment,
       children: runs,
     });
@@ -116,7 +128,7 @@
   function bullet(texto, opts = {}) {
     const { Paragraph, TextRun } = window.docx;
     return new Paragraph({
-      spacing: { after: 40, line: 250 },
+      spacing: { after: 16, line: SP.linha },
       indent: { left: 360, hanging: 200 },
       children: [
         new TextRun({ text: "•  ", color: COR.primaria, bold: true, size: 22, font: FONTE }),
@@ -128,7 +140,7 @@
   function bulletRich(label, restoTexto) {
     const { Paragraph, TextRun } = window.docx;
     return new Paragraph({
-      spacing: { after: 50, line: 250 },
+      spacing: { after: 16, line: SP.linha },
       indent: { left: 360, hanging: 200 },
       children: [
         new TextRun({ text: "•  ", color: COR.primaria, bold: true, size: 22, font: FONTE }),
@@ -159,7 +171,7 @@
     if (logoBuffer) {
       children.push(new Paragraph({
         alignment: AlignmentType.RIGHT,
-        spacing: { before: 0, after: 120 },
+        spacing: { before: 0, after: 60 },
         children: [new ImageRun({
           data: logoBuffer,
           transformation: { width: 150, height: 59 },
@@ -168,7 +180,7 @@
     } else {
       children.push(new Paragraph({
         alignment: AlignmentType.RIGHT,
-        spacing: { before: 0, after: 120 },
+        spacing: { before: 0, after: 60 },
         children: [new TextRun({ text: "FLYING studio", bold: true, size: 32, color: COR.primaria, font: FONTE })],
       }));
     }
@@ -188,20 +200,20 @@
 
     // Linha fina lavanda
     const linha = new Paragraph({
-      spacing: { before: 80, after: 100 },
+      spacing: { before: 40, after: 50 },
       border: { top: { color: COR.primaria, space: 1, style: BorderStyle.SINGLE, size: 10 } },
       children: [new TextRun({ text: "" })],
     });
 
     const site = new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { before: 0, after: 50 },
+      spacing: { before: 0, after: 24 },
       children: [new TextRun({ text: "www.flyingstudio.com.br", size: 24, color: COR.primaria, font: FONTE, bold: true })],
     });
 
     const endereco = new Paragraph({
       alignment: AlignmentType.CENTER,
-      spacing: { after: 80 },
+      spacing: { after: 40 },
       children: [new TextRun({
         text: "Av. Eng. Luís Carlos Berrini, 936, 7º andar  ·  Novo Brooklin, São Paulo  ·  Telefone: (11) 2351-4138",
         size: 20, color: COR.textoSoft, font: FONTE,
@@ -224,7 +236,7 @@
         width: { size: opts.width || 30, type: WidthType.PERCENTAGE },
         shading: opts.shading ? { type: ShadingType.CLEAR, color: "auto", fill: opts.shading } : undefined,
         verticalAlign: "center",
-        margins: { top: 70, bottom: 70, left: 140, right: 140 },
+        margins: { top: 40, bottom: 40, left: 120, right: 120 },
         borders: {
           top: opts.borderTop ?? borderSoft,
           bottom: opts.borderBottom ?? borderSoft,
@@ -293,55 +305,19 @@
     });
   }
 
-  // ---------- caixa de "investimento total" (capa) ----------
+  /** Capa: cliente / projeto / contato em texto simples (sem caixa roxa). */
+  function paragrafosCapaIdentificacao(cliente) {
+    const out = [];
+    const emp = (cliente.empresa || "CLIENTE").toUpperCase();
+    const ref = (cliente.ref || "PROJETO").toUpperCase();
+    const contato = (cliente.contato || "").trim();
 
-  function caixaResumoCapa({ cliente }) {
-    const { Paragraph, Table, TableRow, TableCell, TextRun, WidthType, AlignmentType, ShadingType, BorderStyle } = window.docx;
-    const borderHidden = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
-
-    function row(label, valor, opts = {}) {
-      return new TableRow({
-        children: [
-          new TableCell({
-            width: { size: 35, type: WidthType.PERCENTAGE },
-            shading: { type: ShadingType.CLEAR, color: "auto", fill: COR.primaria },
-            margins: { top: 80, bottom: 80, left: 180, right: 100 },
-            borders: { top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden },
-            children: [new Paragraph({
-              children: [new TextRun({ text: label, bold: true, size: 18, color: COR.branco, font: FONTE })],
-            })],
-          }),
-          new TableCell({
-            width: { size: 65, type: WidthType.PERCENTAGE },
-            shading: { type: ShadingType.CLEAR, color: "auto", fill: opts.destaque ? COR.primariaDark : COR.primaria },
-            margins: { top: 80, bottom: 80, left: 100, right: 180 },
-            borders: { top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden },
-            children: [new Paragraph({
-              alignment: AlignmentType.RIGHT,
-              children: [new TextRun({
-                text: valor,
-                bold: true,
-                size: opts.destaque ? 32 : 22,
-                color: opts.destaque ? COR.acento : COR.branco,
-                font: FONTE,
-              })],
-            })],
-          }),
-        ],
-      });
+    out.push(P(emp, { bold: true, size: 44, color: COR.texto, after: SP.subtitulo }));
+    out.push(P(ref, { bold: true, size: 32, color: COR.primaria, after: SP.subtitulo }));
+    if (contato && contato !== "—") {
+      out.push(P(`A/C: ${contato}`, { size: 20, color: COR.textoSoft, after: SP.entreBlocos }));
     }
-
-    const linhas = [
-      row("CLIENTE", cliente.empresa.toUpperCase()),
-      row("PROJETO", cliente.ref.toUpperCase()),
-      row("AOS CUIDADOS DE", cliente.contato.toUpperCase()),
-    ];
-
-    return new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: linhas,
-      borders: { top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden, insideHorizontal: { style: BorderStyle.SINGLE, size: 8, color: COR.primariaDark }, insideVertical: borderHidden },
-    });
+    return out.filter(Boolean);
   }
 
   // ---------- DOCUMENTO PRINCIPAL ----------
@@ -359,7 +335,7 @@
         width: { size: opts.width || 30, type: WidthType.PERCENTAGE },
         shading: opts.shading ? { type: ShadingType.CLEAR, color: "auto", fill: opts.shading } : undefined,
         verticalAlign: "center",
-        margins: { top: 70, bottom: 70, left: 140, right: 140 },
+        margins: { top: 40, bottom: 40, left: 120, right: 120 },
         borders: {
           top: opts.borderTop ?? borderSoft,
           bottom: opts.borderBottom ?? borderSoft,
@@ -382,7 +358,7 @@
         new TableCell({
           width: { size: 100, type: WidthType.PERCENTAGE },
           shading: { type: ShadingType.CLEAR, color: "auto", fill: "EFEBFF" }, // roxo bem claro
-          margins: { top: 130, bottom: 130, left: 200, right: 200 },
+          margins: { top: 50, bottom: 50, left: 120, right: 120 },
           borders: {
             top: { style: BorderStyle.SINGLE, size: 8, color: COR.primaria },
             bottom: { style: BorderStyle.SINGLE, size: 8, color: COR.primaria },
@@ -433,7 +409,7 @@
           new TableCell({
             width: { size: 82, type: WidthType.PERCENTAGE },
             shading: { type: ShadingType.CLEAR, color: "auto", fill: COR.primariaDark },
-            margins: { top: 70, bottom: 70, left: 140, right: 140 },
+            margins: { top: 40, bottom: 40, left: 120, right: 120 },
             borders: { top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden },
             children: [new Paragraph({
               children: [
@@ -478,50 +454,44 @@
     const children = [];
 
     // ===== CAPA =====
-    children.push(P("PROPOSTA COMERCIAL", { bold: true, size: 56, color: COR.primaria, before: 400, after: 40 }));
-    children.push(P("Imagens, Filmes e Tecnologias 3D", { size: 26, color: COR.textoSoft, after: 120 }));
-    children.push(P(dataExtenso(data).toUpperCase(), { size: 18, color: COR.textoSoft, after: 280 }));
+    children.push(P("PROPOSTA COMERCIAL", { bold: true, size: 52, color: COR.primaria, before: 0, after: SP.subtitulo }));
+    children.push(P("Imagens, Filmes e Tecnologias 3D", { size: 24, color: COR.textoSoft, after: SP.subtitulo }));
+    children.push(P(dataExtenso(data).toUpperCase(), { size: 18, color: COR.textoSoft, after: SP.entreBlocos }));
+    paragrafosCapaIdentificacao(cliente).forEach((p) => children.push(p));
 
-    children.push(caixaResumoCapa({ cliente }));
-    children.push(P("", { after: 120 }));
-
-    // Quebra de página
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
-    // ===== PÁGINA 2: APRESENTAÇÃO =====
+    // ===== APRESENTAÇÃO =====
     children.push(P("01.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
-    children.push(P("APRESENTAÇÃO", { bold: true, size: 36, color: COR.texto, after: 160 }));
+    children.push(P("APRESENTAÇÃO", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
 
     children.push(P(
       "A Flying Studio presta serviços de computação gráfica e tecnologias que se aplicam aos lançamentos imobiliários e remanescentes. Em nosso atendimento diário, desenvolvemos laços com projeto e auxiliamos em layout, estudos de projetos e fachadas, de decoração e paisagismo de acordo com cada necessidade.",
-      { color: COR.textoSoft, after: 200 }
+      { color: COR.textoSoft, after: SP.corpo }
     ));
     children.push(P(
       "Para projetos de arquitetura, decoração e paisagismo, consulte a NID STUDIO.",
-      { color: COR.textoSoft, italics: true, after: 320 }
+      { color: COR.textoSoft, italics: true, after: SP.entreSecoes }
     ));
 
     children.push(P("02.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
-    children.push(P("ITENS A SEREM DESENVOLVIDOS", { bold: true, size: 36, color: COR.texto, after: 200 }));
+    children.push(P("ITENS A SEREM DESENVOLVIDOS", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
 
     let secaoNum = 0;
     if (orc.externas.qtd) {
       secaoNum++;
-      children.push(P("ILUSTRAÇÕES EXTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: 80, before: 100 }));
+      children.push(P("ILUSTRAÇÕES EXTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: SP.subtitulo, before: SP.entreBlocos }));
       children.push(tabelaCategoria(`2.${secaoNum}`, orc.externas, mostrarPrecos));
-      children.push(P("", { after: 100 }));
     }
     if (orc.internas.qtd) {
       secaoNum++;
-      children.push(P("ILUSTRAÇÕES INTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: 80, before: 100 }));
+      children.push(P("ILUSTRAÇÕES INTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: SP.subtitulo, before: SP.entreBlocos }));
       children.push(tabelaCategoria(`2.${secaoNum}`, orc.internas, mostrarPrecos));
-      children.push(P("", { after: 100 }));
     }
     if (orc.plantas.qtd) {
       secaoNum++;
-      children.push(P("PLANTAS HUMANIZADAS", { bold: true, size: 22, color: COR.primariaDark, after: 80, before: 100 }));
+      children.push(P("PLANTAS HUMANIZADAS", { bold: true, size: 22, color: COR.primariaDark, after: SP.subtitulo, before: SP.entreBlocos }));
       children.push(tabelaCategoria(`2.${secaoNum}`, orc.plantas, mostrarPrecos));
-      children.push(P("", { after: 100 }));
     }
 
     // ====== EXTRAS (Tour Virtual / Filmes / Apps / Maquete / Drone / Estudo Fachada) ======
@@ -540,7 +510,6 @@
         for (const sub of grupo.subsecoes) {
           secaoNum++;
           children.push(tabelaExtraSubsecao(`2.${secaoNum}`, sub));
-          children.push(P("", { after: 80 }));
         }
       }
     }
@@ -559,7 +528,7 @@
     if (totaisRuns.length) totaisRuns.push(R("    ·    ", { color: COR.textoSoft }));
     totaisRuns.push(R("Valor bruto: ", { color: COR.textoSoft }));
     totaisRuns.push(R(brl(subtotal), { bold: true }));
-    children.push(PRich(totaisRuns, { before: 120, after: 40 }));
+    children.push(PRich(totaisRuns, { before: SP.entreBlocos, after: SP.corpo }));
 
     if (orc.desconto_pct > 0) {
       const rotulo = descontoLabel || `${orc.desconto_pct}% de Desconto`;
@@ -570,35 +539,30 @@
           R("    ·    Valor do desconto: ", { color: COR.textoSoft }),
           R("-" + brl(descontoValor), { bold: true, color: COR.primariaDark }),
         ],
-        { after: 40 }
+        { after: SP.corpo }
       ));
     }
-
-    children.push(P("", { after: 60 }));
 
     children.push(PRich(
       [R("INVESTIMENTO TOTAL  ", { bold: true, size: 26, color: COR.primaria }),
        R(brl(valorFinal), { bold: true, size: 36, color: COR.primariaDark })],
-      { alignment: AlignmentType.LEFT, after: 40 }
+      { alignment: AlignmentType.LEFT, before: SP.entreBlocos, after: SP.corpo }
     ));
-    children.push(P(`(${extenso(valorFinal)})`, { italics: true, color: COR.textoSoft, after: 240 }));
+    children.push(P(`(${extenso(valorFinal)})`, { italics: true, color: COR.textoSoft, after: SP.entreSecoes }));
 
-    // Extras
     if (extras && extras.length) {
-      children.push(P("EXTRAS / FILMES", { bold: true, size: 22, color: COR.primariaDark, after: 120, before: 200 }));
+      children.push(P("EXTRAS / FILMES", { bold: true, size: 22, color: COR.primariaDark, after: SP.subtitulo, before: SP.entreBlocos }));
       for (const ex of extras) {
         const cortesia = ex.cortesia ? " (CORTESIA)" : "";
         const preco = ex.cortesia ? "" : ` — ${brl(ex.preco)}`;
         children.push(bullet(`${ex.descricao}${preco}${cortesia}`));
       }
-      children.push(P("", { after: 200 }));
     }
 
-    // ===== PÁGINA 3: FORMA DE PAGAMENTO + PRAZOS =====
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
     children.push(P("03.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
-    children.push(P("FORMA DE PAGAMENTO", { bold: true, size: 36, color: COR.texto, after: 240 }));
+    children.push(P("FORMA DE PAGAMENTO", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
 
     const fp = formaPagamento || [
       { percentual: 50, marco: "Na aprovação desta Proposta" },
@@ -609,32 +573,27 @@
       const valorParc = valorFinal * (parc.percentual / 100);
       children.push(bulletRich(`${parc.percentual}%  (${brl(valorParc)})`, parc.marco));
     }
-    children.push(P("", { after: 400 }));
-
-    children.push(P("04.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
-    children.push(P("PRAZOS DE ENTREGA", { bold: true, size: 36, color: COR.texto, after: 240 }));
+    children.push(P("04.", { bold: true, size: 18, color: COR.primaria, before: SP.entreSecoes, after: 0 }));
+    children.push(P("PRAZOS DE ENTREGA", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
 
     const pr = prazos || { shades: "20 (Vinte) dias", primeiro_tiro: "15 (Quinze) dias após a aprovação dos Shades", revisoes: "10 (Dez) dias para contemplar e enviar novos tiros" };
     children.push(bulletRich("Shades", pr.shades));
     children.push(bulletRich("1º Tiro de Apresentação", pr.primeiro_tiro));
     children.push(bulletRich("Revisões", pr.revisoes));
     children.push(P("Os prazos passam a contar após o recebimento de todos os projetos, informações e aprovações de etapas para o desenvolvimento de cada item. Não iniciamos os trabalhos sem o DWG e as aprovações necessárias desta proposta.",
-      { italics: true, size: 18, color: COR.textoSoft, before: 160, after: 400 }));
+      { italics: true, size: 18, color: COR.textoSoft, before: SP.entreBlocos, after: SP.entreSecoes }));
 
-    // ===== PÁGINA 4: SOLICITAÇÕES DE PROJETO =====
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
     children.push(P("05.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
-    children.push(P("MATERIAIS NECESSÁRIOS", { bold: true, size: 36, color: COR.texto, after: 240 }));
+    children.push(P("MATERIAIS NECESSÁRIOS", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
 
     children.push(bulletRich("Arquitetura", "Plantas · Elevação da Fachada · Estudo de Cores da Fachada · Cortes."));
     children.push(bulletRich("Paisagismo", "Implantação · Detalhamentos · Especificação de Revestimentos · Estudo de Vegetação com Especificação de Espécies · Referências do Mobiliário."));
     children.push(bulletRich("Decoração", "Plantas com Layout · Desenhos de Pisos · Elevações de Paredes · Especificações de Materiais · Projeto de Forro e Iluminação · Descrição ou book de mobiliários."));
-    children.push(P("", { after: 400 }));
 
-    // ===== CONSIDERAÇÕES =====
-    children.push(P("06.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
-    children.push(P("CONSIDERAÇÕES", { bold: true, size: 36, color: COR.texto, after: 240 }));
+    children.push(P("06.", { bold: true, size: 18, color: COR.primaria, before: SP.entreSecoes, after: 0 }));
+    children.push(P("CONSIDERAÇÕES", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
 
     const consideracoes = [
       ["Etapas e Tiros de Aprovação", "Esta proposta contempla o envio inicial do tiro de Shade, seguido do tiro de apresentação denominado \u201CR00\u201D. Estão inclusas no escopo 03 (três) rodadas de revisões, denominadas \u201CR01\u201D, \u201CR02\u201D e \u201CR03\u201D, culminando na entrega final denominada \u201CHR\u201D (High Resolution)."],
@@ -648,11 +607,9 @@
       ["Direitos de Uso", "A Contratada cede à Contratante os direitos de uso das imagens produzidas para uso promocional em todo o seu material publicitário, única e exclusivamente vinculadas ao empreendimento contratado, não havendo débitos/atrasos financeiros."],
     ];
     for (const [titulo, texto] of consideracoes) children.push(bulletRich(titulo, texto));
-    children.push(P("", { after: 400 }));
 
-    // ===== ENTREGA FINAL =====
-    children.push(P("07.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
-    children.push(P("ENTREGA FINAL", { bold: true, size: 36, color: COR.texto, after: 240 }));
+    children.push(P("07.", { bold: true, size: 18, color: COR.primaria, before: SP.entreSecoes, after: 0 }));
+    children.push(P("ENTREGA FINAL", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
 
     const entregas = [
       ["Formato e Envio", "Todo o material finalizado será enviado digitalmente via servidor FTP, link seguro para download ou cadastrados no Frame.io/Adobe."],
@@ -662,13 +619,11 @@
       ["Animações / Filmes", "Os passeios virtuais e filmes integrados serão entregues em Full HD a 30 FPS, ou propostas via RINNO FILMS, consultar."],
     ];
     for (const [titulo, texto] of entregas) children.push(bulletRich(titulo, texto));
-    children.push(P("", { after: 600 }));
 
-    // ===== ASSINATURA =====
-    children.push(P(`São Paulo, ${dataExtenso(data)}.`, { color: COR.textoSoft, after: 600 }));
-    children.push(P("De acordo,", { after: 800 }));
-    children.push(P("____________________________________________________", { color: COR.textoSoft, after: 60 }));
-    children.push(P(cliente.empresa.toUpperCase(), { bold: true, size: 24, color: COR.primaria, after: 60 }));
+    children.push(P(`São Paulo, ${dataExtenso(data)}.`, { color: COR.textoSoft, before: SP.entreSecoes, after: SP.entreBlocos }));
+    children.push(P("De acordo,", { after: SP.entreBlocos }));
+    children.push(P("____________________________________________________", { color: COR.textoSoft, after: SP.subtitulo }));
+    children.push(P(cliente.empresa.toUpperCase(), { bold: true, size: 24, color: COR.primaria, after: SP.corpo }));
     children.push(P(`A/C: ${cliente.contato}`, { color: COR.textoSoft, size: 18 }));
 
     // ===== DOCUMENTO =====
@@ -678,13 +633,16 @@
       description: "Proposta comercial Flying Studio",
       styles: {
         default: {
-          document: { run: { font: FONTE, size: 22, color: COR.texto } },
+          document: {
+            run: { font: FONTE, size: 22, color: COR.texto },
+            paragraph: { spacing: { after: SP.corpo, line: SP.linha } },
+          },
         },
       },
       sections: [{
         properties: {
           page: {
-            margin: { top: 1400, bottom: 1100, left: 1418, right: 1418, header: 1100, footer: 950 },
+            margin: { top: 1080, bottom: 900, left: 1276, right: 1276, header: 820, footer: 720 },
           },
         },
         headers: { default: montarHeader(logoBuffer) },
