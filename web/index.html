@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Flying Studio · Propostas IA</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span class="brand-name">Flying Studio</span>
+      <span class="brand-sub">· Propostas IA</span>
+    </div>
+    <nav class="topnav">
+      <a id="link-novo">Nova proposta</a>
+      <span class="ai-badge offline">IA: parser local (offline)</span>
+    </nav>
+  </header>
+
+  <main class="main">
+
+    <!-- ============= TELA 1: FORM ============= -->
+    <section id="tela-form">
+      <div class="hero">
+        <h1>Descreva o projeto. <span class="grad">A IA escreve a proposta.</span></h1>
+        <p class="lead">
+          Cliente, lista de imagens (externas, internas, plantas) e desconto.
+          O sistema compara <strong>preço de planilha</strong> vs <strong>histórico do cliente</strong>
+          e gera o <code>.docx</code> no formato padrão Flying Studio.
+        </p>
+      </div>
+
+      <div id="erro" class="alerta hidden"></div>
+
+      <form class="form-card" id="form-proposta">
+        <label class="rotulo" for="descricao">Descrição do projeto</label>
+        <textarea id="descricao" rows="22" spellcheck="false">Cliente: GALLI
+Ref: Said Aiach
+A/C: Daniel Pucci
+Desconto: 12%
+Use o histórico do cliente.
+
+Externas:
+- Fachada vista da calçada
+- Jardim
+- Quadra de areia
+- Piscina
+- Dec c Jacuzzi
+- Playground
+- Gourmet/churrasqueira
+- Terraço rooftop
+- Fachada Bird's View
+
+Internas:
+- Bicicletário
+- Academia
+- Sauna
+- Brinquedoteca
+- Salão de Festas
+
+Plantas:
+- Implantação Térreo
+- Implantação Mezanino lazer
+- Implantação rooftop
+- Apartamento Tipo</textarea>
+
+        <div class="opcoes">
+          <fieldset class="estrategia">
+            <legend>Estratégia de preço</legend>
+            <label><input type="radio" name="estrategia" value="auto" checked> Auto (histórico se existir)</label>
+            <label><input type="radio" name="estrategia" value="planilha"> Planilha</label>
+            <label><input type="radio" name="estrategia" value="historico"> Histórico do cliente</label>
+          </fieldset>
+          <button type="submit" class="cta" id="btn-gerar">Gerar proposta →</button>
+        </div>
+
+        <details class="dica">
+          <summary>Como descrever (clique para ver dicas)</summary>
+          <ul>
+            <li>Cabeçalhos reconhecidos: <code>Cliente:</code>, <code>Ref:</code>, <code>A/C:</code>, <code>Desconto:</code>.</li>
+            <li>Listas: <code>Externas:</code> seguidas de itens em linha (com ou sem <code>-</code>) ou separados por vírgula.</li>
+            <li>Idem para <code>Internas:</code> e <code>Plantas:</code>.</li>
+            <li>Para forçar a estratégia direto no texto: escreva <em>"use preço de planilha"</em> ou <em>"siga o histórico do cliente"</em>.</li>
+            <li>Para mostrar preço por item (estilo BRNPAR): escreva <em>"preços individuais por imagem"</em>.</li>
+          </ul>
+        </details>
+      </form>
+    </section>
+
+    <!-- ============= TELA 2: RESULTADO ============= -->
+    <section id="tela-resultado" class="hidden">
+      <div class="resultado-topo">
+        <div>
+          <p class="bread"><a id="voltar">← Nova proposta</a></p>
+          <h1 id="r-titulo"></h1>
+          <p class="lead" id="r-meta"></p>
+        </div>
+        <button class="cta-download" id="btn-download">⬇ Baixar proposta</button>
+      </div>
+
+      <div id="r-avisos"></div>
+
+      <section class="grid-comparativo">
+        <article id="cartao-plan" class="cartao">
+          <header>
+            <span class="tag">Levantamento 1</span>
+            <h2>Preço de Planilha</h2>
+          </header>
+          <ul class="resumo" id="resumo-plan"></ul>
+          <p class="subtotal" id="subtotal-plan"></p>
+          <p class="desc" id="desc-plan"></p>
+          <p class="total" id="total-plan"></p>
+        </article>
+        <article id="cartao-hist" class="cartao">
+          <header>
+            <span class="tag">Levantamento 2</span>
+            <h2>Histórico do Cliente</h2>
+          </header>
+          <div id="hist-conteudo"></div>
+        </article>
+      </section>
+
+      <section class="detalhe">
+        <h2>Itens da proposta gerada <span class="muted" id="r-estrategia-rotulo"></span></h2>
+        <div id="r-tabelas"></div>
+      </section>
+
+      <section class="texto-original">
+        <details>
+          <summary>Texto original que você descreveu</summary>
+          <pre id="r-texto-original"></pre>
+        </details>
+      </section>
+
+      <div class="acoes-finais">
+        <button class="cta-download grande" id="btn-download-2">⬇ Baixar proposta</button>
+        <a class="link-secundario" id="voltar-2">+ Nova proposta</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="rodape">
+    Flying Studio · Geração automática de propostas comerciais · 100% no seu navegador
+  </footer>
+
+  <!-- Biblioteca docx.js (geração de Word) via CDN -->
+  <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+
+  <!-- Dados + lógica -->
+  <script src="data.js"></script>
+  <script src="parser.js"></script>
+  <script src="orcamento.js"></script>
+  <script src="docx_gen.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

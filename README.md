@@ -3,14 +3,31 @@
 Automação para gerar **propostas comerciais Flying Studio** em formato Word (.docx) idênticas
 ao padrão usado pela equipe.
 
-Tem duas formas de usar:
+Tem **três formas de usar**:
 
-- **Interface web (IA)** — `python3 app.py` → abre em `http://localhost:5000`. Você
-  descreve o projeto em texto livre num campo grande (cliente, lista de imagens,
-  desconto, estratégia) e a aplicação gera o `.docx` automaticamente, com
-  comparação dos dois levantamentos lado a lado.
+- **🌐 Versão web 100% no navegador** (`web/index.html`) — **NÃO precisa de Python**.
+  Você abre o `index.html` direto no browser (ou hospeda no GitHub Pages) e o
+  app gera o `.docx` localmente, sem servidor. Recomendado para uso do dia a dia.
+- **Interface web Flask** — `python3 app.py` → abre em `http://localhost:5000`.
+  Mesma UI, mas com Python rodando localmente.
 - **CLI** — `python3 gerador.py exemplos/exemplo_galli.yaml` para fluxo automatizado
   com YAML.
+
+## 🌐 Versão estática (sem Python)
+
+A pasta `web/` contém uma aplicação 100% client-side. Para usar:
+
+**Opção 1 — Abrir local:**
+1. Baixe a pasta `web/` (basta `index.html`, `app.js`, `data.js`, `parser.js`, `orcamento.js`, `docx_gen.js` e `styles.css`).
+2. Dê duplo clique em `web/index.html` — abre em qualquer navegador.
+3. Descreva o projeto, clique em **Gerar proposta**, depois em **Baixar**.
+
+**Opção 2 — Hospedar no GitHub Pages (grátis, com link público):**
+1. Settings → Pages → Source: `Deploy from a branch`
+2. Branch: `main` · Folder: `/web` (ou copie `web/` para a raiz)
+3. Acesse `https://seuusuario.github.io/Flying-studio-proposta/`
+
+O `.docx` é gerado direto no navegador via a biblioteca [docx](https://docx.js.org/) carregada por CDN.
 
 A lógica de preço sempre faz **dois levantamentos lado a lado**:
 
@@ -25,7 +42,16 @@ A quantidade de imagens é variável a cada projeto — você só precisa listar
 ## Estrutura
 
 ```
-app.py             # Servidor web Flask com UI da IA
+web/               # ⭐ Versão 100% navegador (sem Python)
+  index.html       #   abra direto no browser
+  app.js           #   controlador da UI
+  parser.js        #   parser regex
+  orcamento.js     #   cálculo dos 2 levantamentos
+  docx_gen.js      #   gera .docx via docx.js
+  data.js          #   tabela de preços + histórico embutidos
+  styles.css       #   estilos
+
+app.py             # Servidor web Flask com UI da IA (mesma UI, com Python)
 gerador.py         # CLI (alternativa via YAML)
 flying/
   ai_parser.py     # converte texto livre em estrutura (OpenAI ou regex local)
@@ -33,13 +59,14 @@ flying/
   historico.py     # acesso ao histórico de cada cliente
   orcamento.py     # faz os 2 levantamentos
   docx_writer.py   # gera o .docx no formato Flying Studio
-templates/         # HTML da UI web (index + resultado)
-static/            # CSS da UI
+templates/         # HTML da UI Flask
+static/            # CSS da UI Flask
 data/
   precos_planilha.json     # tabela base (você pode editar para ajustar valores)
   historico_clientes.json  # histórico extraído dos PDFs reais (5 clientes)
 exemplos/          # exemplos de YAML para o CLI
-saida/             # DOCX gerados
+saida/             # DOCX gerados pelo CLI/Flask
+docs/screenshots/  # screenshots de demonstração
 ```
 
 ## Instalação
