@@ -1,0 +1,951 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assistente de Propostas Flying Studio</title>
+  <style>
+    :root {
+      --bg: #f3efe7;
+      --card: #fffdf8;
+      --ink: #1f2933;
+      --muted: #6b7280;
+      --line: #ded6c8;
+      --accent: #111827;
+      --soft: #f8f3ea;
+      --ok: #0f766e;
+      --warn: #92400e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at top left, rgba(255, 255, 255, .9), transparent 36rem),
+        var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 28px auto 56px;
+    }
+
+    .hero,
+    .card {
+      background: rgba(255, 253, 248, .94);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: 0 18px 45px rgba(31, 41, 51, .09);
+      padding: 24px;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 22px;
+      align-items: stretch;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0 0 12px;
+      line-height: 1.15;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 4rem);
+      letter-spacing: -0.05em;
+    }
+
+    p {
+      margin: 0 0 14px;
+      color: var(--muted);
+    }
+
+    label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    textarea,
+    input,
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: #fff;
+      color: var(--ink);
+      padding: 12px 14px;
+      font: 15px/1.45 Arial, Helvetica, sans-serif;
+    }
+
+    textarea {
+      min-height: 390px;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
+
+    button,
+    .button {
+      border: 0;
+      border-radius: 999px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      gap: 8px;
+      padding: 12px 18px;
+      text-decoration: none;
+    }
+
+    button.secondary,
+    .button.secondary {
+      background: #fff;
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: .9fr 1.1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .mini-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .metric {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+    }
+
+    .metric strong {
+      display: block;
+      font-size: 1.3rem;
+      margin-top: 4px;
+    }
+
+    .notice {
+      border-radius: 14px;
+      border: 1px solid #99f6e4;
+      background: #ecfdf5;
+      color: var(--ok);
+      padding: 12px 14px;
+      margin-top: 14px;
+    }
+
+    .notice.warn {
+      border-color: #fde68a;
+      background: #fffbeb;
+      color: var(--warn);
+    }
+
+    .proposal-preview {
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 28px;
+      min-height: 620px;
+      color: #111;
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .7);
+    }
+
+    .proposal-preview h1 {
+      font-size: 1.6rem;
+      letter-spacing: 0;
+      text-align: center;
+      margin-bottom: 18px;
+    }
+
+    .proposal-preview h2 {
+      border-top: 1px solid #ddd;
+      padding-top: 12px;
+      font-size: 1rem;
+      margin-top: 18px;
+    }
+
+    .proposal-preview h3 {
+      font-size: .95rem;
+      margin-top: 16px;
+    }
+
+    .proposal-preview table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0 14px;
+      font-size: .92rem;
+    }
+
+    .proposal-preview th,
+    .proposal-preview td {
+      border: 1px solid #d1d5db;
+      padding: 7px;
+      vertical-align: top;
+    }
+
+    .proposal-preview th {
+      background: #f3f4f6;
+    }
+
+    .right {
+      text-align: right;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      background: #111827;
+      color: #f9fafb;
+      border-radius: 14px;
+      padding: 14px;
+      max-height: 520px;
+      overflow: auto;
+      font-size: 13px;
+    }
+
+    .pill {
+      display: inline-block;
+      background: #111827;
+      color: #fff;
+      border-radius: 999px;
+      padding: 4px 9px;
+      font-size: 12px;
+      font-weight: 800;
+      margin-right: 6px;
+    }
+
+    .small {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 900px) {
+      .hero,
+      .grid,
+      .mini-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body {
+        background: #fff;
+      }
+
+      .hero,
+      .card:not(.printable) {
+        display: none;
+      }
+
+      main {
+        width: auto;
+        margin: 0;
+      }
+
+      .proposal-preview {
+        border: 0;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <div>
+        <span class="pill">Sem Python</span>
+        <span class="pill">Abre no navegador</span>
+        <h1>Assistente de Propostas Flying Studio</h1>
+        <p>Descreva cliente, referencia, preco a seguir e imagens. A tela interpreta o briefing, calcula a proposta e gera uma previa pronta para baixar em Word.</p>
+        <p class="small">Dica: use "Preco: planilha" ou "Preco: seguir ultimo projeto do cliente". Separe as imagens em blocos Externas, Internas e Plantas.</p>
+        <div class="actions">
+          <button id="generateButton" type="button">Gerar proposta atualizada</button>
+          <button id="exampleButton" type="button" class="secondary">Voltar exemplo</button>
+          <button id="clearButton" type="button" class="secondary">Limpar</button>
+        </div>
+      </div>
+      <div>
+        <label for="brief">Briefing da proposta</label>
+        <textarea id="brief" spellcheck="false"></textarea>
+      </div>
+    </section>
+
+    <section id="status"></section>
+
+    <section class="grid">
+      <div class="card">
+        <h2>Dados entendidos</h2>
+        <p>Confira antes de baixar. Se algo nao estiver certo, ajuste o texto e clique em gerar novamente.</p>
+        <div id="metrics" class="mini-grid"></div>
+        <pre id="jsonPreview">{}</pre>
+        <div class="actions">
+          <button id="downloadDocButton" type="button">Baixar documento Word (.doc)</button>
+          <button id="downloadMdButton" type="button" class="secondary">Baixar Markdown</button>
+          <button id="copyButton" type="button" class="secondary">Copiar texto</button>
+        </div>
+      </div>
+      <div class="card printable">
+        <h2>Previa visual da proposta</h2>
+        <div id="proposalPreview" class="proposal-preview"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const PRICE_TABLE = {
+      fotomontagem_drone_flying: {
+        group: "externas",
+        label: "Fotomontagem / COM FotoDrone por conta da Flying",
+        amount: 4500
+      },
+      fachada_fotomontagem_voo: {
+        group: "externas",
+        label: "Perspectivas Fachadas / Fotomontagem / Voos",
+        amount: 3000
+      },
+      externa_diversa: {
+        group: "externas",
+        label: "Perspectivas Externas Diversas",
+        amount: 1900
+      },
+      interna_diversa: {
+        group: "internas",
+        label: "Perspectivas Internas Diversas",
+        amount: 1750
+      },
+      planta_pavimento: {
+        group: "plantas",
+        label: "Planta Humanizada Pavimentos",
+        amount: 3000
+      },
+      planta_tipo: {
+        group: "plantas",
+        label: "Plantas Humanizada Tipo",
+        amount: 1200
+      },
+      planta_isometrica_3d: {
+        group: "plantas",
+        label: "Plantas Tipo Isometrica / 3D",
+        amount: 1900
+      }
+    };
+
+    const GROUP_TITLES = {
+      externas: "ILUSTRACOES EXTERNAS",
+      internas: "ILUSTRACOES INTERNAS",
+      plantas: "PLANTAS HUMANIZADAS / PLANTAS BAIXAS"
+    };
+
+    const GROUP_PREFIXES = {
+      externas: "Perspectiva",
+      internas: "Perspectiva",
+      plantas: "Planta Humanizada"
+    };
+
+    const PROJECT_HISTORY = [
+      {
+        date: "2026-05-19",
+        client: "GALLI",
+        reference: "SAID AIACH",
+        groups: {
+          externas: { count: 9, total: 19300 },
+          internas: { count: 5, total: 8750 },
+          plantas: { count: 4, total: 10200 }
+        }
+      },
+      {
+        date: "2026-05-01",
+        client: "HABRAS",
+        reference: "ITAQUA JAPONES",
+        groups: {
+          externas: { count: 8, total: 18500 },
+          internas: { count: 12, total: 21000 },
+          plantas: { count: 8, total: 11400 }
+        }
+      },
+      {
+        date: "2026-05-01",
+        client: "BRNPAR",
+        reference: "NC AVARE",
+        groups: {
+          externas: { count: 5, total: 13000 },
+          internas: { count: 6, total: 10800 },
+          plantas: { count: 3, total: 5400 }
+        }
+      },
+      {
+        date: "2026-05-01",
+        client: "CASA VIVA",
+        reference: "PRESTES MAIA",
+        groups: {
+          externas: { count: 8, total: 15800 },
+          internas: { count: 8, total: 14000 },
+          plantas: { count: 5, total: 8300 }
+        }
+      }
+    ];
+
+    const DEFAULT_BRIEF = `Cliente: GALLI
+Referencia: SAID AIACH - NOVA ETAPA
+A/C: DANIEL PUCCI
+Preco: seguir ultimo projeto do cliente
+Desconto: 12%
+
+Externas:
+- Fachada vista da calcada
+- Jardim
+- Piscina
+- Gourmet/churrasqueira
+
+Internas:
+- Bicicletario
+- Academia
+- Salao de Festas
+
+Plantas:
+- Implantacao terreo
+- Implantacao rooftop
+- Apartamento Tipo`;
+
+    let currentResult = null;
+
+    function stripAccents(text) {
+      return String(text || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    }
+
+    function normalizeKey(text) {
+      return stripAccents(text).toUpperCase().replace(/\s+/g, " ").trim();
+    }
+
+    function money(value) {
+      return Number(value || 0).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+      });
+    }
+
+    function numberFrom(text) {
+      if (typeof text === "number") {
+        return text;
+      }
+      const cleaned = String(text || "0").replace("R$", "").replace(/\s/g, "");
+      if (cleaned.includes(",")) {
+        return Number(cleaned.replace(/\./g, "").replace(",", "."));
+      }
+      return Number(cleaned) || 0;
+    }
+
+    function slugify(text) {
+      return stripAccents(text).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "proposta";
+    }
+
+    function escapeHtml(text) {
+      return String(text || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function parseStrategy(value) {
+      const normalized = stripAccents(value).toLowerCase();
+      if (normalized.includes("cliente") || normalized.includes("ultimo projeto") || normalized.includes("historico")) {
+        return "cliente";
+      }
+      if (normalized.includes("planilha") || normalized.includes("tabela") || normalized.includes("padrao")) {
+        return "planilha";
+      }
+      return normalized.trim() || "planilha";
+    }
+
+    function parseDiscount(value) {
+      const match = String(value || "").match(/(\d+(?:[,.]\d+)?)/);
+      return match ? numberFrom(match[1]) : 0;
+    }
+
+    function groupFromLine(line) {
+      const normalized = stripAccents(line).toLowerCase().trim().replace(/\s+/g, " ");
+      const aliases = {
+        externas: ["imagens externas", "ilustracoes externas", "perspectivas externas", "externas", "externa"],
+        internas: ["imagens internas", "ilustracoes internas", "perspectivas internas", "internas", "interna"],
+        plantas: ["plantas humanizadas", "plantas baixas", "planta humanizada", "planta baixa", "plantas", "planta", "implantacoes", "implantacao"]
+      };
+
+      for (const [group, groupAliases] of Object.entries(aliases)) {
+        for (const alias of groupAliases) {
+          if (normalized === alias) {
+            return { group, remainder: "" };
+          }
+          if (normalized.startsWith(alias + ":")) {
+            return { group, remainder: line.split(":").slice(1).join(":").trim() };
+          }
+          if (normalized.startsWith(alias + " -")) {
+            return { group, remainder: line.split("-").slice(1).join("-").trim() };
+          }
+        }
+      }
+      return { group: null, remainder: line };
+    }
+
+    function cleanItem(line) {
+      return String(line || "")
+        .trim()
+        .replace(/^[-*•]\s*/, "")
+        .replace(/^\d+[\).\-\s]+/, "")
+        .replace(/\s+/g, " ")
+        .replace(/[;,]\s*$/, "")
+        .trim();
+    }
+
+    function splitItems(text) {
+      return cleanItem(text)
+        .split(/\s*(?:,|;|\n)\s*/)
+        .map(cleanItem)
+        .filter(Boolean);
+    }
+
+    function parseBrief(text) {
+      const proposal = {
+        cliente: "",
+        referencia: "",
+        aos_cuidados: "",
+        estrategia_preco: "planilha",
+        comparar_precos: true,
+        desconto_percentual: 0,
+        itens: { externas: [], internas: [], plantas: [] }
+      };
+      const warnings = [];
+      let currentGroup = null;
+
+      for (const rawLine of String(text || "").split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line) {
+          continue;
+        }
+
+        const fieldMatch = line.match(/^([^:=\-]+|A\/C)\s*[:=\-]\s*(.+)$/i);
+        if (fieldMatch) {
+          const key = normalizeKey(fieldMatch[1]);
+          const value = fieldMatch[2].trim();
+          if (["CLIENTE", "EMPRESA", "CONTRATANTE"].includes(key)) {
+            proposal.cliente = value;
+            currentGroup = null;
+            continue;
+          }
+          if (["REF", "REFERENCIA", "EMPREENDIMENTO", "PROJETO"].includes(key) || key.includes("REFERENCIA")) {
+            proposal.referencia = value;
+            currentGroup = null;
+            continue;
+          }
+          if (["A/C", "AC", "AOS CUIDADOS", "CONTATO", "RESPONSAVEL"].includes(key) || key.includes("CUIDADOS")) {
+            proposal.aos_cuidados = value;
+            currentGroup = null;
+            continue;
+          }
+          if (["PRECO", "CRITERIO DE PRECO", "ESTRATEGIA", "BASE DE PRECO"].includes(key) || key.includes("PRECO") || key.includes("ESTRATEGIA")) {
+            proposal.estrategia_preco = parseStrategy(value);
+            currentGroup = null;
+            continue;
+          }
+          if (["DESCONTO", "DESCONTO PERCENTUAL"].includes(key) || key.includes("DESCONTO")) {
+            proposal.desconto_percentual = parseDiscount(value);
+            currentGroup = null;
+            continue;
+          }
+        }
+
+        const groupInfo = groupFromLine(line);
+        if (groupInfo.group) {
+          currentGroup = groupInfo.group;
+          for (const item of splitItems(groupInfo.remainder)) {
+            proposal.itens[currentGroup].push(item);
+          }
+          continue;
+        }
+
+        if (currentGroup) {
+          for (const item of splitItems(line)) {
+            proposal.itens[currentGroup].push(item);
+          }
+          continue;
+        }
+
+        warnings.push("Linha nao classificada: " + line);
+      }
+
+      if (!proposal.cliente) {
+        warnings.push("Cliente nao identificado. Use uma linha como Cliente: NOME.");
+      }
+
+      if (!["planilha", "cliente"].includes(proposal.estrategia_preco)) {
+        warnings.push("Criterio de preco nao identificado. Usando planilha.");
+        proposal.estrategia_preco = "planilha";
+      }
+
+      const itemCount = Object.values(proposal.itens).reduce((sum, items) => sum + items.length, 0);
+      if (!itemCount) {
+        warnings.push("Nenhuma imagem identificada. Use blocos Externas, Internas e Plantas.");
+      }
+
+      return { proposal, warnings };
+    }
+
+    function inferPriceType(description, group) {
+      const text = stripAccents(description).toLowerCase();
+      if (group === "externas") {
+        if (text.includes("drone") && (text.includes("flying") || text.includes("conta da flying"))) {
+          return "fotomontagem_drone_flying";
+        }
+        if (["fachada", "fotomontagem", "voo", "bird"].some(token => text.includes(token))) {
+          return "fachada_fotomontagem_voo";
+        }
+        return "externa_diversa";
+      }
+      if (group === "internas") {
+        return "interna_diversa";
+      }
+      if (group === "plantas") {
+        if (text.includes("isometr") || text.includes("3d")) {
+          return "planta_isometrica_3d";
+        }
+        if (["implantacao", "pavimento", "terreo", "rooftop", "estacionamento", "bolotario", "subsolo", "mezanino"].some(token => text.includes(token))) {
+          return "planta_pavimento";
+        }
+        return "planta_tipo";
+      }
+      return "externa_diversa";
+    }
+
+    function findHistory(client) {
+      const key = normalizeKey(client);
+      const matches = PROJECT_HISTORY.filter(record => normalizeKey(record.client) === key);
+      if (!matches.length) {
+        return null;
+      }
+      const latest = matches.sort((a, b) => String(b.date).localeCompare(String(a.date)))[0];
+      const unitPrices = {};
+      for (const [group, data] of Object.entries(latest.groups)) {
+        unitPrices[group] = Math.round((data.total / data.count) * 100) / 100;
+      }
+      return { ...latest, unitPrices };
+    }
+
+    function itemDescription(description, group) {
+      const prefix = GROUP_PREFIXES[group];
+      if (stripAccents(description).toLowerCase().trim().startsWith(stripAccents(prefix).toLowerCase())) {
+        return description;
+      }
+      return prefix + " " + description;
+    }
+
+    function calculate(proposal, strategyOverride) {
+      const strategy = strategyOverride || proposal.estrategia_preco || "planilha";
+      const history = findHistory(proposal.cliente);
+      const warnings = [];
+      const groups = {};
+      let subtotal = 0;
+      let totalQuantity = 0;
+
+      for (const group of ["externas", "internas", "plantas"]) {
+        const items = [];
+        let groupTotal = 0;
+        for (const description of proposal.itens[group]) {
+          const priceType = inferPriceType(description, group);
+          let unitPrice = PRICE_TABLE[priceType].amount;
+          let source = "planilha";
+          if (strategy === "cliente" && history && history.unitPrices[group]) {
+            unitPrice = history.unitPrices[group];
+            source = "cliente: " + history.reference;
+          } else if (strategy === "cliente" && !history) {
+            warnings.push("Sem historico para " + proposal.cliente + "; " + GROUP_TITLES[group] + " usou preco da planilha.");
+          }
+          const total = Math.round(unitPrice * 100) / 100;
+          groupTotal += total;
+          items.push({
+            descricao: description,
+            descricao_proposta: itemDescription(description, group),
+            tipo: priceType,
+            label_preco: PRICE_TABLE[priceType].label,
+            valor_unitario: unitPrice,
+            valor_total: total,
+            fonte_preco: source
+          });
+        }
+        groupTotal = Math.round(groupTotal * 100) / 100;
+        groups[group] = {
+          title: GROUP_TITLES[group],
+          items,
+          quantity: items.length,
+          total: groupTotal
+        };
+        subtotal += groupTotal;
+        totalQuantity += items.length;
+      }
+
+      subtotal = Math.round(subtotal * 100) / 100;
+      const discountPercent = numberFrom(proposal.desconto_percentual);
+      const discountValue = Math.round((subtotal * discountPercent) / 100 * 100) / 100;
+      const grandTotal = Math.round((subtotal - discountValue) * 100) / 100;
+      return {
+        strategy,
+        history,
+        groups,
+        subtotal,
+        totalQuantity,
+        discountPercent,
+        discountValue,
+        grandTotal,
+        warnings: [...new Set(warnings)]
+      };
+    }
+
+    function todayPt() {
+      const months = ["janeiro", "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+      const today = new Date();
+      return "Sao Paulo, " + String(today.getDate()).padStart(2, "0") + " de " + months[today.getMonth()] + " de " + today.getFullYear() + ".";
+    }
+
+    function renderComparison(proposal, selectedStrategy) {
+      const sheet = calculate(proposal, "planilha");
+      const client = calculate(proposal, "cliente");
+      const historyLabel = client.history
+        ? "Ultimo projeto " + client.history.client + " - " + client.history.reference + " (" + client.history.date + ")"
+        : "Sem historico do cliente; fallback para planilha";
+      return `
+        <h2>Levantamento de preco</h2>
+        <table>
+          <thead><tr><th>Criterio</th><th>Base</th><th>Total sem desconto</th><th>Total final</th></tr></thead>
+          <tbody>
+            <tr><td>Planilha padrao</td><td>Tabela Flying Studio</td><td class="right">${money(sheet.subtotal)}</td><td class="right">${money(sheet.grandTotal)}</td></tr>
+            <tr><td>Media do cliente</td><td>${escapeHtml(historyLabel)}</td><td class="right">${money(client.subtotal)}</td><td class="right">${money(client.grandTotal)}</td></tr>
+          </tbody>
+        </table>
+        <p><strong>Criterio selecionado para esta proposta: ${escapeHtml(selectedStrategy)}.</strong></p>
+      `;
+    }
+
+    function renderProposalHtml(proposal, calculation) {
+      let sectionNumber = 1;
+      let groupsHtml = "";
+      for (const group of ["externas", "internas", "plantas"]) {
+        const groupData = calculation.groups[group];
+        if (!groupData.items.length) {
+          continue;
+        }
+        const label = "2." + sectionNumber;
+        const rows = groupData.items.map((item, index) => `
+          <tr>
+            <td>${label}.${index + 1}</td>
+            <td>${escapeHtml(item.descricao_proposta)}</td>
+            <td class="right">${money(item.valor_total)}</td>
+          </tr>
+        `).join("");
+        groupsHtml += `
+          <h3>${label} ${escapeHtml(groupData.title)}</h3>
+          <table>
+            <thead><tr><th>Itens</th><th>Descricao dos Servicos</th><th>Valor</th></tr></thead>
+            <tbody>${rows}</tbody>
+            <tfoot><tr><th colspan="2">${groupData.quantity} Valor Total</th><th class="right">${money(groupData.total)}</th></tr></tfoot>
+          </table>
+        `;
+        sectionNumber += 1;
+      }
+
+      const discountLine = calculation.discountPercent > 0
+        ? `<p>Valor Total do Projeto com ${calculation.discountPercent}% de Desconto = <strong>${money(calculation.grandTotal)}</strong></p>`
+        : "";
+      const attention = proposal.aos_cuidados ? `<p><strong>A/C: ${escapeHtml(proposal.aos_cuidados)}</strong></p>` : "";
+      const comparison = proposal.comparar_precos ? renderComparison(proposal, calculation.strategy) : "";
+
+      return `
+        <h1>PROPOSTA DE IMAGENS, FILMES E TECNOLOGIAS 3D</h1>
+        <p><strong>${escapeHtml(proposal.cliente)}${proposal.referencia ? " - REF: " + escapeHtml(proposal.referencia) : ""}</strong></p>
+        ${attention}
+
+        <h2>1 - APRESENTACAO FLYING STUDIO</h2>
+        <p>A Flying Studio presta servicos de computacao grafica e tecnologias que se aplicam aos lancamentos imobiliario e remanescentes. Em nosso atendimento diario, desenvolvemos lacos com projeto e auxiliamos em layout, estudos de projetos e fachadas, de decoracao e paisagismo de acordo com cada necessidade, consulte a NID STUDIO para projetos.</p>
+
+        ${comparison}
+
+        <h2>2 - ITENS A SEREM DESENVOLVIDOS / INVESTIMENTOS:</h2>
+        ${groupsHtml}
+
+        <p><strong>${calculation.totalQuantity} Valor Final de Imagens ${money(calculation.subtotal)}</strong></p>
+        <p>Valor Total do Projeto = ${money(calculation.subtotal)}</p>
+        ${discountLine}
+
+        <h2>INVESTIMENTO PARA O DESENVOLVIMENTOS DOS ITENS ACIMA DESCRITOS:</h2>
+        <p><strong>${money(calculation.grandTotal)}</strong></p>
+
+        <h2>FORMA DE PAGAMENTO:</h2>
+        <p>50% - Na aprovacao desta Proposta.<br>25% - Envio dos Shades<br>25% - Envio HR - Imagens finais</p>
+
+        <h2>3 - PRAZOS / SOLICITACOES / CONSIDERACOES / ENTREGAS</h2>
+        <p>Shades - 20 (Vinte) dias uteis<br>1o Tiro - 15 (Quinze) dias uteis apos a aprovacao dos Shades.<br>Revisoes - 10 (Dez) dias uteis para contemplar e enviar novos tiros.</p>
+        <p>OBS: Prazos passam a contar apos recebimento de todos os projetos, informacoes e aprovacoes de etapas para o desenvolvimento de cada item. Nao iniciamos os trabalhos sem recebermos o DWG e aprovacoes necessarias dessa proposta.</p>
+
+        <h3>SOLICITACOES:</h3>
+        <ul>
+          <li>Arquitetura: Plantas, Elevacao da Fachada, Estudo de Cores da Fachada e Cortes.</li>
+          <li>Paisagismo: Implantacao, Detalhamentos, Especificacao de Revestimentos, Estudo de Vegetacao com Especificacao de Especies e Referencias do Mobiliario.</li>
+          <li>Decoracao: Plantas com Layout, Desenhos de Pisos, Elevacoes de Paredes, Especificacoes de materiais, Projeto de Forro e Iluminacao, Descricao ou book de mobiliarios.</li>
+        </ul>
+
+        <h3>CONSIDERACOES IMAGENS:</h3>
+        <ul>
+          <li>Esta proposta contempla o envio inicial do tiro de Shade, seguido do tiro de apresentacao R00. Estao inclusas 03 rodadas de revisoes, denominadas R01, R02 e R03, culminando na entrega final HR.</li>
+          <li>A partir de um eventual quarto tiro de apresentacao, denominado R04, sera cobrado um adicional de 25% do valor da imagem por tiro extra solicitado.</li>
+          <li>Quaisquer alteracoes nos projetos originais fornecidos inicialmente implicam em cobrancas extras de modelagem, que serao orcadas e aprovadas em comum acordo.</li>
+          <li>A Contratada cede a Contratante os direitos de uso das imagens produzidas para uso promocional vinculado exclusivamente ao empreendimento contratado.</li>
+        </ul>
+
+        <h3>ENTREGA FINAL:</h3>
+        <ul>
+          <li>Todo o material finalizado sera enviado digitalmente via servidor FTP, link seguro para download ou cadastrado no Frame.io/Adobe.</li>
+          <li>As imagens finais, denominadas HR, serao entregues com 6000px em seu lado maior a 300dpi.</li>
+        </ul>
+
+        <p>${todayPt()}</p>
+        <p>De acordo,</p>
+        <p>________________________________________<br>${escapeHtml(proposal.cliente)}</p>
+      `;
+    }
+
+    function renderMarkdown(proposal, calculation) {
+      const preview = document.createElement("div");
+      preview.innerHTML = renderProposalHtml(proposal, calculation);
+      return preview.innerText.replace(/\n{3,}/g, "\n\n").trim() + "\n";
+    }
+
+    function renderMetrics(calculation) {
+      return `
+        <div class="metric">Estrategia<strong>${escapeHtml(calculation.strategy)}</strong></div>
+        <div class="metric">Qtd. imagens<strong>${calculation.totalQuantity}</strong></div>
+        <div class="metric">Subtotal<strong>${money(calculation.subtotal)}</strong></div>
+        <div class="metric">Total final<strong>${money(calculation.grandTotal)}</strong></div>
+      `;
+    }
+
+    function showStatus(messages, kind) {
+      const status = document.getElementById("status");
+      if (!messages.length) {
+        status.innerHTML = "";
+        return;
+      }
+      const items = messages.map(message => "<li>" + escapeHtml(message) + "</li>").join("");
+      status.innerHTML = `<div class="notice ${kind === "warn" ? "warn" : ""}"><ul>${items}</ul></div>`;
+    }
+
+    function generate() {
+      const parsed = parseBrief(document.getElementById("brief").value);
+      const calculation = calculate(parsed.proposal);
+      const allWarnings = [...parsed.warnings, ...calculation.warnings];
+      const html = renderProposalHtml(parsed.proposal, calculation);
+      const markdown = renderMarkdown(parsed.proposal, calculation);
+      const fileBase = slugify([parsed.proposal.cliente, parsed.proposal.referencia].filter(Boolean).join("-"));
+      currentResult = { proposal: parsed.proposal, calculation, html, markdown, fileBase };
+
+      document.getElementById("jsonPreview").textContent = JSON.stringify(parsed.proposal, null, 2);
+      document.getElementById("metrics").innerHTML = renderMetrics(calculation);
+      document.getElementById("proposalPreview").innerHTML = html;
+      showStatus(
+        allWarnings.length
+          ? allWarnings
+          : ["Proposta gerada na tela. Voce ja pode baixar em Word (.doc) ou Markdown."],
+        allWarnings.length ? "warn" : "ok"
+      );
+    }
+
+    function download(filename, content, mimeType) {
+      const blob = new Blob([content], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function documentForWord(html) {
+      return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Proposta Flying Studio</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; color: #111; line-height: 1.45; }
+    h1 { text-align: center; font-size: 20pt; }
+    h2 { border-top: 1px solid #999; padding-top: 10px; font-size: 13pt; }
+    h3 { font-size: 11pt; }
+    table { width: 100%; border-collapse: collapse; margin: 8px 0 14px; }
+    th, td { border: 1px solid #999; padding: 6px; vertical-align: top; }
+    th { background: #efefef; }
+    .right { text-align: right; }
+  </style>
+</head>
+<body>${html}</body>
+</html>`;
+    }
+
+    document.getElementById("generateButton").addEventListener("click", generate);
+    document.getElementById("exampleButton").addEventListener("click", () => {
+      document.getElementById("brief").value = DEFAULT_BRIEF;
+      generate();
+    });
+    document.getElementById("clearButton").addEventListener("click", () => {
+      document.getElementById("brief").value = "";
+      showStatus(["Briefing limpo."], "ok");
+    });
+    document.getElementById("downloadDocButton").addEventListener("click", () => {
+      if (!currentResult) {
+        generate();
+      }
+      download(currentResult.fileBase + ".doc", documentForWord(currentResult.html), "application/msword;charset=utf-8");
+    });
+    document.getElementById("downloadMdButton").addEventListener("click", () => {
+      if (!currentResult) {
+        generate();
+      }
+      download(currentResult.fileBase + ".md", currentResult.markdown, "text/markdown;charset=utf-8");
+    });
+    document.getElementById("copyButton").addEventListener("click", async () => {
+      if (!currentResult) {
+        generate();
+      }
+      await navigator.clipboard.writeText(currentResult.markdown);
+      showStatus(["Texto da proposta copiado."], "ok");
+    });
+
+    document.getElementById("brief").value = DEFAULT_BRIEF;
+    generate();
+  </script>
+</body>
+</html>

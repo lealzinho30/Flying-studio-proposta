@@ -11,6 +11,7 @@ A ferramenta gera dois arquivos revisaveis:
 
 - `.md`, para conferir rapidamente o texto e os calculos;
 - `.docx`, para abrir no Word/LibreOffice e finalizar a proposta.
+- `.doc`, na versao sem Python, para abrir direto no Word e salvar como `.docx`.
 
 ## Como funciona
 
@@ -60,6 +61,52 @@ dois levantamentos na proposta.
 | CASA VIVA | PRESTES MAIA | 8 / R$15.800,00 | 8 / R$14.000,00 | 5 / R$8.300,00 |
 
 ## Uso
+
+### Sem Python: abrir direto no navegador
+
+Se voce nao tiver Python instalado, use o arquivo:
+
+```text
+assistente-propostas.html
+```
+
+Como usar:
+
+1. abra `assistente-propostas.html` com duplo clique no navegador;
+2. descreva cliente, referencia, A/C, criterio de preco e imagens;
+3. clique em **Gerar proposta atualizada**;
+4. confira a previa visual;
+5. baixe o arquivo `.doc`, que abre no Word/LibreOffice.
+
+Exemplo de briefing:
+
+```text
+Cliente: GALLI
+Referencia: SAID AIACH - NOVA ETAPA
+A/C: DANIEL PUCCI
+Preco: seguir ultimo projeto do cliente
+Desconto: 12%
+
+Externas:
+- Fachada vista da calcada
+- Jardim
+- Piscina
+- Gourmet/churrasqueira
+
+Internas:
+- Bicicletario
+- Academia
+- Salao de Festas
+
+Plantas:
+- Implantacao terreo
+- Implantacao rooftop
+- Apartamento Tipo
+```
+
+Essa versao nao precisa de instalacao, terminal, servidor ou internet.
+
+### Com Python
 
 Execute com Python 3, sem instalar dependencias:
 
