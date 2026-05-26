@@ -94,15 +94,23 @@
     return null;
   }
 
+  function _propostaValida(p) {
+    if (!p) return false;
+    if (window.FlyingHistoricoPdf && window.FlyingHistoricoPdf.propostaTemDados) {
+      return window.FlyingHistoricoPdf.propostaTemDados(p);
+    }
+    return !!(p.externas || p.internas || p.plantas || p.servicos);
+  }
+
   function _ultimaProposta(nome) {
     const hp = _historicoPdf();
     if (hp) {
       const imp = hp.ultimaProposta(nome);
-      if (imp && imp.externas) return imp;
+      if (_propostaValida(imp)) return imp;
     }
     const k = _achaCliente(nome);
     if (!k || !HIST[k]) return null;
-    const props = (HIST[k].propostas || []).filter((p) => p.externas);
+    const props = (HIST[k].propostas || []).filter((p) => _propostaValida(p));
     if (!props.length) return null;
     return props.slice().sort((a, b) => (a.data || "").localeCompare(b.data || "")).pop();
   }
@@ -111,9 +119,15 @@
     const u = _ultimaProposta(nome);
     if (!u) return null;
     const tabela = { externas: {}, internas: {}, plantas: {} };
-    for (const cat of ["externas", "internas", "plantas"]) {
+    for (const cat of ["externas", "internas", "plantas", "servicos"]) {
       for (const it of (u[cat] && u[cat].itens) || []) {
-        tabela[cat][norm(it.desc)] = it.preco;
+        const chave = norm(it.desc);
+        const alvo = cat === "servicos" ? "externas" : cat;
+        tabela[alvo][chave] = it.preco;
+        if (cat === "servicos") {
+          tabela.internas[chave] = it.preco;
+          tabela.plantas[chave] = it.preco;
+        }
       }
     }
     return tabela;
@@ -125,6 +139,17 @@
     const out = {};
     for (const cat of ["externas", "internas", "plantas"]) {
       if (u[cat] && u[cat].qtd) out[cat] = u[cat].total / u[cat].qtd;
+    }
+    if (u.servicos && u.servicos.qtd) {
+      const m = u.servicos.total / u.servicos.qtd;
+      if (!out.externas) out.externas = m;
+      if (!out.internas) out.internas = m;
+      if (!out.plantas) out.plantas = m;
+    }
+    if (u.valor_final_projeto && !Object.keys(out).length) {
+      out.externas = u.valor_final_projeto;
+      out.internas = u.valor_final_projeto;
+      out.plantas = u.valor_final_projeto;
     }
     return out;
   }

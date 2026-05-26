@@ -353,7 +353,7 @@
       }
       const proposta = window.FlyingHistoricoPdf.parseTexto(r.texto);
       if (!proposta) {
-        status.innerHTML = `<span class="upload-erro">❌ PDF inválido ou incompleto: preciso de pelo menos 2 itens com preço (R$). Confira se é o orçamento Flying correto.</span>`;
+        status.innerHTML = `<span class="upload-erro">❌ Não consegui ler este PDF. Use o orçamento Flying (com valores R$, forma de pagamento ou itens de serviço). Propostas só de tecnologias ou com 1 item também são aceitas.</span>`;
         return;
       }
 

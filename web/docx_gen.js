@@ -75,12 +75,18 @@
 
   // Espaçamento compacto (valores em twips; ~20 twips ≈ 1pt)
   const SP = {
-    corpo: 18,
-    linha: 240,
-    tituloSec: 72,
-    subtitulo: 36,
-    entreBlocos: 48,
-    entreSecoes: 64,
+    corpo: 10,
+    linha: 220,
+    tituloSec: 40,
+    subtitulo: 20,
+    entreBlocos: 28,
+    entreSecoes: 40,
+  };
+  const TBL = {
+    fillTitulo: "EFEBFF",
+    fillRodape: "5B3CFF",
+    margem: { top: 12, bottom: 12, left: 50, right: 50 },
+    borda: { style: "single", size: 4, color: "000000" },
   };
 
   // ---------- atalhos para geração ----------
@@ -223,86 +229,116 @@
     return new Footer({ children: [linha, site, endereco] });
   }
 
-  // ---------- tabelas estilizadas ----------
+  // ---------- tabelas (modelo Flying: lavanda + Itens | Descrição | Valor) ----------
 
-  function tabelaCategoria(numero, categoria, mostraPrecos) {
-    const { Paragraph, Table, TableRow, TableCell, WidthType, BorderStyle, TextRun, AlignmentType, ShadingType } = window.docx;
+  function tblBorda() {
+    const { BorderStyle } = window.docx;
+    return { style: BorderStyle.SINGLE, size: 4, color: "000000" };
+  }
 
-    const borderHidden = { style: BorderStyle.NONE, size: 0, color: COR.branco };
-    const borderSoft = { style: BorderStyle.SINGLE, size: 4, color: COR.cinzaLight };
-
-    function cell(text, opts = {}) {
-      return new TableCell({
-        width: { size: opts.width || 30, type: WidthType.PERCENTAGE },
-        shading: opts.shading ? { type: ShadingType.CLEAR, color: "auto", fill: opts.shading } : undefined,
-        verticalAlign: "center",
-        margins: { top: 40, bottom: 40, left: 120, right: 120 },
-        borders: {
-          top: opts.borderTop ?? borderSoft,
-          bottom: opts.borderBottom ?? borderSoft,
-          left: borderHidden, right: borderHidden,
-        },
-        children: [new Paragraph({
-          alignment: opts.alignment || AlignmentType.LEFT,
-          spacing: { before: 0, after: 0, line: 240 },
-          children: [new TextRun({ text, bold: !!opts.bold, size: opts.size || 22, color: opts.color || COR.texto, font: FONTE })],
-        })],
-      });
-    }
-
-    const linhas = [];
-
-    // Cabeçalho (roxo + texto branco)
-    const cabec = mostraPrecos
-      ? new TableRow({ tableHeader: true, children: [
-          cell("ITEM", { bold: true, color: COR.branco, shading: COR.primaria, width: 12, size: 18 }),
-          cell("DESCRIÇÃO DO SERVIÇO", { bold: true, color: COR.branco, shading: COR.primaria, width: 64, size: 18 }),
-          cell("VALOR", { bold: true, color: COR.branco, shading: COR.primaria, width: 24, size: 18, alignment: AlignmentType.RIGHT }),
-        ]})
-      : new TableRow({ tableHeader: true, children: [
-          cell("ITEM", { bold: true, color: COR.branco, shading: COR.primaria, width: 15, size: 18 }),
-          cell("DESCRIÇÃO DO SERVIÇO", { bold: true, color: COR.branco, shading: COR.primaria, width: 85, size: 18 }),
-        ]});
-    linhas.push(cabec);
-
-    // Linhas (zebra)
-    categoria.itens.forEach((it, idx) => {
-      const zebra = idx % 2 === 1 ? COR.offWhite : null;
-      const cells = mostraPrecos
-        ? [
-            cell(`${numero}.${idx + 1}`, { width: 12, color: COR.primariaDark, bold: true, shading: zebra }),
-            cell(it.descricao_normalizada, { width: 64, shading: zebra }),
-            cell(brl(it.preco), { width: 24, alignment: AlignmentType.RIGHT, bold: true, shading: zebra }),
-          ]
-        : [
-            cell(`${numero}.${idx + 1}`, { width: 15, color: COR.primariaDark, bold: true, shading: zebra }),
-            cell(it.descricao_normalizada, { width: 85, shading: zebra }),
-          ];
-      linhas.push(new TableRow({ children: cells }));
+  function tblCell(texto, opts = {}) {
+    const { TableCell, Paragraph, TextRun, WidthType, ShadingType, AlignmentType } = window.docx;
+    const b = tblBorda();
+    return new TableCell({
+      width: opts.width ? { size: opts.width, type: WidthType.PERCENTAGE } : undefined,
+      columnSpan: opts.colSpan,
+      shading: opts.fill ? { type: ShadingType.CLEAR, color: "auto", fill: opts.fill } : undefined,
+      verticalAlign: "center",
+      margins: TBL.margem,
+      borders: { top: b, bottom: b, left: b, right: b },
+      children: [
+        new Paragraph({
+          alignment: opts.align || AlignmentType.LEFT,
+          spacing: { before: 0, after: 0, line: SP.linha },
+          children: [
+            new TextRun({
+              text: texto || "",
+              bold: !!opts.bold,
+              size: opts.size || 20,
+              color: opts.color || COR.texto,
+              font: FONTE,
+            }),
+          ],
+        }),
+      ],
     });
+  }
 
-    // Rodapé (subtotal da categoria)
-    const rodape = mostraPrecos
-      ? new TableRow({ children: [
-          cell(`${categoria.qtd}`, { bold: true, color: COR.branco, shading: COR.primariaDark, width: 12 }),
-          cell("Subtotal", { bold: true, color: COR.branco, shading: COR.primariaDark, width: 64 }),
-          cell(brl(categoria.total), { bold: true, color: COR.branco, shading: COR.primariaDark, width: 24, alignment: AlignmentType.RIGHT }),
-        ]})
-      : new TableRow({ children: [
-          cell(`${categoria.qtd}`, { bold: true, color: COR.branco, shading: COR.primariaDark, width: 15 }),
-          cell(`Subtotal     ${brl(categoria.total)}`, { bold: true, color: COR.branco, shading: COR.primariaDark, width: 85 }),
-        ]});
-    linhas.push(rodape);
-
+  function tblWrap(rows) {
+    const { Table, WidthType } = window.docx;
     return new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
-      rows: linhas,
-      borders: {
-        top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden,
-        insideHorizontal: borderSoft,
-        insideVertical: borderHidden,
-      },
+      rows,
+      margins: { top: 40, bottom: 40 },
     });
+  }
+
+  /** Seção 2.x — cabeçalho lavanda, itens sem preço na linha, total na última linha. */
+  function tabelaCategoria(numero, tituloSecao, categoria) {
+    const { TableRow, AlignmentType } = window.docx;
+    const W = { item: 14, desc: 56, val: 30 };
+    const rows = [];
+
+    rows.push(new TableRow({
+      children: [
+        tblCell(`${numero} ${tituloSecao.toUpperCase()}`, {
+          colSpan: 3, fill: TBL.fillTitulo, bold: true, size: 20,
+        }),
+      ],
+    }));
+    rows.push(new TableRow({
+      children: [
+        tblCell("Itens", { width: W.item, bold: true, size: 18, color: COR.textoSoft }),
+        tblCell("Descrição dos Serviços", { width: W.desc, bold: true, size: 18, color: COR.textoSoft }),
+        tblCell("", { width: W.val }),
+      ],
+    }));
+
+    categoria.itens.forEach((it, idx) => {
+      rows.push(new TableRow({
+        children: [
+          tblCell(`${numero}.${idx + 1}`, { width: W.item, bold: true, color: COR.primariaDark }),
+          tblCell(it.descricao_normalizada, { width: W.desc }),
+          tblCell("", { width: W.val }),
+        ],
+      }));
+    });
+
+    rows.push(new TableRow({
+      children: [
+        tblCell(String(categoria.qtd), { width: W.item, bold: true, fill: TBL.fillRodape, color: COR.branco }),
+        tblCell("Valor Total", { width: W.desc, bold: true, fill: TBL.fillRodape, color: COR.branco }),
+        tblCell(brl(categoria.total), {
+          width: W.val, bold: true, fill: TBL.fillRodape, color: COR.branco, align: AlignmentType.RIGHT,
+        }),
+      ],
+    }));
+
+    return tblWrap(rows);
+  }
+
+  /** Totais finais do projeto (linhas mescladas, como no PDF Flying). */
+  function tabelaTotaisProjeto(subtotal, descontoPct, valorFinal, descontoLabel) {
+    const { TableRow, AlignmentType } = window.docx;
+    const rows = [];
+    rows.push(new TableRow({
+      children: [
+        tblCell(`Valor Final do Projeto: ${brl(subtotal)}`, {
+          colSpan: 3, align: AlignmentType.CENTER, bold: true, size: 20,
+        }),
+      ],
+    }));
+    if (descontoPct > 0) {
+      const rot = descontoLabel || `${descontoPct}%`;
+      rows.push(new TableRow({
+        children: [
+          tblCell(`Valor Final do Projeto com desconto de ${rot}: ${brl(valorFinal)}`, {
+            colSpan: 3, align: AlignmentType.CENTER, bold: true, size: 20,
+          }),
+        ],
+      }));
+    }
+    return tblWrap(rows);
   }
 
   /** Capa: cliente / projeto / contato em texto simples (sem caixa roxa). */
@@ -322,115 +358,46 @@
 
   // ---------- DOCUMENTO PRINCIPAL ----------
 
-  // ---------- tabela de subseção EXTRA (Tour Virtual, Filme, App, etc) ----------
-  // Estilo idêntico aos screenshots: header roxo claro com título da subseção,
-  // linhas internas com numeração 2.X.Y, valor total ao final.
   function tabelaExtraSubsecao(numero, subsec) {
-    const { Paragraph, Table, TableRow, TableCell, WidthType, BorderStyle, TextRun, AlignmentType, ShadingType } = window.docx;
-    const borderHidden = { style: BorderStyle.NONE, size: 0, color: COR.branco };
-    const borderSoft = { style: BorderStyle.SINGLE, size: 4, color: COR.cinzaLight };
-
-    function cell(text, opts = {}) {
-      return new TableCell({
-        width: { size: opts.width || 30, type: WidthType.PERCENTAGE },
-        shading: opts.shading ? { type: ShadingType.CLEAR, color: "auto", fill: opts.shading } : undefined,
-        verticalAlign: "center",
-        margins: { top: 40, bottom: 40, left: 120, right: 120 },
-        borders: {
-          top: opts.borderTop ?? borderSoft,
-          bottom: opts.borderBottom ?? borderSoft,
-          left: borderHidden, right: borderHidden,
-        },
-        children: [new Paragraph({
-          alignment: opts.alignment || AlignmentType.LEFT,
-          spacing: { before: 0, after: 0, line: 240 },
-          children: [new TextRun({ text, bold: !!opts.bold, size: opts.size || 22, color: opts.color || COR.texto, font: FONTE })],
-        })],
-      });
-    }
-
+    const { TableRow, AlignmentType } = window.docx;
+    const W = { item: 14, desc: 56, val: 30 };
+    const titulo = subsec.rotulo_secao || subsec.rotulo_curto || "SERVIÇO";
     const rows = [];
 
-    // Cabeçalho da subseção (fundo roxo claro com TÍTULO COMPLETO)
     rows.push(new TableRow({
-      tableHeader: true,
       children: [
-        new TableCell({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          shading: { type: ShadingType.CLEAR, color: "auto", fill: "EFEBFF" }, // roxo bem claro
-          margins: { top: 50, bottom: 50, left: 120, right: 120 },
-          borders: {
-            top: { style: BorderStyle.SINGLE, size: 8, color: COR.primaria },
-            bottom: { style: BorderStyle.SINGLE, size: 8, color: COR.primaria },
-            left: borderHidden, right: borderHidden,
-          },
-          children: [new Paragraph({
-            children: [
-              new TextRun({ text: `${numero}  `, bold: true, size: 22, color: COR.primariaDark, font: FONTE }),
-              new TextRun({ text: subsec.rotulo_secao, bold: true, size: 22, color: COR.primariaDark, font: FONTE }),
-            ],
-          })],
-          columnSpan: 2,
-        }),
+        tblCell(`${numero} ${titulo.toUpperCase()}`, { colSpan: 3, fill: TBL.fillTitulo, bold: true, size: 20 }),
+      ],
+    }));
+    rows.push(new TableRow({
+      children: [
+        tblCell("Itens", { width: W.item, bold: true, size: 18, color: COR.textoSoft }),
+        tblCell("Descrição dos Serviços", { width: W.desc, bold: true, size: 18, color: COR.textoSoft }),
+        tblCell("", { width: W.val }),
       ],
     }));
 
-    // Cabeçalho colunas (cinza escuro)
-    rows.push(new TableRow({
-      children: [
-        cell("Itens", { bold: true, width: 18, size: 18, color: COR.textoSoft }),
-        cell("Descrição dos Serviços", { bold: true, width: 82, size: 18, color: COR.textoSoft }),
-      ],
-    }));
-
-    // Itens
-    const itens = (subsec.itens && subsec.itens.length) ? subsec.itens : [subsec.rotulo_curto];
+    const itens = (subsec.itens && subsec.itens.length) ? subsec.itens : [subsec.rotulo_curto || titulo];
     itens.forEach((it, idx) => {
       rows.push(new TableRow({
         children: [
-          cell(`${numero}.${idx + 1}`, { width: 18, color: COR.primariaDark, bold: true }),
-          cell(it, { width: 82 }),
+          tblCell(`${numero}.${idx + 1}`, { width: W.item, bold: true, color: COR.primariaDark }),
+          tblCell(it, { width: W.desc }),
+          tblCell("", { width: W.val }),
         ],
       }));
     });
 
-    // Rodapé com valor total
-    if (subsec.sem_preco) {
-      rows.push(new TableRow({
-        children: [
-          cell(String(itens.length), { bold: true, width: 18, color: COR.branco, shading: COR.primariaDark }),
-          cell("Valor Total — A DEFINIR", { bold: true, width: 82, color: COR.branco, shading: COR.primariaDark }),
-        ],
-      }));
-    } else {
-      rows.push(new TableRow({
-        children: [
-          cell(String(itens.length), { bold: true, width: 18, color: COR.branco, shading: COR.primariaDark }),
-          new TableCell({
-            width: { size: 82, type: WidthType.PERCENTAGE },
-            shading: { type: ShadingType.CLEAR, color: "auto", fill: COR.primariaDark },
-            margins: { top: 40, bottom: 40, left: 120, right: 120 },
-            borders: { top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden },
-            children: [new Paragraph({
-              children: [
-                new TextRun({ text: "Valor Total", bold: true, size: 22, color: COR.branco, font: FONTE }),
-                new TextRun({ text: "                                                                                                            ", size: 22 }),
-                new TextRun({ text: brl(subsec.preco), bold: true, size: 22, color: COR.branco, font: FONTE }),
-              ],
-            })],
-          }),
-        ],
-      }));
-    }
+    const precoTxt = subsec.sem_preco ? "A DEFINIR" : brl(subsec.preco);
+    rows.push(new TableRow({
+      children: [
+        tblCell(String(itens.length), { width: W.item, bold: true, fill: TBL.fillRodape, color: COR.branco }),
+        tblCell("Valor Total", { width: W.desc, bold: true, fill: TBL.fillRodape, color: COR.branco }),
+        tblCell(precoTxt, { width: W.val, bold: true, fill: TBL.fillRodape, color: COR.branco, align: AlignmentType.RIGHT }),
+      ],
+    }));
 
-    return new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows,
-      borders: {
-        top: borderHidden, bottom: borderHidden, left: borderHidden, right: borderHidden,
-        insideHorizontal: borderSoft, insideVertical: borderHidden,
-      },
-    });
+    return tblWrap(rows);
   }
 
   async function gerarDocxBlob({ cliente, orc, data, mostrarPrecos, formaPagamento, prazos, descontoLabel, extras, extrasEstruturados }) {
@@ -480,18 +447,18 @@
     let secaoNum = 0;
     if (orc.externas.qtd) {
       secaoNum++;
-      children.push(P("ILUSTRAÇÕES EXTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: SP.subtitulo, before: SP.entreBlocos }));
-      children.push(tabelaCategoria(`2.${secaoNum}`, orc.externas, mostrarPrecos));
+      children.push(tabelaCategoria(`2.${secaoNum}`, "ILUSTRAÇÕES EXTERNAS", orc.externas));
+      children.push(P("", { after: SP.subtitulo, forcar: true }));
     }
     if (orc.internas.qtd) {
       secaoNum++;
-      children.push(P("ILUSTRAÇÕES INTERNAS", { bold: true, size: 22, color: COR.primariaDark, after: SP.subtitulo, before: SP.entreBlocos }));
-      children.push(tabelaCategoria(`2.${secaoNum}`, orc.internas, mostrarPrecos));
+      children.push(tabelaCategoria(`2.${secaoNum}`, "ILUSTRAÇÕES INTERNAS", orc.internas));
+      children.push(P("", { after: SP.subtitulo, forcar: true }));
     }
     if (orc.plantas.qtd) {
       secaoNum++;
-      children.push(P("PLANTAS HUMANIZADAS", { bold: true, size: 22, color: COR.primariaDark, after: SP.subtitulo, before: SP.entreBlocos }));
-      children.push(tabelaCategoria(`2.${secaoNum}`, orc.plantas, mostrarPrecos));
+      children.push(tabelaCategoria(`2.${secaoNum}`, "PLANTAS HUMANIZADAS", orc.plantas));
+      children.push(P("", { after: SP.subtitulo, forcar: true }));
     }
 
     // ====== EXTRAS (Tour Virtual / Filmes / Apps / Maquete / Drone / Estudo Fachada) ======
@@ -514,41 +481,10 @@
       }
     }
 
-    // Totais
-    const totaisRuns = [];
-    if (qtdImagens) {
-      totaisRuns.push(R("Imagens: ", { color: COR.textoSoft }));
-      totaisRuns.push(R(`${qtdImagens}`, { bold: true }));
+    if (secaoNum > 0 || (extrasEstruturados && extrasEstruturados.qtd)) {
+      children.push(tabelaTotaisProjeto(subtotal, orc.desconto_pct, valorFinal, descontoLabel));
+      children.push(P(`(${extenso(valorFinal)})`, { italics: true, color: COR.textoSoft, after: SP.entreSecoes, size: 18 }));
     }
-    if (qtdExtras) {
-      if (totaisRuns.length) totaisRuns.push(R("    ·    ", { color: COR.textoSoft }));
-      totaisRuns.push(R("Serviços extras: ", { color: COR.textoSoft }));
-      totaisRuns.push(R(`${qtdExtras}`, { bold: true }));
-    }
-    if (totaisRuns.length) totaisRuns.push(R("    ·    ", { color: COR.textoSoft }));
-    totaisRuns.push(R("Valor bruto: ", { color: COR.textoSoft }));
-    totaisRuns.push(R(brl(subtotal), { bold: true }));
-    children.push(PRich(totaisRuns, { before: SP.entreBlocos, after: SP.corpo }));
-
-    if (orc.desconto_pct > 0) {
-      const rotulo = descontoLabel || `${orc.desconto_pct}% de Desconto`;
-      children.push(PRich(
-        [
-          R("Desconto aplicado: ", { color: COR.textoSoft }),
-          R(rotulo, { bold: true }),
-          R("    ·    Valor do desconto: ", { color: COR.textoSoft }),
-          R("-" + brl(descontoValor), { bold: true, color: COR.primariaDark }),
-        ],
-        { after: SP.corpo }
-      ));
-    }
-
-    children.push(PRich(
-      [R("INVESTIMENTO TOTAL  ", { bold: true, size: 26, color: COR.primaria }),
-       R(brl(valorFinal), { bold: true, size: 36, color: COR.primariaDark })],
-      { alignment: AlignmentType.LEFT, before: SP.entreBlocos, after: SP.corpo }
-    ));
-    children.push(P(`(${extenso(valorFinal)})`, { italics: true, color: COR.textoSoft, after: SP.entreSecoes }));
 
     if (extras && extras.length) {
       children.push(P("EXTRAS / FILMES", { bold: true, size: 22, color: COR.primariaDark, after: SP.subtitulo, before: SP.entreBlocos }));
@@ -642,7 +578,7 @@
       sections: [{
         properties: {
           page: {
-            margin: { top: 1080, bottom: 900, left: 1276, right: 1276, header: 820, footer: 720 },
+            margin: { top: 900, bottom: 720, left: 1134, right: 1134, header: 720, footer: 600 },
           },
         },
         headers: { default: montarHeader(logoBuffer) },
