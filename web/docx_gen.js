@@ -114,8 +114,14 @@
     };
     if (opts.highlight) runOpts.highlight = HIGHLIGHT;
     if (opts.underline) runOpts.underline = { type: UnderlineType.SINGLE };
+    const spacing = {
+      after: opts.after ?? SP.corpo,
+      before: opts.before ?? 0,
+      line: opts.line ?? SP.linha,
+    };
+    if (opts.lineRule) spacing.lineRule = opts.lineRule;
     return new Paragraph({
-      spacing: { after: opts.after ?? SP.corpo, before: opts.before ?? 0, line: opts.line ?? SP.linha },
+      spacing,
       alignment: opts.alignment,
       indent: opts.indent,
       children: [new TextRun(runOpts)],
@@ -212,39 +218,82 @@
     }
   }
 
+  /** Linha horizontal (borda inferior em parágrafo vazio). */
+  function paragrafoLinha(cor, opts = {}) {
+    const { Paragraph, TextRun, BorderStyle } = window.docx;
+    return new Paragraph({
+      spacing: { before: opts.before ?? 0, after: opts.after ?? 0 },
+      border: {
+        bottom: {
+          color: cor,
+          space: 1,
+          style: BorderStyle.SINGLE,
+          size: opts.size ?? 6,
+        },
+      },
+      children: [new TextRun({ text: "" })],
+    });
+  }
+
+  /** Cabeçalho modelo Flying: linha lavanda à esquerda + logo à direita, alinhados na mesma faixa. */
   function montarHeader(logo) {
     const {
       Header, Paragraph, ImageRun, AlignmentType, TextRun, BorderStyle, LineRuleType,
+      Table, TableRow, TableCell, WidthType, VerticalAlign,
     } = window.docx;
+    const bordaNil = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
+    const semBorda = { top: bordaNil, bottom: bordaNil, left: bordaNil, right: bordaNil };
+    const corLinha = TBL.fillSecao;
 
-    const linhaRoxa = new Paragraph({
-      spacing: { before: 0, after: 0 },
-      border: { bottom: { color: COR.primaria, space: 1, style: BorderStyle.SINGLE, size: 6 } },
-      children: [new TextRun({ text: "" })],
-    });
-
-    if (!logo) {
-      return new Header({
-        children: [
-          new Paragraph({
-            alignment: AlignmentType.RIGHT,
-            spacing: { before: 0, after: 48 },
-            children: [new TextRun({ text: "FLYING studio", bold: true, size: TAM, color: COR.primaria, font: FONTE })],
-          }),
-          linhaRoxa,
-        ],
+    function tabelaCabecalho(celEsquerda, celDireita) {
+      return new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [new TableRow({ children: [celEsquerda, celDireita] })],
+        margins: { top: 40, bottom: 60 },
       });
     }
 
+    if (!logo) {
+      const pTexto = new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        spacing: { before: 0, after: 0 },
+        children: [new TextRun({ text: "FLYING studio", bold: true, size: TAM, color: COR.primaria, font: FONTE })],
+      });
+      const celLinha = new TableCell({
+        width: { size: 72, type: WidthType.PERCENTAGE },
+        borders: semBorda,
+        margins: { top: 0, bottom: 0, left: 0, right: 140 },
+        verticalAlign: VerticalAlign.CENTER,
+        children: [paragrafoLinha(corLinha, { size: 8 })],
+      });
+      const celLogo = new TableCell({
+        width: { size: 28, type: WidthType.PERCENTAGE },
+        borders: semBorda,
+        verticalAlign: VerticalAlign.CENTER,
+        children: [pTexto],
+      });
+      return new Header({ children: [tabelaCabecalho(celLinha, celLogo)] });
+    }
+
     const linhaLogoTwips = logo.height * 20;
-    const pLogo = new Paragraph({
-      alignment: AlignmentType.RIGHT,
+    const espacoAntesLinha = Math.max(0, Math.round(linhaLogoTwips * 0.4));
+
+    const pLinha = new Paragraph({
       spacing: {
-        before: 0,
-        after: 60,
-        line: linhaLogoTwips,
+        before: espacoAntesLinha,
+        after: 0,
+        line: 36,
         lineRule: LineRuleType.EXACT,
       },
+      border: {
+        bottom: { color: corLinha, space: 1, style: BorderStyle.SINGLE, size: 8 },
+      },
+      children: [new TextRun({ text: "" })],
+    });
+
+    const pLogo = new Paragraph({
+      alignment: AlignmentType.RIGHT,
+      spacing: { before: 0, after: 0, line: linhaLogoTwips, lineRule: LineRuleType.EXACT },
       children: [
         new ImageRun({
           data: logo.buffer,
@@ -253,7 +302,45 @@
       ],
     });
 
-    return new Header({ children: [pLogo, linhaRoxa] });
+    const celLinha = new TableCell({
+      width: { size: 72, type: WidthType.PERCENTAGE },
+      borders: semBorda,
+      margins: { top: 0, bottom: 0, left: 0, right: 140 },
+      verticalAlign: VerticalAlign.CENTER,
+      children: [pLinha],
+    });
+    const celLogo = new TableCell({
+      width: { size: 28, type: WidthType.PERCENTAGE },
+      borders: semBorda,
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+      verticalAlign: VerticalAlign.CENTER,
+      children: [pLogo],
+    });
+
+    return new Header({ children: [tabelaCabecalho(celLinha, celLogo)] });
+  }
+
+  /** Assinatura: data, “De acordo,”, espaço para rubrica, linha e cliente centralizado. */
+  function blocoAssinatura(cliente, data) {
+    const { AlignmentType, LineRuleType } = window.docx;
+    const partes = [];
+    const nomeCliente = (cliente.empresa || "CLIENTE").toUpperCase();
+
+    partes.push(P(`São Paulo, ${dataExtenso(data)}.`, { before: SP.entreSecoes, after: SP.corpo }));
+    partes.push(P("De acordo,", { after: SP.corpo }));
+
+    for (let i = 0; i < 4; i += 1) {
+      partes.push(P("", { forcar: true, after: 240, line: 240, lineRule: LineRuleType.EXACT }));
+    }
+
+    partes.push(paragrafoLinha(COR.texto, { after: 160, size: 6 }));
+    partes.push(P(nomeCliente, {
+      bold: true,
+      alignment: AlignmentType.CENTER,
+      after: 0,
+    }));
+
+    return partes.filter(Boolean);
   }
 
   function montarFooter() {
@@ -571,13 +658,7 @@
     ];
     for (const [titulo, texto] of entregas) children.push(bulletRotulo(titulo, texto));
 
-    children.push(P(`São Paulo, ${dataExtenso(data)}.`, { before: SP.entreSecoes, after: SP.corpo }));
-    children.push(P("De acordo,", { after: SP.corpo }));
-    children.push(P("____________________________________________________", { after: SP.bullet }));
-    children.push(P((cliente.empresa || "CLIENTE").toUpperCase(), { bold: true, after: SP.bullet }));
-    if (cliente.contato && cliente.contato !== "—") {
-      children.push(P(`A/C. ${cliente.contato}`, { color: COR.textoSoft }));
-    }
+    blocoAssinatura(cliente, data).forEach((p) => children.push(p));
 
     const doc = new Document({
       creator: "Flying Studio",
