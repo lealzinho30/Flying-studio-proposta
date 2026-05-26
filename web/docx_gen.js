@@ -84,13 +84,13 @@
   };
 
   // Logo oficial no cabeçalho (~4,5 cm).
-  const LOGO_HEADER_LARGURA = 170;
+  const LOGO_HEADER_LARGURA = 190;
   const PAGE = {
     top: 1701,
     bottom: 1304,
     left: 1417,
     right: 1417,
-    header: 220,
+    header: 180,
     footer: 567,
   };
 
@@ -246,79 +246,32 @@
   }
 
   /**
-   * Cabeçalho Flying (simples): linha lavanda à esquerda + PNG oficial à direita.
-   * Logo só na coluna direita (larga), com margem — não corta o ícone roxo.
+   * Cabeçalho Flying (robusto no Word): logo oficial em parágrafo (sem célula) + linha abaixo.
+   * Isso evita recorte do lado esquerdo da marca.
    */
   function montarHeader(logo) {
-    const {
-      Header, Paragraph, ImageRun, AlignmentType, TextRun, BorderStyle,
-      Table, TableRow, TableCell, WidthType, VerticalAlign, TableLayoutType,
-    } = window.docx;
-    const bordaNil = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
-    const semBorda = { top: bordaNil, bottom: bordaNil, left: bordaNil, right: bordaNil };
-    const corLinha = TBL.fillSecao;
-    const colLinha = 5000;
-    const colLogo = 4072;
+    const { Header, Paragraph, ImageRun, AlignmentType, TextRun } = window.docx;
 
-    if (!logo) {
-      return new Header({
-        children: [
-          new Paragraph({
-            alignment: AlignmentType.RIGHT,
-            spacing: { before: 80, after: 80 },
-            children: [new TextRun({ text: "FLYING studio", bold: true, size: 24, color: COR.primaria, font: FONTE })],
-          }),
-        ],
-      });
-    }
+    const pLogo = logo
+      ? new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          spacing: { before: 80, after: 30 },
+          children: [
+            new ImageRun({
+              data: logo.buffer,
+              transformation: { width: logo.width, height: logo.height },
+            }),
+          ],
+        })
+      : new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          spacing: { before: 80, after: 30 },
+          children: [new TextRun({ text: "FLYING studio", bold: true, size: 24, color: COR.primaria, font: FONTE })],
+        });
 
-    const pLinha = new Paragraph({
-      spacing: { before: 0, after: 0 },
-      border: {
-        bottom: { color: corLinha, space: 1, style: BorderStyle.SINGLE, size: 10 },
-      },
-      children: [new TextRun({ text: "\u00A0", size: 2, font: FONTE })],
-    });
+    const pLinha = paragrafoLinha(TBL.fillSecao, { size: 10, before: 0, after: 0 });
 
-    const pLogo = new Paragraph({
-      alignment: AlignmentType.RIGHT,
-      spacing: { before: 0, after: 0 },
-      children: [
-        new ImageRun({
-          data: logo.buffer,
-          transformation: { width: logo.width, height: logo.height },
-        }),
-      ],
-    });
-
-    const row = new TableRow({
-      children: [
-        new TableCell({
-          borders: semBorda,
-          margins: { top: 100, bottom: 100, left: 0, right: 180 },
-          verticalAlign: VerticalAlign.CENTER,
-          children: [pLinha],
-        }),
-        new TableCell({
-          borders: semBorda,
-          margins: { top: 60, bottom: 60, left: 280, right: 60 },
-          verticalAlign: VerticalAlign.CENTER,
-          children: [pLogo],
-        }),
-      ],
-    });
-
-    return new Header({
-      children: [
-        new Table({
-          width: { size: colLinha + colLogo, type: WidthType.DXA },
-          layout: TableLayoutType.FIXED,
-          columnWidths: [colLinha, colLogo],
-          rows: [row],
-          margins: { top: 80, bottom: 60, left: 0, right: 0 },
-        }),
-      ],
-    });
+    return new Header({ children: [pLogo, pLinha] });
   }
 
   /** Assinatura: data, “De acordo,”, espaço para rubrica, linha e cliente centralizado. */
