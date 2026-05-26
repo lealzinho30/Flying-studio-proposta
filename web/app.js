@@ -346,29 +346,33 @@
     status.innerHTML = `<span class="upload-loading">⏳ Lendo <strong>${file.name}</strong>...</span>`;
 
     try {
-      const r = await window.FlyingFileReader.lerArquivo(file);
+      const ler = window.FlyingFileReader.lerArquivoHistorico || window.FlyingFileReader.lerArquivo;
+      const r = await ler(file);
       if (!r.texto) {
-        status.innerHTML = `<span class="upload-erro">❌ Não extraí texto do PDF.${r.aviso ? " " + r.aviso : ""}</span>`;
+        const det = r.aviso || "Arquivo vazio ou sem texto.";
+        status.innerHTML = `<span class="upload-erro">❌ ${det}<br><span class="upload-aviso">Dica: use o PDF exportado do InDesign/Word (com texto), ou envie o .docx da proposta.</span></span>`;
         return;
       }
-      const proposta = window.FlyingHistoricoPdf.parseTexto(r.texto);
+      const proposta = window.FlyingHistoricoPdf.parseTexto(r.texto, { nomeArquivo: file.name });
       if (!proposta) {
-        status.innerHTML = `<span class="upload-erro">❌ Não consegui ler este PDF. Use o orçamento Flying (com valores R$, forma de pagamento ou itens de serviço). Propostas só de tecnologias ou com 1 item também são aceitas.</span>`;
+        const nPrecos = window.FlyingHistoricoPdf.extrairTodosPrecos(r.texto).length;
+        status.innerHTML = `<span class="upload-erro">❌ Li ${r.chars || r.texto.length} caracteres, mas não identifiquei orçamento (${nPrecos} valor(es) R$ encontrados).<br><span class="upload-aviso">Confira se é o PDF comercial Flying. Se for só imagem/scan, exporte com texto ou mande o .docx.</span></span>`;
         return;
       }
 
       const parsedMini = window.FlyingParser.parse($("descricao").value.trim());
       let empresa = (parsedMini.cliente && parsedMini.cliente.empresa) || "";
       const refFromPdf = (function () {
-        const m = r.texto.match(/(?:ref(?:er[eê]ncia)?|projeto)\s*[:\-]?\s*([^\n]{3,60})/i);
+        const m = r.texto.match(/(?:ref(?:er[eê]ncia)?|projeto|empreendimento)\s*[:\-]?\s*([^\n$]{3,60})/i);
         return m ? m[1].trim() : "";
       })();
       if (!empresa) {
-        const mEmp = r.texto.match(/(?:cliente|para)\s*[:\-]?\s*([A-ZÁÉÍÓÚÃÕÇ][A-ZÁÉÍÓÚÃÕÇ0-9\s.&-]{2,40})/i);
-        if (mEmp) empresa = mEmp[1].split(/\n|ref/i)[0].trim();
+        const mEmp = r.texto.match(/(?:cliente|para|proposta\s+para)\s*[:\-]?\s*([A-ZÁÉÍÓÚÃÕÇ][A-ZÁÉÍÓÚÃÕÇ0-9\s.&-]{2,40})/i);
+        if (mEmp) empresa = mEmp[1].split(/\n|ref|projeto/i)[0].trim();
       }
+      if (!empresa) empresa = window.FlyingHistoricoPdf.empresaDoArquivo(file.name) || "";
       if (!empresa) {
-        status.innerHTML = `<span class="upload-erro">❌ Informe <code>Cliente: NOME</code> na descrição antes de enviar o PDF.</span>`;
+        status.innerHTML = `<span class="upload-erro">❌ Informe <code>Cliente: NOME</code> na descrição <em>ou</em> use um arquivo com o nome do cliente (ex.: Flying_Galli_...pdf).</span>`;
         return;
       }
 

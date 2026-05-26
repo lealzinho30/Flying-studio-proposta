@@ -25,8 +25,41 @@
     if (!str) return null;
     const s = String(str).replace(/\s/g, "").replace(/\./g, "").replace(",", ".");
     const n = parseFloat(s);
-    if (!Number.isFinite(n) || n < 80 || n > 500000) return null;
+    if (!Number.isFinite(n) || n < 50 || n > 500000) return null;
     return Math.round(n);
+  }
+
+  function ehLinhaTotal(linha) {
+    const n = norm(linha);
+    return /valor\s+final|investimento\s+total|subtotal|desconto\s+de|total\s+do\s+projeto|total\s+geral/.test(n);
+  }
+
+  /** Varre o texto inteiro e pega qualquer R$ (fallback quando o PDF vem “tudo numa linha”). */
+  function extrairTodosPrecos(texto) {
+    const achados = [];
+    const re = /R\$\s*([\d.]{1,3}(?:\.\d{3})*(?:,\d{2})?)/gi;
+    let m;
+    while ((m = re.exec(texto)) !== null) {
+      const preco = parsePreco(m[1]);
+      if (!preco) continue;
+      const ctx = texto.slice(Math.max(0, m.index - 90), m.index).replace(/\s+/g, " ");
+      if (ehLinhaTotal(ctx)) continue;
+      if (/\d{1,3}\s*%/.test(ctx) && preco < 5000) continue;
+      achados.push({ preco, ctx });
+    }
+    return achados;
+  }
+
+  function montarDePrecosSoltos(precos) {
+    const filtrados = precos.filter((p) => p.preco >= 500);
+    const lista = filtrados.length ? filtrados : precos;
+    if (!lista.length) return {};
+    const itens = lista.slice(0, 40).map((p, i) => {
+      let desc = limpaDescricao(p.ctx.replace(/R\$.*/i, ""));
+      if (!desc || desc.length < 3) desc = `Serviço ${i + 1} (extraído do PDF)`;
+      return { desc, preco: p.preco };
+    });
+    return { servicos: montarBloco(itens) };
   }
 
   function extrairPrecosLinha(linha) {
@@ -73,12 +106,32 @@
   }
 
   function parseValorFinalProjeto(texto) {
+    const padroes = [
+      /valor\s+final\s+do\s+projeto[^R$]{0,80}R\$\s*([\d.,]+)/i,
+      /investimento\s+total[^R$]{0,80}R\$\s*([\d.,]+)/i,
+      /valor\s+total\s+do\s+projeto[^R$]{0,80}R\$\s*([\d.,]+)/i,
+      /total\s+(?:com\s+desconto)?[^R$]{0,40}R\$\s*([\d.,]+)/i,
+    ];
+    for (const re of padroes) {
+      const m = texto.match(re);
+      if (m) {
+        const p = parsePreco(m[1]);
+        if (p) return p;
+      }
+    }
+    const todos = extrairTodosPrecos(texto);
+    if (todos.length) return todos[todos.length - 1].preco;
+    return null;
+  }
+
+  function empresaDoArquivo(nome) {
+    if (!nome) return "";
+    const base = nome.replace(/\.[a-z0-9]+$/i, "");
     const m =
-      texto.match(/valor\s+final\s+do\s+projeto[^R$]*R\$\s*([\d.,]+)/i) ||
-      texto.match(/investimento\s+total[^R$]*R\$\s*([\d.,]+)/i) ||
-      texto.match(/valor\s+total\s+do\s+projeto[^R$]*R\$\s*([\d.,]+)/i);
-    if (!m) return null;
-    return parsePreco(m[1]);
+      base.match(/flying[_\s-]+([a-z0-9][a-z0-9\s_-]{1,30})/i) ||
+      base.match(/orc[_\s-]+([a-z0-9][a-z0-9\s_-]{1,30})/i);
+    if (!m) return "";
+    return m[1].replace(/[_-]+/g, " ").trim();
   }
 
   function parseItens(texto) {
@@ -176,10 +229,10 @@
   function parseFormaPagamento(texto) {
     const parcelas = [];
     const bloco = texto.match(
-      /(?:forma\s+de\s+pagamento|condi[cç][oõ]es?\s+de\s+pagamento)[\s\S]{0,1500}/i
+      /(?:forma\s+de\s+pagamento|condi[cç][oõ]es?\s+de\s+pagamento)[\s\S]{0,2000}/i
     );
     const trecho = bloco ? bloco[0] : texto;
-    const reLinha = /^(\d{1,3})\s*%\s*(.+)$/gim;
+    const reLinha = /(\d{1,3})\s*%\s*([^%\n]{6,120}?)(?=\d{1,3}\s*%|$)/gi;
     let m;
     while ((m = reLinha.exec(trecho)) !== null) {
       const pct = parseInt(m[1], 10);
@@ -229,20 +282,27 @@
     );
   }
 
-  function parseTexto(texto) {
-    if (!texto || texto.length < 40) return null;
+  function parseTexto(texto, metaArquivo) {
+    if (!texto || texto.length < 15) return null;
     const t = texto.replace(/\u00a0/g, " ");
-    const cats = parseItens(t);
-    const nItens = contarItens(cats);
+    let cats = parseItens(t);
+    let nItens = contarItens(cats);
     const valorFinalProjeto = parseValorFinalProjeto(t);
     const forma_pagamento = parseFormaPagamento(t);
     const { pct, label } = parseDesconto(t);
+    const precosSoltos = extrairTodosPrecos(t);
+
+    if (!nItens && precosSoltos.length) {
+      cats = montarDePrecosSoltos(precosSoltos);
+      nItens = contarItens(cats);
+    }
 
     const temSinal =
       nItens >= 1 ||
-      valorFinalProjeto > 0 ||
-      forma_pagamento.length >= 2 ||
-      pct > 0;
+      (valorFinalProjeto && valorFinalProjeto > 0) ||
+      forma_pagamento.length >= 1 ||
+      pct > 0 ||
+      precosSoltos.length >= 1;
 
     if (!temSinal) return null;
 
@@ -250,8 +310,9 @@
       cats.servicos = {
         qtd: 1,
         total: valorFinalProjeto,
-        itens: [{ desc: "Valor do último orçamento (PDF)", preco: valorFinalProjeto }],
+        itens: [{ desc: "Orçamento anterior (valor total do PDF)", preco: valorFinalProjeto }],
       };
+      nItens = 1;
     }
 
     if (cats.servicos && !cats.externas && !cats.internas && !cats.plantas) {
@@ -259,6 +320,9 @@
     }
 
     const meta = parseClienteRef(t);
+    if (!meta.empresa && metaArquivo && metaArquivo.nomeArquivo) {
+      meta.empresa = empresaDoArquivo(metaArquivo.nomeArquivo);
+    }
 
     return {
       ref: meta.ref || "Último orçamento (PDF)",
@@ -355,6 +419,8 @@
 
   window.FlyingHistoricoPdf = {
     parseTexto,
+    empresaDoArquivo,
+    extrairTodosPrecos,
     registrar,
     getRegistro,
     listarRegistros,

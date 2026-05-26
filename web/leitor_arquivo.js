@@ -34,18 +34,86 @@
     });
   }
 
-  async function lerPDF(file) {
-    if (!window.pdfjsLib) throw new Error("PDF.js não carregou");
+  function pdfItemsParaLinhas(items) {
+    const rows = [];
+    for (const it of items || []) {
+      const s = (it.str || "").trim();
+      if (!s) continue;
+      const tr = it.transform || [1, 0, 0, 1, 0, 0];
+      rows.push({ x: tr[4] || 0, y: tr[5] || 0, str: s });
+    }
+    rows.sort((a, b) => b.y - a.y || a.x - b.x);
+
+    const linhas = [];
+    let buf = [];
+    let yAnt = null;
+    for (const r of rows) {
+      if (yAnt !== null && Math.abs(r.y - yAnt) > 4) {
+        if (buf.length) linhas.push(buf.join(" ").replace(/\s+/g, " ").trim());
+        buf = [];
+      }
+      buf.push(r.str);
+      yAnt = r.y;
+    }
+    if (buf.length) linhas.push(buf.join(" ").replace(/\s+/g, " ").trim());
+    return linhas;
+  }
+
+  async function ensurePdfJs() {
+    if (window.pdfjsLib) return window.pdfjsLib;
+    throw new Error("Biblioteca PDF não carregou. Verifique sua conexão e recarregue a página (Ctrl+Shift+R).");
+  }
+
+  async function lerPDF(file, opts) {
+    const pdfjs = await ensurePdfJs();
     const buf = await readAsArrayBuffer(file);
-    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const pdf = await pdfjs.getDocument({ data: buf }).promise;
     const partes = [];
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const content = await page.getTextContent();
-      const texto = content.items.map((it) => it.str).join(" ");
-      partes.push(texto);
+      const linhas = pdfItemsParaLinhas(content.items);
+      partes.push(linhas.join("\n"));
     }
-    return partes.join("\n");
+    let texto = partes.join("\n");
+    if (!opts || !opts.raw) {
+      texto = texto
+        .replace(/(ILUSTRA.{0,12}EXTERNAS?)/gi, "\n$1\n")
+        .replace(/(ILUSTRA.{0,12}INTERNAS?)/gi, "\n$1\n")
+        .replace(/(PLANTAS?\s+HUMANIZADAS?)/gi, "\n$1\n")
+        .replace(/(TOUR\s+VIRTUAL|VISITA\s+VIRTUAL)/gi, "\n$1\n")
+        .replace(/(FORMA\s+DE\s+PAGAMENTO)/gi, "\n$1\n");
+    }
+    return texto;
+  }
+
+  /** Leitura para histórico: texto bruto, sem reformatar listas. */
+  async function lerArquivoHistorico(file) {
+    const formato = ext(file);
+    let texto = "";
+    let aviso = null;
+    try {
+      if (formato === "pdf") texto = await lerPDF(file, { raw: false });
+      else if (formato === "docx") texto = await lerDOCX(file);
+      else if (formato === "doc") {
+        try { texto = await readAsText(file); } catch (_) { texto = ""; }
+        aviso = "Arquivo .doc antigo — se falhar, salve como PDF ou DOCX.";
+      } else {
+        return { texto: "", formato, chars: 0, aviso: "Envie PDF ou DOCX do orçamento Flying." };
+      }
+    } catch (e) {
+      return { texto: "", formato, chars: 0, aviso: e.message || String(e) };
+    }
+    const limpo = (texto || "").replace(/\r/g, "").trim();
+    const chars = limpo.length;
+    const temTexto = chars > 30;
+    const temPreco = /R\$\s*[\d]/i.test(limpo);
+    if (!temTexto) {
+      aviso = "PDF sem texto selecionável — provavelmente é scan/imagem. Exporte o PDF com texto ou envie o .docx.";
+    } else if (!temPreco) {
+      aviso = "Li o PDF, mas não achei valores em R$. Confira se é o orçamento comercial completo.";
+    }
+    return { texto: limpo, formato, chars, aviso, scan: !temTexto };
   }
 
   async function lerDOCX(file) {
@@ -140,5 +208,5 @@
     return { texto: textoFinal, formato, linhas, aviso };
   }
 
-  window.FlyingFileReader = { lerArquivo };
+  window.FlyingFileReader = { lerArquivo, lerArquivoHistorico };
 })();
