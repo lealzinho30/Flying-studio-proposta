@@ -317,28 +317,35 @@
     return tblWrap(rows);
   }
 
-  /** Totais finais do projeto (linhas mescladas, como no PDF Flying). */
-  function tabelaTotaisProjeto(subtotal, descontoPct, valorFinal, descontoLabel) {
-    const { TableRow, AlignmentType } = window.docx;
-    const rows = [];
-    rows.push(new TableRow({
-      children: [
-        tblCell(`Valor Final do Projeto: ${brl(subtotal)}`, {
-          colSpan: 3, align: AlignmentType.CENTER, bold: true, size: 20,
-        }),
-      ],
-    }));
+  /**
+   * Totais do projeto (somente layout/posicionamento).
+   * Ajusta o texto para o padrão Flying Studio (sem copiar frases do exemplo).
+   */
+  function renderTotaisProjeto(subtotal, descontoPct, valorFinal, descontoLabel) {
+    const descontoValor = subtotal - valorFinal;
+    const rot = descontoLabel || `${descontoPct}% de desconto`;
+
+    const out = [];
+    out.push(
+      P(`INVESTIMENTO TOTAL: ${brl(valorFinal)}`, {
+        bold: true,
+        size: 20,
+        color: COR.textoSoft,
+        alignment: window.docx.AlignmentType.CENTER,
+        after: 10,
+      })
+    );
     if (descontoPct > 0) {
-      const rot = descontoLabel || `${descontoPct}%`;
-      rows.push(new TableRow({
-        children: [
-          tblCell(`Valor Final do Projeto com desconto de ${rot}: ${brl(valorFinal)}`, {
-            colSpan: 3, align: AlignmentType.CENTER, bold: true, size: 20,
-          }),
-        ],
-      }));
+      out.push(
+        P(`Desconto aplicado (${rot}): -${brl(descontoValor)}`, {
+          size: 18,
+          color: COR.textoSoft,
+          alignment: window.docx.AlignmentType.CENTER,
+          after: 10,
+        })
+      );
     }
-    return tblWrap(rows);
+    return out;
   }
 
   /** Capa: cliente / projeto / contato em texto simples (sem caixa roxa). */
@@ -482,7 +489,7 @@
     }
 
     if (secaoNum > 0 || (extrasEstruturados && extrasEstruturados.qtd)) {
-      children.push(tabelaTotaisProjeto(subtotal, orc.desconto_pct, valorFinal, descontoLabel));
+      renderTotaisProjeto(subtotal, orc.desconto_pct, valorFinal, descontoLabel).forEach((p) => children.push(p));
       children.push(P(`(${extenso(valorFinal)})`, { italics: true, color: COR.textoSoft, after: SP.entreSecoes, size: 18 }));
     }
 
