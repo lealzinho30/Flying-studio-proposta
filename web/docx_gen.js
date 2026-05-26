@@ -83,17 +83,8 @@
     bullet: 200,
   };
 
-  // Logo no cabeçalho: 3,5 cm (igual docx_writer.py). ImageRun width/height em px.
-  const LOGO_LARGURA_MAX = 133;
-  // Largura útil A4 com margens 2,5 cm (twips). Faixa da logo à direita da linha.
-  const HEADER_LARGURA_UTIL = 9072;
-  const HEADER_FAIXA_LINHA = 5200;
-  const HEADER_DOC = {
-    margemTabelaTopo: 70,
-    margemTabelaBase: 50,
-    logoRecuoDireita: 160,
-    logoRecuoEsquerda: 120,
-  };
+  // Banner único do cabeçalho (linha lavanda + logo) — largura ≈ área útil A4 em px.
+  const HEADER_BANNER_LARGURA = 600;
   const PAGE = {
     top: 1701,
     bottom: 1304,
@@ -204,25 +195,25 @@
     return P(`${pct}% - ${marco}`, { indent: { left: 720 }, after: SP.bullet });
   }
 
-  async function carregarLogo() {
+  async function carregarHeaderBanner() {
     try {
-      let resp = await fetch("assets/flying_logo_hi.png");
-      if (!resp.ok) resp = await fetch("assets/flying_logo.png");
-      if (!resp.ok) throw new Error("logo http " + resp.status);
+      let resp = await fetch("assets/flying_header_banner.png");
+      if (!resp.ok) resp = await fetch("assets/flying_header_banner_sm.png");
+      if (!resp.ok) throw new Error("banner http " + resp.status);
       const buffer = await resp.arrayBuffer();
-      let naturalW = 610;
-      let naturalH = 238;
+      let naturalW = 2000;
+      let naturalH = 110;
       try {
         const bmp = await createImageBitmap(new Blob([buffer], { type: "image/png" }));
         naturalW = bmp.width;
         naturalH = bmp.height;
         bmp.close();
-      } catch (_) { /* proporção padrão do asset hi-res */ }
-      const width = LOGO_LARGURA_MAX;
+      } catch (_) { /* proporção padrão do banner */ }
+      const width = HEADER_BANNER_LARGURA;
       const height = Math.max(1, Math.round((width * naturalH) / naturalW));
-      return { buffer, width, height, naturalW, naturalH };
+      return { buffer, width, height };
     } catch (e) {
-      console.warn("Logo não pôde ser carregado:", e);
+      console.warn("Banner do cabeçalho não pôde ser carregado:", e);
       return null;
     }
   }
@@ -244,86 +235,34 @@
     });
   }
 
-  /** Cabeçalho Flying: linha à esquerda; logo em faixa própria à direita (evita corte na borda da célula). */
-  function montarHeader(logo) {
-    const {
-      Header, Paragraph, ImageRun, AlignmentType, TextRun, BorderStyle,
-      Table, TableRow, TableCell, WidthType, VerticalAlign, TableLayoutType,
-    } = window.docx;
-    const bordaNil = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
-    const semBorda = { top: bordaNil, bottom: bordaNil, left: bordaNil, right: bordaNil };
-    const corLinha = TBL.fillSecao;
-    const H = HEADER_DOC;
-    const faixaLinha = HEADER_FAIXA_LINHA;
-    const faixaLogo = HEADER_LARGURA_UTIL - faixaLinha;
+  /** Cabeçalho = um PNG (linha + logo), largura total — sem tabela que corta a arte. */
+  function montarHeader(banner) {
+    const { Header, Paragraph, ImageRun, AlignmentType, TextRun } = window.docx;
 
-    if (!logo) {
+    if (!banner) {
       return new Header({
         children: [
           new Paragraph({
             alignment: AlignmentType.RIGHT,
-            spacing: { before: 80, after: 60 },
-            indent: { left: faixaLinha, right: H.logoRecuoDireita },
+            spacing: { before: 80, after: 80 },
             children: [new TextRun({ text: "FLYING studio", bold: true, size: 24, color: COR.primaria, font: FONTE })],
           }),
-          paragrafoLinha(corLinha, { size: 10 }),
         ],
       });
     }
 
-    const pLinha = new Paragraph({
-      spacing: { before: 0, after: 0 },
-      border: {
-        bottom: { color: corLinha, space: 1, style: BorderStyle.SINGLE, size: 10 },
-      },
-      children: [new TextRun({ text: "\u00A0", size: 2, font: FONTE })],
-    });
-
-    // Logo fora de célula estreita: parágrafo só na faixa direita + recuo da borda da linha.
-    const pLogo = new Paragraph({
-      alignment: AlignmentType.RIGHT,
-      spacing: { before: 70, after: 0 },
-      indent: {
-        left: faixaLinha + H.logoRecuoEsquerda,
-        right: H.logoRecuoDireita,
-      },
-      children: [
-        new ImageRun({
-          data: logo.buffer,
-          transformation: { width: logo.width, height: logo.height },
-        }),
-      ],
-    });
-
-    const celLinha = new TableCell({
-      borders: semBorda,
-      margins: { top: 60, bottom: 60, left: 0, right: 80 },
-      verticalAlign: VerticalAlign.CENTER,
-      children: [pLinha],
-    });
-
-    const celEspacoLogo = new TableCell({
-      borders: semBorda,
-      margins: { top: 0, bottom: 0, left: 0, right: 0 },
-      children: [new Paragraph({ spacing: { before: 0, after: 0 }, children: [] })],
-    });
-
-    const row = new TableRow({
-      children: [celLinha, celEspacoLogo],
-    });
-
-    const tabelaLinha = new Table({
-      width: { size: HEADER_LARGURA_UTIL, type: WidthType.DXA },
-      layout: TableLayoutType.FIXED,
-      columnWidths: [faixaLinha, faixaLogo],
-      rows: [row],
-      margins: { top: 0, bottom: H.margemTabelaBase, left: 0, right: 0 },
-    });
-
     return new Header({
       children: [
-        pLogo,
-        tabelaLinha,
+        new Paragraph({
+          alignment: AlignmentType.LEFT,
+          spacing: { before: 50, after: 70 },
+          children: [
+            new ImageRun({
+              data: banner.buffer,
+              transformation: { width: banner.width, height: banner.height },
+            }),
+          ],
+        }),
       ],
     });
   }
@@ -556,7 +495,7 @@
     const { Document, Packer } = window.docx;
 
     data = data || new Date();
-    const logo = await carregarLogo();
+    const headerBanner = await carregarHeaderBanner();
 
     const subtotalImagens = orc.subtotal;
     const totalExtras = (extrasEstruturados && extrasEstruturados.total) || 0;
