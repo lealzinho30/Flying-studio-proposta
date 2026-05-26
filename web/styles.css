@@ -68,15 +68,14 @@ code {
   top: 0;
   z-index: 20;
 }
-.brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.brand-logo {
-  display: block;
-  height: 36px;
-  width: auto;
-  max-width: min(200px, 50vw);
-  object-fit: contain;
-  object-position: left center;
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+.brand .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
 }
+.brand-name { color: var(--text); }
 .topnav {
   display: flex;
   align-items: center;
