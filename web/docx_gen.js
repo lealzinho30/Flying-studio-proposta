@@ -85,11 +85,14 @@
 
   // Logo no cabeçalho: 3,5 cm (igual docx_writer.py). ImageRun width/height em px.
   const LOGO_LARGURA_MAX = 133;
+  // Largura útil A4 com margens 2,5 cm (twips). Faixa da logo à direita da linha.
+  const HEADER_LARGURA_UTIL = 9072;
+  const HEADER_FAIXA_LINHA = 5200;
   const HEADER_DOC = {
-    margemTabelaTopo: 80,
-    margemTabelaBase: 60,
-    colLinhaPct: 62,
-    colLogoPct: 38,
+    margemTabelaTopo: 70,
+    margemTabelaBase: 50,
+    logoRecuoDireita: 160,
+    logoRecuoEsquerda: 120,
   };
   const PAGE = {
     top: 1701,
@@ -241,16 +244,18 @@
     });
   }
 
-  /** Cabeçalho Flying: linha lavanda à esquerda + PNG oficial à direita (sem cortar a arte). */
+  /** Cabeçalho Flying: linha à esquerda; logo em faixa própria à direita (evita corte na borda da célula). */
   function montarHeader(logo) {
     const {
       Header, Paragraph, ImageRun, AlignmentType, TextRun, BorderStyle,
-      Table, TableRow, TableCell, WidthType, VerticalAlign, HeightRule,
+      Table, TableRow, TableCell, WidthType, VerticalAlign, TableLayoutType,
     } = window.docx;
     const bordaNil = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
     const semBorda = { top: bordaNil, bottom: bordaNil, left: bordaNil, right: bordaNil };
     const corLinha = TBL.fillSecao;
     const H = HEADER_DOC;
+    const faixaLinha = HEADER_FAIXA_LINHA;
+    const faixaLogo = HEADER_LARGURA_UTIL - faixaLinha;
 
     if (!logo) {
       return new Header({
@@ -258,15 +263,13 @@
           new Paragraph({
             alignment: AlignmentType.RIGHT,
             spacing: { before: 80, after: 60 },
+            indent: { left: faixaLinha, right: H.logoRecuoDireita },
             children: [new TextRun({ text: "FLYING studio", bold: true, size: 24, color: COR.primaria, font: FONTE })],
           }),
           paragrafoLinha(corLinha, { size: 10 }),
         ],
       });
     }
-
-    // Altura mínima da faixa (twips): imagem + folga — AT_LEAST evita clip no Word.
-    const alturaMinTw = Math.round(logo.height * 20 * 1.2) + 320;
 
     const pLinha = new Paragraph({
       spacing: { before: 0, after: 0 },
@@ -276,10 +279,14 @@
       children: [new TextRun({ text: "\u00A0", size: 2, font: FONTE })],
     });
 
-    // Sem lineRule EXACT: o Word cortava o ponto verde e o “studio”.
+    // Logo fora de célula estreita: parágrafo só na faixa direita + recuo da borda da linha.
     const pLogo = new Paragraph({
       alignment: AlignmentType.RIGHT,
-      spacing: { before: 0, after: 0 },
+      spacing: { before: 70, after: 0 },
+      indent: {
+        left: faixaLinha + H.logoRecuoEsquerda,
+        right: H.logoRecuoDireita,
+      },
       children: [
         new ImageRun({
           data: logo.buffer,
@@ -289,33 +296,34 @@
     });
 
     const celLinha = new TableCell({
-      width: { size: H.colLinhaPct, type: WidthType.PERCENTAGE },
       borders: semBorda,
-      margins: { top: 80, bottom: 80, left: 0, right: 200 },
+      margins: { top: 60, bottom: 60, left: 0, right: 80 },
       verticalAlign: VerticalAlign.CENTER,
       children: [pLinha],
     });
-    const celLogo = new TableCell({
-      width: { size: H.colLogoPct, type: WidthType.PERCENTAGE },
+
+    const celEspacoLogo = new TableCell({
       borders: semBorda,
-      margins: { top: 40, bottom: 40, left: 0, right: 0 },
-      verticalAlign: VerticalAlign.CENTER,
-      children: [pLogo],
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+      children: [new Paragraph({ spacing: { before: 0, after: 0 }, children: [] })],
     });
 
     const row = new TableRow({
-      height: { value: alturaMinTw, rule: HeightRule.AT_LEAST },
-      cantSplit: true,
-      children: [celLinha, celLogo],
+      children: [celLinha, celEspacoLogo],
+    });
+
+    const tabelaLinha = new Table({
+      width: { size: HEADER_LARGURA_UTIL, type: WidthType.DXA },
+      layout: TableLayoutType.FIXED,
+      columnWidths: [faixaLinha, faixaLogo],
+      rows: [row],
+      margins: { top: 0, bottom: H.margemTabelaBase, left: 0, right: 0 },
     });
 
     return new Header({
       children: [
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          rows: [row],
-          margins: { top: H.margemTabelaTopo, bottom: H.margemTabelaBase, left: 0, right: 0 },
-        }),
+        pLogo,
+        tabelaLinha,
       ],
     });
   }
