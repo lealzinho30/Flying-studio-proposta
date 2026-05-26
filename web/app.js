@@ -39,7 +39,7 @@
       btn.disabled = true;
       form.classList.add("is-loading");
     } else {
-      btn.textContent = btn.dataset.labelOriginal || "Gerar proposta →";
+      btn.textContent = btn.dataset.labelOriginal || "Gerar proposta";
       btn.disabled = false;
       form.classList.remove("is-loading");
     }
@@ -127,7 +127,7 @@
       ["diversos", "Outros"],
     ];
 
-    let html = `<h2>Serviços extras <span class="muted">${extras.qtd} item(ns) · total ${brl(extras.total)}</span></h2>`;
+    let html = `<h2 class="section-title">Serviços extras <span class="muted">${extras.qtd} · ${brl(extras.total)}</span></h2>`;
     for (const [chave, nome] of grupos) {
       const g = extras[chave];
       if (!g || !g.subsecoes.length) continue;
@@ -221,7 +221,19 @@
     $("r-titulo").innerHTML = `${cliente.empresa} <span class="grad">· ${cliente.ref}</span>`;
     const total = (descricoes.externas.length + descricoes.internas.length + descricoes.plantas.length);
     const extrasInfo = extrasEstr.qtd ? ` · <strong>${extrasEstr.qtd}</strong> serviço(s) extra(s)` : "";
-    $("r-meta").innerHTML = `A/C: <strong>${cliente.contato}</strong> · ${total} imagens${extrasInfo} · Desconto ${descontoPct}% · Estratégia escolhida: <strong>${estrategia}</strong> <span class="origem-tag">parser: ${parsed._origem}</span>`;
+    const rotuloEstrategia = {
+      auto: "Automático",
+      planilha: "Tabela padrão",
+      historico: "Histórico do cliente",
+    }[estrategia] || estrategia;
+    const chips = [
+      `<span class="chip">A/C <strong>${cliente.contato || "—"}</strong></span>`,
+      `<span class="chip">${total} imagens</span>`,
+    ];
+    if (descontoPct > 0) chips.push(`<span class="chip">Desconto ${descontoPct}%</span>`);
+    if (extrasEstr.qtd) chips.push(`<span class="chip">${extrasEstr.qtd} extra(s)</span>`);
+    chips.push(`<span class="chip chip-accent">${rotuloEstrategia}</span>`);
+    $("r-meta").innerHTML = chips.join("");
 
     const av = $("r-avisos");
     av.innerHTML = "";
@@ -262,7 +274,7 @@
     } else {
       histDiv.innerHTML = `
         <p class="sem-hist">Cliente <strong>${cliente.empresa}</strong> não está no histórico ainda.</p>
-        <p class="sem-hist-sub">Envie o PDF do último orçamento no card <em>Histórico do Cliente</em> ou cadastre o cliente no sistema.</p>`;
+        <p class="sem-hist-sub">Em <strong>Preço → Histórico</strong>, envie o PDF do último orçamento.</p>`;
     }
 
     $("r-estrategia-rotulo").textContent = `(estratégia ${estrategia})`;
@@ -581,21 +593,27 @@
     e.target.value = "";
   }
 
-  // Cards de estratégia: clique anywhere marca o radio
-  function setupCardsEstrategia() {
-    document.querySelectorAll(".opt-card").forEach((card) => {
-      const sync = () => {
-        const sel = card.querySelector('input[type="radio"]').checked;
-        document.querySelectorAll(".opt-card").forEach((c) => c.classList.remove("selecionado"));
-        if (sel) card.classList.add("selecionado");
-      };
+  function syncEstrategiaUi() {
+    const checked = document.querySelector('input[name="estrategia"]:checked');
+    const bloc = $("hist-upload-bloco");
+    if (bloc) bloc.classList.toggle("hidden", !checked || checked.value !== "historico");
+    document.querySelectorAll(".seg-item, .opt-card").forEach((card) => {
       const radio = card.querySelector('input[type="radio"]');
+      if (radio) card.classList.toggle("selecionado", radio.checked);
+    });
+  }
+
+  function setupCardsEstrategia() {
+    document.querySelectorAll(".seg-item, .opt-card").forEach((card) => {
+      const radio = card.querySelector('input[type="radio"]');
+      if (!radio) return;
       radio.addEventListener("change", () => {
-        document.querySelectorAll(".opt-card").forEach((c) => c.classList.remove("selecionado"));
-        card.classList.add("selecionado");
+        syncEstrategiaUi();
+        salvarRascunho();
       });
       if (radio.checked) card.classList.add("selecionado");
     });
+    syncEstrategiaUi();
   }
 
   function setupAtalhos() {
@@ -612,9 +630,13 @@
   form.addEventListener("submit", gerar);
   $("btn-download").addEventListener("click", baixar);
   $("btn-download-2").addEventListener("click", baixar);
-  $("link-novo").addEventListener("click", voltar);
-  $("voltar").addEventListener("click", voltar);
-  $("voltar-2").addEventListener("click", voltar);
+  function voltarClick(ev) {
+    ev.preventDefault();
+    voltar();
+  }
+  $("link-novo").addEventListener("click", voltarClick);
+  $("voltar").addEventListener("click", voltarClick);
+  $("voltar-2").addEventListener("click", voltarClick);
   $("btn-upload").addEventListener("click", () => $("arquivo-cliente").click());
   $("arquivo-cliente").addEventListener("change", handleArquivoCliente);
   $("btn-analisar-planta").addEventListener("click", () => $("arquivo-planta-ia").click());
@@ -635,9 +657,6 @@
     window._flyingHistUiTimer = setTimeout(atualizarUiHistoricoPdf, 400);
     clearTimeout(window._flyingDraftTimer);
     window._flyingDraftTimer = setTimeout(salvarRascunho, 350);
-  });
-  document.querySelectorAll('input[name="estrategia"]').forEach((r) => {
-    r.addEventListener("change", salvarRascunho);
   });
   restaurarRascunhoSeVazio();
   setupCardsEstrategia();
