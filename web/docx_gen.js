@@ -74,12 +74,13 @@
   const TAM = 20; // docx: half-points → 10 pt
   const HIGHLIGHT = "yellow";
 
+  // after/before em twips (1/20 pt). ~240 ≈ uma linha em 10 pt entre parágrafos.
   const SP = {
-    corpo: 16,
+    corpo: 240,
     linha: 240,
-    tituloSec: 36,
-    entreSecoes: 48,
-    bullet: 14,
+    tituloSec: 240,
+    entreSecoes: 240,
+    bullet: 200,
   };
 
   const LOGO = { width: 133, height: 52 };
@@ -497,8 +498,10 @@
     if (tblInvest) children.push(tblInvest);
 
     if (blocosInvest.length) {
-      children.push(P("", { forcar: true, after: SP.corpo }));
-      children.push(tituloBloco("INVESTIMENTO PARA O DESENVOLVIMENTOS DOS ITENS ACIMA DESCRITOS:", { after: SP.corpo }));
+      children.push(tituloBloco("INVESTIMENTO PARA O DESENVOLVIMENTOS DOS ITENS ACIMA DESCRITOS:", {
+        before: SP.corpo,
+        after: SP.corpo,
+      }));
       children.push(PRich([
         R(brl(valorFinal), { bold: true }),
         R(` (${extenso(valorFinal)})`, {}),
