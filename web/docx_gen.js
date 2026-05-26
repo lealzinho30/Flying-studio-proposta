@@ -93,7 +93,7 @@
   };
 
   const TBL = {
-    fillSecao: "7D6FA8",
+    fillSecao: "9484C4",
     margem: { top: 10, bottom: 10, left: 50, right: 50 },
     col: { item: 12, desc: 56, val: 32 },
   };
@@ -400,8 +400,7 @@
     rows.push(new TableRow({
       children: [
         tblCell("Itens", { width: W.item, align: AlignmentType.CENTER }),
-        tblCell("Descrição dos Serviços", { width: W.desc, align: AlignmentType.CENTER }),
-        tblCell("", { width: W.val }),
+        tblCell("Descrição dos Serviços", { width: W.desc, colSpan: 2, align: AlignmentType.CENTER }),
       ],
     }));
 
@@ -409,8 +408,7 @@
       rows.push(new TableRow({
         children: [
           tblCell(`${bloco.numero}.${idx + 1}`, { width: W.item, align: AlignmentType.CENTER }),
-          tblCell(desc, { width: W.desc, align: AlignmentType.CENTER }),
-          tblCell("", { width: W.val }),
+          tblCell(desc, { width: W.desc, colSpan: 2 }),
         ],
       }));
     });
@@ -418,7 +416,7 @@
     rows.push(new TableRow({
       children: [
         tblCell(String(bloco.qtd), { width: W.item, align: AlignmentType.CENTER }),
-        tblCell("Valor Total", { width: W.desc, bold: true, align: AlignmentType.CENTER }),
+        tblCell("Valor Total", { width: W.desc, bold: true }),
         tblCell(precoCelula(bloco), { width: W.val, bold: true, align: AlignmentType.RIGHT }),
       ],
     }));
@@ -432,10 +430,10 @@
     return [
       new TableRow({
         children: [
-          tblCell(String(totalItens), { width: W.item, fill: TBL.fillSecao, align: AlignmentType.CENTER }),
-          tblCell("Valor Final", { width: W.desc, fill: TBL.fillSecao, align: AlignmentType.CENTER }),
+          tblCell(String(totalItens), { width: W.item, align: AlignmentType.CENTER }),
+          tblCell("Valor Final", { width: W.desc, bold: true }),
           tblCell(brl(valorFinal), {
-            width: W.val, bold: true, fill: TBL.fillSecao, align: AlignmentType.RIGHT,
+            width: W.val, bold: true, align: AlignmentType.RIGHT,
           }),
         ],
       }),
