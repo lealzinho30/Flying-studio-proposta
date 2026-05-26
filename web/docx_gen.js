@@ -84,9 +84,8 @@
   };
   const TBL = {
     fillTitulo: "EFEBFF",
-    fillRodape: "5B3CFF",
-    margem: { top: 12, bottom: 12, left: 50, right: 50 },
-    borda: { style: "single", size: 4, color: "000000" },
+    margem: { top: 10, bottom: 10, left: 45, right: 45 },
+    col: { item: 12, desc: 58, val: 30 },
   };
 
   // ---------- atalhos para geração ----------
@@ -229,7 +228,7 @@
     return new Footer({ children: [linha, site, endereco] });
   }
 
-  // ---------- tabelas (modelo Flying: lavanda + Itens | Descrição | Valor) ----------
+  // ---------- tabelas (modelo Flying: bloco único, lavanda, Itens | Descrição) ----------
 
   function tblBorda() {
     const { BorderStyle } = window.docx;
@@ -249,7 +248,7 @@
       children: [
         new Paragraph({
           alignment: opts.align || AlignmentType.LEFT,
-          spacing: { before: 0, after: 0, line: SP.linha },
+          spacing: { before: 0, after: 0, line: 200 },
           children: [
             new TextRun({
               text: texto || "",
@@ -264,147 +263,152 @@
     });
   }
 
-  function tblWrap(rows) {
-    const { Table, WidthType } = window.docx;
+  function secaoHeading(numero, titulo, opts = {}) {
+    return P(`${numero} — ${titulo}`, {
+      bold: true,
+      size: 22,
+      color: COR.texto,
+      after: SP.tituloSec,
+      before: opts.before ?? 0,
+    });
+  }
+
+  function cabecalhoProposta(cliente) {
+    const emp = (cliente.empresa || "CLIENTE").toUpperCase();
+    const ref = (cliente.ref || "PROJETO").toUpperCase();
+    const contato = (cliente.contato || "—").trim();
+    return [
+      P("PROPOSTA DE IMAGENS, FILMES E TECNOLOGIAS 3D", { bold: true, size: 22, after: 6 }),
+      P(`${emp} - REF: ${ref}`, { bold: true, size: 22, after: 6 }),
+      P(`A/C: ${contato}`, { bold: true, size: 22, after: SP.entreBlocos }),
+    ].filter(Boolean);
+  }
+
+  /** Monta todas as subseções 2.x para uma única tabela contínua. */
+  function coletarSubsecoesInvestimento(orc, extrasEstruturados) {
+    const blocos = [];
+    let secaoNum = 0;
+
+    function addCategoria(titulo, categoria) {
+      if (!categoria || !categoria.qtd) return;
+      secaoNum++;
+      blocos.push({
+        numero: `2.${secaoNum}`,
+        titulo,
+        linhas: categoria.itens.map((it) => it.descricao_normalizada),
+        qtd: categoria.qtd,
+        total: categoria.total,
+      });
+    }
+
+    addCategoria("ILUSTRAÇÕES EXTERNAS", orc.externas);
+    addCategoria("ILUSTRAÇÕES INTERNAS", orc.internas);
+    addCategoria("PLANTAS HUMANIZADAS", orc.plantas);
+
+    if (extrasEstruturados && extrasEstruturados.qtd > 0) {
+      const grupos = [
+        extrasEstruturados.tour_virtual,
+        extrasEstruturados.filmes,
+        extrasEstruturados.apps,
+        extrasEstruturados.maquete,
+        extrasEstruturados.drone,
+        extrasEstruturados.estudo_fachada,
+        extrasEstruturados.diversos,
+      ];
+      for (const grupo of grupos) {
+        if (!grupo || !grupo.subsecoes || !grupo.subsecoes.length) continue;
+        for (const sub of grupo.subsecoes) {
+          secaoNum++;
+          const titulo = (sub.rotulo_secao || sub.rotulo_curto || "SERVIÇO").toUpperCase();
+          const itens = (sub.itens && sub.itens.length) ? sub.itens : [sub.rotulo_curto || titulo];
+          blocos.push({
+            numero: `2.${secaoNum}`,
+            titulo,
+            linhas: itens,
+            qtd: itens.length,
+            total: sub.preco,
+            sem_preco: !!sub.sem_preco,
+          });
+        }
+      }
+    }
+    return blocos;
+  }
+
+  function linhasSubsecaoTabela(bloco) {
+    const { TableRow, AlignmentType } = window.docx;
+    const W = TBL.col;
+    const rows = [];
+
+    rows.push(new TableRow({
+      children: [
+        tblCell(`${bloco.numero} ${bloco.titulo}`, { colSpan: 3, fill: TBL.fillTitulo, bold: true, size: 20 }),
+      ],
+    }));
+    rows.push(new TableRow({
+      children: [
+        tblCell("Itens", { width: W.item, bold: true, size: 18 }),
+        tblCell("Descrição dos Serviços", { width: W.desc, bold: true, size: 18, colSpan: 2 }),
+      ],
+    }));
+
+    bloco.linhas.forEach((desc, idx) => {
+      rows.push(new TableRow({
+        children: [
+          tblCell(`${bloco.numero}.${idx + 1}`, { width: W.item, bold: true }),
+          tblCell(desc, { width: W.desc, colSpan: 2 }),
+        ],
+      }));
+    });
+
+    const precoTxt = bloco.sem_preco ? "A DEFINIR" : brl(bloco.total);
+    rows.push(new TableRow({
+      children: [
+        tblCell(String(bloco.qtd), { width: W.item, bold: true }),
+        tblCell("Valor Total", { width: W.desc, bold: true }),
+        tblCell(precoTxt, { width: W.val, bold: true, align: AlignmentType.RIGHT }),
+      ],
+    }));
+
+    return rows;
+  }
+
+  function linhasTotaisFinaisTabela(totalItens, valorFinal) {
+    const { TableRow, AlignmentType } = window.docx;
+    const W = TBL.col;
+    return [
+      new TableRow({
+        children: [
+          tblCell(String(totalItens), { width: W.item, bold: true }),
+          tblCell("Valor Final", { width: W.desc, bold: true }),
+          tblCell(brl(valorFinal), { width: W.val, bold: true, align: AlignmentType.RIGHT }),
+        ],
+      }),
+      new TableRow({
+        children: [
+          tblCell(`Valor Total do Projeto = ${brl(valorFinal)}`, {
+            colSpan: 3, bold: true, size: 20, align: AlignmentType.CENTER,
+          }),
+        ],
+      }),
+    ];
+  }
+
+  function tabelaInvestimentosContinua(blocos, totalItens, valorFinal) {
+    const { Table, TableRow, WidthType } = window.docx;
+    const rows = [];
+    for (const bloco of blocos) {
+      rows.push(...linhasSubsecaoTabela(bloco));
+    }
+    if (blocos.length) {
+      rows.push(...linhasTotaisFinaisTabela(totalItens, valorFinal));
+    }
+    if (!rows.length) return null;
     return new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows,
-      margins: { top: 40, bottom: 40 },
+      margins: { top: 0, bottom: 0 },
     });
-  }
-
-  /** Seção 2.x — cabeçalho lavanda, itens sem preço na linha, total na última linha. */
-  function tabelaCategoria(numero, tituloSecao, categoria) {
-    const { TableRow, AlignmentType } = window.docx;
-    const W = { item: 14, desc: 56, val: 30 };
-    const rows = [];
-
-    rows.push(new TableRow({
-      children: [
-        tblCell(`${numero} ${tituloSecao.toUpperCase()}`, {
-          colSpan: 3, fill: TBL.fillTitulo, bold: true, size: 20,
-        }),
-      ],
-    }));
-    rows.push(new TableRow({
-      children: [
-        tblCell("Itens", { width: W.item, bold: true, size: 18, color: COR.textoSoft }),
-        tblCell("Descrição dos Serviços", { width: W.desc, bold: true, size: 18, color: COR.textoSoft }),
-        tblCell("", { width: W.val }),
-      ],
-    }));
-
-    categoria.itens.forEach((it, idx) => {
-      rows.push(new TableRow({
-        children: [
-          tblCell(`${numero}.${idx + 1}`, { width: W.item, bold: true, color: COR.primariaDark }),
-          tblCell(it.descricao_normalizada, { width: W.desc }),
-          tblCell("", { width: W.val }),
-        ],
-      }));
-    });
-
-    rows.push(new TableRow({
-      children: [
-        tblCell(String(categoria.qtd), { width: W.item, bold: true, fill: TBL.fillRodape, color: COR.branco }),
-        tblCell("Valor Total", { width: W.desc, bold: true, fill: TBL.fillRodape, color: COR.branco }),
-        tblCell(brl(categoria.total), {
-          width: W.val, bold: true, fill: TBL.fillRodape, color: COR.branco, align: AlignmentType.RIGHT,
-        }),
-      ],
-    }));
-
-    return tblWrap(rows);
-  }
-
-  /**
-   * Totais do projeto (somente layout/posicionamento).
-   * Ajusta o texto para o padrão Flying Studio (sem copiar frases do exemplo).
-   */
-  function renderTotaisProjeto(subtotal, descontoPct, valorFinal, descontoLabel) {
-    const descontoValor = subtotal - valorFinal;
-    const rot = descontoLabel || `${descontoPct}% de desconto`;
-
-    const out = [];
-    out.push(
-      P(`INVESTIMENTO TOTAL: ${brl(valorFinal)}`, {
-        bold: true,
-        size: 20,
-        color: COR.textoSoft,
-        alignment: window.docx.AlignmentType.CENTER,
-        after: 10,
-      })
-    );
-    if (descontoPct > 0) {
-      out.push(
-        P(`Desconto aplicado (${rot}): -${brl(descontoValor)}`, {
-          size: 18,
-          color: COR.textoSoft,
-          alignment: window.docx.AlignmentType.CENTER,
-          after: 10,
-        })
-      );
-    }
-    return out;
-  }
-
-  /** Capa: cliente / projeto / contato em texto simples (sem caixa roxa). */
-  function paragrafosCapaIdentificacao(cliente) {
-    const out = [];
-    const emp = (cliente.empresa || "CLIENTE").toUpperCase();
-    const ref = (cliente.ref || "PROJETO").toUpperCase();
-    const contato = (cliente.contato || "").trim();
-
-    out.push(P(emp, { bold: true, size: 44, color: COR.texto, after: SP.subtitulo }));
-    out.push(P(ref, { bold: true, size: 32, color: COR.primaria, after: SP.subtitulo }));
-    if (contato && contato !== "—") {
-      out.push(P(`A/C: ${contato}`, { size: 20, color: COR.textoSoft, after: SP.entreBlocos }));
-    }
-    return out.filter(Boolean);
-  }
-
-  // ---------- DOCUMENTO PRINCIPAL ----------
-
-  function tabelaExtraSubsecao(numero, subsec) {
-    const { TableRow, AlignmentType } = window.docx;
-    const W = { item: 14, desc: 56, val: 30 };
-    const titulo = subsec.rotulo_secao || subsec.rotulo_curto || "SERVIÇO";
-    const rows = [];
-
-    rows.push(new TableRow({
-      children: [
-        tblCell(`${numero} ${titulo.toUpperCase()}`, { colSpan: 3, fill: TBL.fillTitulo, bold: true, size: 20 }),
-      ],
-    }));
-    rows.push(new TableRow({
-      children: [
-        tblCell("Itens", { width: W.item, bold: true, size: 18, color: COR.textoSoft }),
-        tblCell("Descrição dos Serviços", { width: W.desc, bold: true, size: 18, color: COR.textoSoft }),
-        tblCell("", { width: W.val }),
-      ],
-    }));
-
-    const itens = (subsec.itens && subsec.itens.length) ? subsec.itens : [subsec.rotulo_curto || titulo];
-    itens.forEach((it, idx) => {
-      rows.push(new TableRow({
-        children: [
-          tblCell(`${numero}.${idx + 1}`, { width: W.item, bold: true, color: COR.primariaDark }),
-          tblCell(it, { width: W.desc }),
-          tblCell("", { width: W.val }),
-        ],
-      }));
-    });
-
-    const precoTxt = subsec.sem_preco ? "A DEFINIR" : brl(subsec.preco);
-    rows.push(new TableRow({
-      children: [
-        tblCell(String(itens.length), { width: W.item, bold: true, fill: TBL.fillRodape, color: COR.branco }),
-        tblCell("Valor Total", { width: W.desc, bold: true, fill: TBL.fillRodape, color: COR.branco }),
-        tblCell(precoTxt, { width: W.val, bold: true, fill: TBL.fillRodape, color: COR.branco, align: AlignmentType.RIGHT }),
-      ],
-    }));
-
-    return tblWrap(rows);
   }
 
   async function gerarDocxBlob({ cliente, orc, data, mostrarPrecos, formaPagamento, prazos, descontoLabel, extras, extrasEstruturados }) {
@@ -426,70 +430,33 @@
     const qtdExtras = (extrasEstruturados && extrasEstruturados.qtd) || 0;
 
     const children = [];
+    const blocosInvest = coletarSubsecoesInvestimento(orc, extrasEstruturados);
+    const totalItens = qtdImagens + qtdExtras;
 
-    // ===== CAPA =====
-    children.push(P("PROPOSTA COMERCIAL", { bold: true, size: 52, color: COR.primaria, before: 0, after: SP.subtitulo }));
-    children.push(P("Imagens, Filmes e Tecnologias 3D", { size: 24, color: COR.textoSoft, after: SP.subtitulo }));
-    children.push(P(dataExtenso(data).toUpperCase(), { size: 18, color: COR.textoSoft, after: SP.entreBlocos }));
-    paragrafosCapaIdentificacao(cliente).forEach((p) => children.push(p));
+    cabecalhoProposta(cliente).forEach((p) => children.push(p));
 
-    children.push(new Paragraph({ children: [new PageBreak()] }));
-
-    // ===== APRESENTAÇÃO =====
-    children.push(P("01.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
-    children.push(P("APRESENTAÇÃO", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
-
+    children.push(secaoHeading("1", "APRESENTAÇÃO FLYING STUDIO"));
     children.push(P(
       "A Flying Studio presta serviços de computação gráfica e tecnologias que se aplicam aos lançamentos imobiliários e remanescentes. Em nosso atendimento diário, desenvolvemos laços com projeto e auxiliamos em layout, estudos de projetos e fachadas, de decoração e paisagismo de acordo com cada necessidade.",
-      { color: COR.textoSoft, after: SP.corpo }
+      { after: SP.corpo }
     ));
     children.push(P(
       "Para projetos de arquitetura, decoração e paisagismo, consulte a NID STUDIO.",
-      { color: COR.textoSoft, italics: true, after: SP.entreSecoes }
+      { italics: true, after: SP.entreSecoes }
     ));
 
-    children.push(P("02.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
-    children.push(P("ITENS A SEREM DESENVOLVIDOS", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
+    children.push(secaoHeading("2", "ITENS A SEREM DESENVOLVIDOS / INVESTIMENTOS:"));
+    const tblInvest = tabelaInvestimentosContinua(blocosInvest, totalItens, valorFinal);
+    if (tblInvest) children.push(tblInvest);
 
-    let secaoNum = 0;
-    if (orc.externas.qtd) {
-      secaoNum++;
-      children.push(tabelaCategoria(`2.${secaoNum}`, "ILUSTRAÇÕES EXTERNAS", orc.externas));
-      children.push(P("", { after: SP.subtitulo, forcar: true }));
-    }
-    if (orc.internas.qtd) {
-      secaoNum++;
-      children.push(tabelaCategoria(`2.${secaoNum}`, "ILUSTRAÇÕES INTERNAS", orc.internas));
-      children.push(P("", { after: SP.subtitulo, forcar: true }));
-    }
-    if (orc.plantas.qtd) {
-      secaoNum++;
-      children.push(tabelaCategoria(`2.${secaoNum}`, "PLANTAS HUMANIZADAS", orc.plantas));
-      children.push(P("", { after: SP.subtitulo, forcar: true }));
-    }
-
-    // ====== EXTRAS (Tour Virtual / Filmes / Apps / Maquete / Drone / Estudo Fachada) ======
-    if (extrasEstruturados && extrasEstruturados.qtd > 0) {
-      const grupos = [
-        ["tour_virtual", extrasEstruturados.tour_virtual],
-        ["filmes", extrasEstruturados.filmes],
-        ["apps", extrasEstruturados.apps],
-        ["maquete", extrasEstruturados.maquete],
-        ["drone", extrasEstruturados.drone],
-        ["estudo_fachada", extrasEstruturados.estudo_fachada],
-        ["diversos", extrasEstruturados.diversos],
-      ];
-      for (const [_chave, grupo] of grupos) {
-        if (!grupo || !grupo.subsecoes.length) continue;
-        for (const sub of grupo.subsecoes) {
-          secaoNum++;
-          children.push(tabelaExtraSubsecao(`2.${secaoNum}`, sub));
-        }
+    if (blocosInvest.length) {
+      if (orc.desconto_pct > 0) {
+        const rot = descontoLabel || `${orc.desconto_pct}% de desconto`;
+        children.push(P(
+          `Desconto aplicado (${rot}): subtotal ${brl(subtotal)} → ${brl(valorFinal)}`,
+          { size: 18, color: COR.textoSoft, after: SP.corpo }
+        ));
       }
-    }
-
-    if (secaoNum > 0 || (extrasEstruturados && extrasEstruturados.qtd)) {
-      renderTotaisProjeto(subtotal, orc.desconto_pct, valorFinal, descontoLabel).forEach((p) => children.push(p));
       children.push(P(`(${extenso(valorFinal)})`, { italics: true, color: COR.textoSoft, after: SP.entreSecoes, size: 18 }));
     }
 
@@ -504,8 +471,7 @@
 
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
-    children.push(P("03.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
-    children.push(P("FORMA DE PAGAMENTO", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
+    children.push(secaoHeading("3", "FORMA DE PAGAMENTO"));
 
     const fp = formaPagamento || [
       { percentual: 50, marco: "Na aprovação desta Proposta" },
@@ -516,8 +482,7 @@
       const valorParc = valorFinal * (parc.percentual / 100);
       children.push(bulletRich(`${parc.percentual}%  (${brl(valorParc)})`, parc.marco));
     }
-    children.push(P("04.", { bold: true, size: 18, color: COR.primaria, before: SP.entreSecoes, after: 0 }));
-    children.push(P("PRAZOS DE ENTREGA", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
+    children.push(secaoHeading("4", "PRAZOS DE ENTREGA", { before: SP.entreSecoes }));
 
     const pr = prazos || { shades: "20 (Vinte) dias", primeiro_tiro: "15 (Quinze) dias após a aprovação dos Shades", revisoes: "10 (Dez) dias para contemplar e enviar novos tiros" };
     children.push(bulletRich("Shades", pr.shades));
@@ -528,15 +493,13 @@
 
     children.push(new Paragraph({ children: [new PageBreak()] }));
 
-    children.push(P("05.", { bold: true, size: 18, color: COR.primaria, after: 0 }));
-    children.push(P("MATERIAIS NECESSÁRIOS", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
+    children.push(secaoHeading("5", "MATERIAIS NECESSÁRIOS"));
 
     children.push(bulletRich("Arquitetura", "Plantas · Elevação da Fachada · Estudo de Cores da Fachada · Cortes."));
     children.push(bulletRich("Paisagismo", "Implantação · Detalhamentos · Especificação de Revestimentos · Estudo de Vegetação com Especificação de Espécies · Referências do Mobiliário."));
     children.push(bulletRich("Decoração", "Plantas com Layout · Desenhos de Pisos · Elevações de Paredes · Especificações de Materiais · Projeto de Forro e Iluminação · Descrição ou book de mobiliários."));
 
-    children.push(P("06.", { bold: true, size: 18, color: COR.primaria, before: SP.entreSecoes, after: 0 }));
-    children.push(P("CONSIDERAÇÕES", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
+    children.push(secaoHeading("6", "CONSIDERAÇÕES", { before: SP.entreSecoes }));
 
     const consideracoes = [
       ["Etapas e Tiros de Aprovação", "Esta proposta contempla o envio inicial do tiro de Shade, seguido do tiro de apresentação denominado \u201CR00\u201D. Estão inclusas no escopo 03 (três) rodadas de revisões, denominadas \u201CR01\u201D, \u201CR02\u201D e \u201CR03\u201D, culminando na entrega final denominada \u201CHR\u201D (High Resolution)."],
@@ -551,8 +514,7 @@
     ];
     for (const [titulo, texto] of consideracoes) children.push(bulletRich(titulo, texto));
 
-    children.push(P("07.", { bold: true, size: 18, color: COR.primaria, before: SP.entreSecoes, after: 0 }));
-    children.push(P("ENTREGA FINAL", { bold: true, size: 32, color: COR.texto, after: SP.tituloSec }));
+    children.push(secaoHeading("7", "ENTREGA FINAL", { before: SP.entreSecoes }));
 
     const entregas = [
       ["Formato e Envio", "Todo o material finalizado será enviado digitalmente via servidor FTP, link seguro para download ou cadastrados no Frame.io/Adobe."],
