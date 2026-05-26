@@ -204,7 +204,7 @@
       Header, Paragraph, ImageRun, AlignmentType, TextRun, BorderStyle,
       Table, TableRow, TableCell, WidthType, VerticalAlign,
     } = window.docx;
-    const bordaNil = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+    const bordaNil = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
     const semBorda = { top: bordaNil, bottom: bordaNil, left: bordaNil, right: bordaNil };
 
     const linhaRoxa = new Paragraph({
@@ -399,8 +399,8 @@
     }));
     rows.push(new TableRow({
       children: [
-        tblCell("Itens", { width: W.item }),
-        tblCell("Descrição dos Serviços", { width: W.desc }),
+        tblCell("Itens", { width: W.item, align: AlignmentType.CENTER }),
+        tblCell("Descrição dos Serviços", { width: W.desc, align: AlignmentType.CENTER }),
         tblCell("", { width: W.val }),
       ],
     }));
@@ -409,7 +409,7 @@
       rows.push(new TableRow({
         children: [
           tblCell(`${bloco.numero}.${idx + 1}`, { width: W.item, align: AlignmentType.CENTER }),
-          tblCell(desc, { width: W.desc }),
+          tblCell(desc, { width: W.desc, align: AlignmentType.CENTER }),
           tblCell("", { width: W.val }),
         ],
       }));
@@ -418,7 +418,7 @@
     rows.push(new TableRow({
       children: [
         tblCell(String(bloco.qtd), { width: W.item, align: AlignmentType.CENTER }),
-        tblCell("Valor Total", { width: W.desc, bold: true }),
+        tblCell("Valor Total", { width: W.desc, bold: true, align: AlignmentType.CENTER }),
         tblCell(precoCelula(bloco), { width: W.val, bold: true, align: AlignmentType.RIGHT }),
       ],
     }));
@@ -433,7 +433,7 @@
       new TableRow({
         children: [
           tblCell(String(totalItens), { width: W.item, fill: TBL.fillSecao, align: AlignmentType.CENTER }),
-          tblCell("Valor Final", { width: W.desc, fill: TBL.fillSecao }),
+          tblCell("Valor Final", { width: W.desc, fill: TBL.fillSecao, align: AlignmentType.CENTER }),
           tblCell(brl(valorFinal), {
             width: W.val, bold: true, fill: TBL.fillSecao, align: AlignmentType.RIGHT,
           }),
