@@ -71,9 +71,9 @@ code {
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .brand-logo {
   display: block;
-  height: 22px;
+  height: 28px;
   width: auto;
-  max-width: min(200px, 42vw);
+  max-width: min(240px, 55vw);
   object-fit: contain;
   object-position: left center;
 }

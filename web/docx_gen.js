@@ -83,16 +83,27 @@
     bullet: 200,
   };
 
-  // Banner único do cabeçalho (linha lavanda + logo) — largura ≈ área útil A4 em px.
-  const HEADER_BANNER_LARGURA = 600;
+  // Banner no cabeçalho: dimensionar pela ALTURA (evita logo minúscula em PNG panorâmico).
+  const HEADER_BANNER_ALTURA = 68;
+  const HEADER_BANNER_LARGURA_MAX = 645;
   const PAGE = {
     top: 1701,
     bottom: 1304,
     left: 1417,
     right: 1417,
-    header: 284,
+    header: 240,
     footer: 567,
   };
+
+  function dimensoesHeaderBanner(naturalW, naturalH) {
+    let height = HEADER_BANNER_ALTURA;
+    let width = Math.max(1, Math.round((height * naturalW) / naturalH));
+    if (width > HEADER_BANNER_LARGURA_MAX) {
+      width = HEADER_BANNER_LARGURA_MAX;
+      height = Math.max(1, Math.round((width * naturalH) / naturalW));
+    }
+    return { width, height };
+  }
 
   const TBL = {
     fillSecao: "9484C4",
@@ -209,20 +220,18 @@
     try {
       let resp = await fetchAsset("assets/flying_header_banner.png");
       if (!resp.ok) resp = await fetchAsset("assets/flying_header_banner_sm.png");
-      if (!resp.ok) resp = await fetchAsset("assets/flying_logo_hi.png");
       if (!resp.ok) throw new Error("banner http " + resp.status);
       const buffer = await resp.arrayBuffer();
-      let naturalW = 2000;
-      let naturalH = 110;
+      let naturalW = 1672;
+      let naturalH = 160;
       try {
         const bmp = await createImageBitmap(new Blob([buffer], { type: "image/png" }));
         naturalW = bmp.width;
         naturalH = bmp.height;
         bmp.close();
       } catch (_) { /* proporção padrão do banner */ }
-      const width = HEADER_BANNER_LARGURA;
-      const height = Math.max(1, Math.round((width * naturalH) / naturalW));
-      return { buffer, width, height };
+      const dim = dimensoesHeaderBanner(naturalW, naturalH);
+      return { buffer, width: dim.width, height: dim.height, naturalW, naturalH };
     } catch (e) {
       console.warn("Banner do cabeçalho não pôde ser carregado:", e);
       return null;
@@ -266,7 +275,8 @@
       children: [
         new Paragraph({
           alignment: AlignmentType.LEFT,
-          spacing: { before: 50, after: 70 },
+          spacing: { before: 40, after: 60 },
+          indent: { left: 0, right: 0 },
           children: [
             new ImageRun({
               data: banner.buffer,
