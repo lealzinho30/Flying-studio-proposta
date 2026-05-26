@@ -82,10 +82,20 @@
     bullet: 14,
   };
 
+  const LOGO = { width: 133, height: 52 };
+  const PAGE = {
+    top: 1701,
+    bottom: 1304,
+    left: 1417,
+    right: 1417,
+    header: 680,
+    footer: 567,
+  };
+
   const TBL = {
-    fillSecao: "9484C4",
-    margem: { top: 8, bottom: 8, left: 40, right: 40 },
-    col: { item: 11, desc: 54, val: 35 },
+    fillSecao: "7D6FA8",
+    margem: { top: 10, bottom: 10, left: 50, right: 50 },
+    col: { item: 12, desc: 56, val: 32 },
   };
 
   function P(texto, opts = {}) {
@@ -179,7 +189,8 @@
 
   async function carregarLogoBuffer() {
     try {
-      const resp = await fetch("assets/flying_logo.png");
+      let resp = await fetch("assets/flying_logo_hi.png");
+      if (!resp.ok) resp = await fetch("assets/flying_logo.png");
       if (!resp.ok) throw new Error("logo http " + resp.status);
       return await resp.arrayBuffer();
     } catch (e) {
@@ -189,24 +200,66 @@
   }
 
   function montarHeader(logoBuffer) {
-    const { Header, Paragraph, ImageRun, AlignmentType, TextRun, BorderStyle } = window.docx;
-    const children = [];
-    if (logoBuffer) {
-      children.push(new Paragraph({
-        alignment: AlignmentType.RIGHT,
-        spacing: { before: 0, after: 40 },
-        children: [new ImageRun({
-          data: logoBuffer,
-          transformation: { width: 140, height: 55 },
-        })],
-      }));
-    }
-    children.push(new Paragraph({
+    const {
+      Header, Paragraph, ImageRun, AlignmentType, TextRun, BorderStyle,
+      Table, TableRow, TableCell, WidthType, VerticalAlign,
+    } = window.docx;
+    const bordaNil = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+    const semBorda = { top: bordaNil, bottom: bordaNil, left: bordaNil, right: bordaNil };
+
+    const linhaRoxa = new Paragraph({
       spacing: { before: 0, after: 0 },
-      border: { bottom: { color: COR.primaria, space: 1, style: BorderStyle.SINGLE, size: 8 } },
+      border: { bottom: { color: COR.primaria, space: 1, style: BorderStyle.SINGLE, size: 6 } },
       children: [new TextRun({ text: "" })],
-    }));
-    return new Header({ children });
+    });
+
+    if (!logoBuffer) {
+      return new Header({
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.RIGHT,
+            spacing: { before: 0, after: 48 },
+            children: [new TextRun({ text: "FLYING studio", bold: true, size: TAM, color: COR.primaria, font: FONTE })],
+          }),
+          linhaRoxa,
+        ],
+      });
+    }
+
+    const celLogo = new TableCell({
+      width: { size: 38, type: WidthType.PERCENTAGE },
+      borders: semBorda,
+      margins: { top: 0, bottom: 40, left: 0, right: 0 },
+      verticalAlign: VerticalAlign.BOTTOM,
+      children: [
+        new Paragraph({
+          alignment: AlignmentType.RIGHT,
+          spacing: { before: 0, after: 0 },
+          children: [new ImageRun({
+            data: logoBuffer,
+            transformation: { width: LOGO.width, height: LOGO.height },
+          })],
+        }),
+      ],
+    });
+
+    const celEspaco = new TableCell({
+      width: { size: 62, type: WidthType.PERCENTAGE },
+      borders: semBorda,
+      margins: { top: 0, bottom: 40, left: 0, right: 80 },
+      children: [new Paragraph({ spacing: { before: 0, after: 0 }, children: [] })],
+    });
+
+    return new Header({
+      children: [
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [new TableRow({ children: [celEspaco, celLogo] })],
+          margins: { top: 80, bottom: 0 },
+        }),
+        linhaRoxa,
+      ],
+    });
   }
 
   function montarFooter() {
@@ -224,7 +277,7 @@
     const endereco = new Paragraph({
       alignment: AlignmentType.CENTER,
       children: [new TextRun({
-        text: "Av. Eng. Luís Carlos Berrini, 936, 7º andar  ·  Novo Brooklin, São Paulo  ·  Telefone: (11) 2351-4138",
+        text: "Av. Eng. Luís Carlos Berrini, 936, 7º andar - Novo Brooklin, São Paulo - Telefone: (11) 2351-4138",
         size: TAM,
         color: COR.textoSoft,
         font: FONTE,
@@ -272,12 +325,10 @@
     const emp = (cliente.empresa || "CLIENTE").toUpperCase();
     const ref = (cliente.ref || "PROJETO").toUpperCase();
     const contato = (cliente.contato || "—").trim();
-    const linhaProjeto = ref.includes(emp) ? ref : `${emp} — ${ref}`;
     return [
       P("PROPOSTA DE IMAGENS, FILMES E TECNOLOGIAS 3D", { bold: true, after: SP.corpo }),
-      P("CLIENTE/PROJETO", { bold: true, after: SP.bullet }),
-      P(linhaProjeto, { bold: true, after: SP.corpo, highlight: true }),
-      P(`A/C. ${contato}`, { bold: true, after: SP.entreSecoes, highlight: true }),
+      P(`${emp} — REF: ${ref}`, { bold: true, after: SP.corpo }),
+      P(`A/C. ${contato}`, { bold: true, after: SP.entreSecoes }),
     ].filter(Boolean);
   }
 
@@ -333,7 +384,7 @@
 
   function precoCelula(bloco) {
     if (bloco.sem_preco) return "A DEFINIR";
-    return valorNumerico(bloco.total);
+    return brl(bloco.total);
   }
 
   function linhasSubsecaoTabela(bloco) {
@@ -349,7 +400,8 @@
     rows.push(new TableRow({
       children: [
         tblCell("Itens", { width: W.item }),
-        tblCell("Descrição dos Serviços", { width: W.desc, colSpan: 2 }),
+        tblCell("Descrição dos Serviços", { width: W.desc }),
+        tblCell("", { width: W.val }),
       ],
     }));
 
@@ -357,7 +409,8 @@
       rows.push(new TableRow({
         children: [
           tblCell(`${bloco.numero}.${idx + 1}`, { width: W.item, align: AlignmentType.CENTER }),
-          tblCell(desc, { width: W.desc, colSpan: 2 }),
+          tblCell(desc, { width: W.desc }),
+          tblCell("", { width: W.val }),
         ],
       }));
     });
@@ -381,15 +434,16 @@
         children: [
           tblCell(String(totalItens), { width: W.item, fill: TBL.fillSecao, align: AlignmentType.CENTER }),
           tblCell("Valor Final", { width: W.desc, fill: TBL.fillSecao }),
-          tblCell(valorNumerico(valorFinal), {
+          tblCell(brl(valorFinal), {
             width: W.val, bold: true, fill: TBL.fillSecao, align: AlignmentType.RIGHT,
           }),
         ],
       }),
       new TableRow({
         children: [
-          tblCell("Valor Total do Projeto", { width: W.item, bold: true, colSpan: 2 }),
-          tblCell(valorNumerico(valorFinal), { width: W.val, bold: true, align: AlignmentType.RIGHT }),
+          tblCell(`Valor Total do Projeto = ${brl(valorFinal)}`, {
+            colSpan: 3, bold: true, align: AlignmentType.CENTER,
+          }),
         ],
       }),
     ];
@@ -448,14 +502,14 @@
       children.push(P("", { forcar: true, after: SP.corpo }));
       children.push(tituloBloco("INVESTIMENTO PARA O DESENVOLVIMENTOS DOS ITENS ACIMA DESCRITOS:", { after: SP.corpo }));
       children.push(PRich([
-        R(valorNumerico(valorFinal), { bold: true, highlight: true }),
+        R(brl(valorFinal), { bold: true }),
         R(` (${extenso(valorFinal)})`, {}),
       ], { after: SP.entreSecoes }));
 
       if (orc.desconto_pct > 0) {
         const rot = descontoLabel || `${orc.desconto_pct}% de desconto`;
         children.push(P(
-          `Obs.: desconto ${rot} aplicado sobre o subtotal de ${valorNumerico(subtotal)}.`,
+          `Obs.: desconto ${rot} aplicado sobre o subtotal de ${brl(subtotal)}.`,
           { color: COR.textoSoft, after: SP.corpo }
         ));
       }
@@ -476,8 +530,7 @@
       { percentual: 25, marco: "Envio HR — Imagens finais" },
     ];
     for (const parc of fp) {
-      const valorParc = valorFinal * (parc.percentual / 100);
-      children.push(linhaPctPagamento(parc.percentual, `${parc.marco} (${brl(valorParc)})`));
+      children.push(linhaPctPagamento(parc.percentual, parc.marco));
     }
 
     children.push(secaoHeading("3", "PRAZOS / SOLICITAÇÕES / CONSIDERAÇÕES / ENTREGAS", { before: SP.entreSecoes }));
@@ -490,10 +543,10 @@
     children.push(bulletRotulo("Shades", pr.shades));
     children.push(bulletRotulo("1º Tiro de Apresentação", pr.primeiro_tiro));
     children.push(bulletRotulo("Revisões", pr.revisoes));
-    children.push(P(
-      "OBS: Os prazos passam a contar após o recebimento de todos os projetos, informações e aprovações de etapas para o desenvolvimento de cada item. Não iniciamos os trabalhos sem o DWG e as aprovações necessárias desta proposta.",
-      { bold: false, after: SP.entreSecoes }
-    ));
+    children.push(PRich([
+      R("OBS: ", { bold: true }),
+      R("Os prazos passam a contar após o recebimento de todos os projetos, informações e aprovações de etapas para o desenvolvimento de cada item. Não iniciamos os trabalhos sem o DWG e as aprovações necessárias desta proposta."),
+    ], { after: SP.entreSecoes }));
 
     children.push(P("SOLICITAÇÕES: Arquivos e definições necessários à execução do serviço.", { bold: true, after: SP.corpo }));
     children.push(bulletRotulo("Arquitetura", "Plantas · Elevação da Fachada · Estudo de Cores da Fachada · Cortes."));
@@ -524,12 +577,10 @@
     ];
     for (const [titulo, texto] of entregas) children.push(bulletRotulo(titulo, texto));
 
-    children.push(PRich([
-      R(`São Paulo, ${dataExtenso(data)}.`, { highlight: true }),
-    ], { before: SP.entreSecoes, after: SP.corpo }));
+    children.push(P(`São Paulo, ${dataExtenso(data)}.`, { before: SP.entreSecoes, after: SP.corpo }));
     children.push(P("De acordo,", { after: SP.corpo }));
     children.push(P("____________________________________________________", { after: SP.bullet }));
-    children.push(P((cliente.empresa || "CLIENTE").toUpperCase(), { bold: true, highlight: true, after: SP.bullet }));
+    children.push(P((cliente.empresa || "CLIENTE").toUpperCase(), { bold: true, after: SP.bullet }));
     if (cliente.contato && cliente.contato !== "—") {
       children.push(P(`A/C. ${cliente.contato}`, { color: COR.textoSoft }));
     }
@@ -548,7 +599,14 @@
       sections: [{
         properties: {
           page: {
-            margin: { top: 850, bottom: 680, left: 1134, right: 1134, header: 680, footer: 560 },
+            margin: {
+              top: PAGE.top,
+              bottom: PAGE.bottom,
+              left: PAGE.left,
+              right: PAGE.right,
+              header: PAGE.header,
+              footer: PAGE.footer,
+            },
           },
         },
         headers: { default: montarHeader(logoBuffer) },
