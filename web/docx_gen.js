@@ -83,14 +83,23 @@
     bullet: 200,
   };
 
-  // ~3,5 cm de largura no Word (docx ImageRun usa px ≈ pt em 96 dpi)
-  const LOGO_LARGURA_MAX = 132;
+  // Logo no cabeçalho (~3,2 cm). ImageRun: width/height em px (≈ pt no Word).
+  const LOGO_LARGURA_MAX = 120;
+  const HEADER_DOC = {
+    padTopoLogo: 200,
+    padBaseLogo: 80,
+    margemTabelaTopo: 60,
+    margemTabelaBase: 40,
+    colLinhaPct: 66,
+    colLogoPct: 34,
+  };
   const PAGE = {
     top: 1701,
     bottom: 1304,
     left: 1417,
     right: 1417,
-    header: 454,
+    // Distância topo→cabeçalho menor = mais altura útil (evita cortar a logo).
+    header: 284,
     footer: 567,
   };
 
@@ -235,21 +244,22 @@
     });
   }
 
-  /** Cabeçalho modelo Flying: linha lavanda à esquerda + logo à direita, alinhados na mesma faixa. */
+  /** Cabeçalho Flying: linha lavanda (~66% largura) + logo inteira à direita, mesma faixa. */
   function montarHeader(logo) {
     const {
       Header, Paragraph, ImageRun, AlignmentType, TextRun, BorderStyle, LineRuleType,
-      Table, TableRow, TableCell, WidthType, VerticalAlign,
+      Table, TableRow, TableCell, WidthType, VerticalAlign, HeightRule,
     } = window.docx;
     const bordaNil = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
     const semBorda = { top: bordaNil, bottom: bordaNil, left: bordaNil, right: bordaNil };
     const corLinha = TBL.fillSecao;
+    const H = HEADER_DOC;
 
-    function tabelaCabecalho(celEsquerda, celDireita) {
+    function tabelaCabecalho(row) {
       return new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [new TableRow({ children: [celEsquerda, celDireita] })],
-        margins: { top: 40, bottom: 60 },
+        rows: [row],
+        margins: { top: H.margemTabelaTopo, bottom: H.margemTabelaBase, left: 0, right: 0 },
       });
     }
 
@@ -260,42 +270,39 @@
         children: [new TextRun({ text: "FLYING studio", bold: true, size: TAM, color: COR.primaria, font: FONTE })],
       });
       const celLinha = new TableCell({
-        width: { size: 72, type: WidthType.PERCENTAGE },
+        width: { size: H.colLinhaPct, type: WidthType.PERCENTAGE },
         borders: semBorda,
-        margins: { top: 0, bottom: 0, left: 0, right: 140 },
+        margins: { top: 0, bottom: 0, left: 0, right: 160 },
         verticalAlign: VerticalAlign.CENTER,
-        children: [paragrafoLinha(corLinha, { size: 8 })],
+        children: [paragrafoLinha(corLinha, { size: 10 })],
       });
       const celLogo = new TableCell({
-        width: { size: 28, type: WidthType.PERCENTAGE },
+        width: { size: H.colLogoPct, type: WidthType.PERCENTAGE },
         borders: semBorda,
-        verticalAlign: VerticalAlign.CENTER,
+        verticalAlign: VerticalAlign.TOP,
+        margins: { top: H.padTopoLogo, bottom: H.padBaseLogo, left: 0, right: 0 },
         children: [pTexto],
       });
-      return new Header({ children: [tabelaCabecalho(celLinha, celLogo)] });
+      return new Header({ children: [tabelaCabecalho(new TableRow({ children: [celLinha, celLogo] }))] });
     }
 
-    const linhaLogoTwips = logo.height * 20;
-    const espacoAntesLinha = Math.max(0, Math.round(linhaLogoTwips * 0.4));
+    const logoAlturaTw = logo.height * 20;
+    const alturaLinha = logoAlturaTw + H.padTopoLogo + H.padBaseLogo;
 
     const pLinha = new Paragraph({
-      spacing: {
-        before: espacoAntesLinha,
-        after: 0,
-        line: 36,
-        lineRule: LineRuleType.EXACT,
-      },
+      spacing: { before: 0, after: 0, line: 24, lineRule: LineRuleType.EXACT },
       border: {
-        bottom: { color: corLinha, space: 1, style: BorderStyle.SINGLE, size: 8 },
+        bottom: { color: corLinha, space: 1, style: BorderStyle.SINGLE, size: 10 },
       },
-      children: [new TextRun({ text: "" })],
+      children: [new TextRun({ text: "\u00A0", size: 2, font: FONTE })],
     });
 
     const pLogo = new Paragraph({
       alignment: AlignmentType.RIGHT,
-      spacing: { before: 0, after: 0, line: linhaLogoTwips, lineRule: LineRuleType.EXACT },
+      spacing: { before: 0, after: 0, line: logoAlturaTw, lineRule: LineRuleType.EXACT },
       children: [
         new ImageRun({
+          type: "png",
           data: logo.buffer,
           transformation: { width: logo.width, height: logo.height },
         }),
@@ -303,21 +310,26 @@
     });
 
     const celLinha = new TableCell({
-      width: { size: 72, type: WidthType.PERCENTAGE },
+      width: { size: H.colLinhaPct, type: WidthType.PERCENTAGE },
       borders: semBorda,
-      margins: { top: 0, bottom: 0, left: 0, right: 140 },
+      margins: { top: 0, bottom: 0, left: 0, right: 160 },
       verticalAlign: VerticalAlign.CENTER,
       children: [pLinha],
     });
     const celLogo = new TableCell({
-      width: { size: 28, type: WidthType.PERCENTAGE },
+      width: { size: H.colLogoPct, type: WidthType.PERCENTAGE },
       borders: semBorda,
-      margins: { top: 0, bottom: 0, left: 0, right: 0 },
-      verticalAlign: VerticalAlign.CENTER,
+      margins: { top: H.padTopoLogo, bottom: H.padBaseLogo, left: 0, right: 0 },
+      verticalAlign: VerticalAlign.TOP,
       children: [pLogo],
     });
 
-    return new Header({ children: [tabelaCabecalho(celLinha, celLogo)] });
+    const row = new TableRow({
+      height: { value: alturaLinha, rule: HeightRule.EXACT },
+      children: [celLinha, celLogo],
+    });
+
+    return new Header({ children: [tabelaCabecalho(row)] });
   }
 
   /** Assinatura: data, “De acordo,”, espaço para rubrica, linha e cliente centralizado. */
