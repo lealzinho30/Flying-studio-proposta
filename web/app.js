@@ -2,6 +2,7 @@
 (function () {
   "use strict";
   const $ = (id) => document.getElementById(id);
+  const STORAGE_RASCUNHO = "flying_form_rascunho_v2";
 
   const form = $("form-proposta");
   const erro = $("erro");
@@ -27,6 +28,49 @@
     } else {
       erro.classList.add("hidden");
     }
+  }
+
+  function setGerandoUi(ativo) {
+    const btn = $("btn-gerar");
+    if (!btn) return;
+    if (ativo) {
+      btn.dataset.labelOriginal = btn.dataset.labelOriginal || btn.textContent;
+      btn.textContent = "Gerando proposta…";
+      btn.disabled = true;
+      form.classList.add("is-loading");
+    } else {
+      btn.textContent = btn.dataset.labelOriginal || "Gerar proposta →";
+      btn.disabled = false;
+      form.classList.remove("is-loading");
+    }
+  }
+
+  function salvarRascunho() {
+    try {
+      const payload = {
+        descricao: $("descricao") ? $("descricao").value : "",
+        estrategia: (document.querySelector('input[name="estrategia"]:checked') || {}).value || "auto",
+        ts: Date.now(),
+      };
+      localStorage.setItem(STORAGE_RASCUNHO, JSON.stringify(payload));
+    } catch (_) { /* noop */ }
+  }
+
+  function restaurarRascunhoSeVazio() {
+    const ta = $("descricao");
+    if (!ta || (ta.value || "").trim()) return;
+    try {
+      const raw = localStorage.getItem(STORAGE_RASCUNHO);
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data && typeof data.descricao === "string" && data.descricao.trim()) {
+        ta.value = data.descricao;
+      }
+      if (data && data.estrategia) {
+        const radio = document.querySelector(`input[name="estrategia"][value="${data.estrategia}"]`);
+        if (radio) radio.checked = true;
+      }
+    } catch (_) { /* noop */ }
   }
 
   function trocarTela(qual) {
@@ -133,43 +177,45 @@
   async function gerar(e) {
     e && e.preventDefault();
     mostrarErro("");
+    setGerandoUi(true);
     const texto = $("descricao").value.trim();
-    if (!texto) { mostrarErro("Descreva o projeto antes de gerar."); return; }
+    if (!texto) { mostrarErro("Descreva o projeto antes de gerar."); setGerandoUi(false); return; }
 
-    const estrategiaForm = document.querySelector('input[name="estrategia"]:checked').value;
-    const parsed = window.FlyingParser.parse(texto);
-    const escopoSel = window.FlyingEscopo ? window.FlyingEscopo.getSelecionados() : [];
-    if (escopoSel.length) {
-      window.FlyingEscopo.aplicarNoParsed(parsed, escopoSel);
-    }
+    try {
+      const estrategiaForm = document.querySelector('input[name="estrategia"]:checked').value;
+      const parsed = window.FlyingParser.parse(texto);
+      const escopoSel = window.FlyingEscopo ? window.FlyingEscopo.getSelecionados() : [];
+      if (escopoSel.length) {
+        window.FlyingEscopo.aplicarNoParsed(parsed, escopoSel);
+      }
 
-    if (estrategiaForm !== "auto" || parsed.estrategia === "auto") {
-      parsed.estrategia = estrategiaForm;
-    }
+      if (estrategiaForm !== "auto" || parsed.estrategia === "auto") {
+        parsed.estrategia = estrategiaForm;
+      }
 
-    const cliente = parsed.cliente;
-    const descricoes = {
-      externas: parsed.externas || [],
-      internas: parsed.internas || [],
-      plantas: parsed.plantas || [],
-    };
-    const descontoPct = parseFloat(parsed.desconto_pct) || 0;
+      const cliente = parsed.cliente;
+      const descricoes = {
+        externas: parsed.externas || [],
+        internas: parsed.internas || [],
+        plantas: parsed.plantas || [],
+      };
+      const descontoPct = parseFloat(parsed.desconto_pct) || 0;
 
-    const { planilha: plan, historico: hist } = window.FlyingOrc.comparar(cliente.empresa, descricoes, descontoPct);
-    const extrasEstr = window.FlyingOrc.montarExtras(parsed);
-    const ultProp = window.FlyingOrc.ultimaPropostaDe(cliente.empresa);
-    const histVeioDoPdf = ultProp && ultProp.origem === "pdf_upload";
+      const { planilha: plan, historico: hist } = window.FlyingOrc.comparar(cliente.empresa, descricoes, descontoPct);
+      const extrasEstr = window.FlyingOrc.montarExtras(parsed);
+      const ultProp = window.FlyingOrc.ultimaPropostaDe(cliente.empresa);
+      const histVeioDoPdf = ultProp && ultProp.origem === "pdf_upload";
 
-    let estrategia = parsed.estrategia;
-    if (estrategia === "auto") estrategia = hist ? "historico" : "planilha";
-    if (estrategia === "historico" && !hist) {
-      parsed._avisos.push(`Cliente '${cliente.empresa}' sem histórico — envie o PDF do último orçamento ou use planilha.`);
-      estrategia = "planilha";
-    }
-    if (estrategia === "historico" && histVeioDoPdf) {
-      parsed._avisos.push(`Preços e pagamento baseados no PDF do último orçamento (${ultProp._resumo && ultProp._resumo.itens} itens).`);
-    }
-    const orc = estrategia === "historico" ? hist : plan;
+      let estrategia = parsed.estrategia;
+      if (estrategia === "auto") estrategia = hist ? "historico" : "planilha";
+      if (estrategia === "historico" && !hist) {
+        parsed._avisos.push(`Cliente '${cliente.empresa}' sem histórico — envie o PDF do último orçamento ou use planilha.`);
+        estrategia = "planilha";
+      }
+      if (estrategia === "historico" && histVeioDoPdf) {
+        parsed._avisos.push(`Preços e pagamento baseados no PDF do último orçamento (${ultProp._resumo && ultProp._resumo.itens} itens).`);
+      }
+      const orc = estrategia === "historico" ? hist : plan;
 
     // ===== render do resultado =====
     $("r-titulo").innerHTML = `${cliente.empresa} <span class="grad">· ${cliente.ref}</span>`;
@@ -228,27 +274,31 @@
     const ult = ultProp || window.FlyingOrc.ultimaPropostaDe(cliente.empresa);
     const formaPagamento = ult && ult.forma_pagamento;
     const prazos = ult && ult.prazos;
-    const blob = await window.FlyingDocx.gerarDocxBlob({
-      cliente,
-      orc,
-      data: new Date(),
-      mostrarPrecos: parsed.mostrar_precos_individuais,
-      formaPagamento,
-      prazos,
-      descontoLabel: parsed.desconto_label,
-      extras: null,
-      extrasEstruturados: extrasEstr,
-    });
+      const blob = await window.FlyingDocx.gerarDocxBlob({
+        cliente,
+        orc,
+        data: new Date(),
+        mostrarPrecos: parsed.mostrar_precos_individuais,
+        formaPagamento,
+        prazos,
+        descontoLabel: parsed.desconto_label,
+        extras: null,
+        extrasEstruturados: extrasEstr,
+      });
 
-    docxBlob = blob;
-    docxNome = `Proposta_Flying_${slug(cliente.empresa)}_${slug(cliente.ref)}_${estrategia}.docx`;
+      docxBlob = blob;
+      docxNome = `Proposta_Flying_${slug(cliente.empresa)}_${slug(cliente.ref)}_${estrategia}.docx`;
 
-    $("btn-download").textContent = `⬇ Baixar ${docxNome}`;
-    $("btn-download-2").textContent = `⬇ Baixar proposta ${docxNome}`;
+      $("btn-download").textContent = `⬇ Baixar ${docxNome}`;
+      $("btn-download-2").textContent = `⬇ Baixar proposta ${docxNome}`;
 
-    extrasUltimo = extrasEstr;
-    estadoUltimo = { cliente, orc, estrategia, extrasEstr };
-    trocarTela("resultado");
+      extrasUltimo = extrasEstr;
+      estadoUltimo = { cliente, orc, estrategia, extrasEstr };
+      trocarTela("resultado");
+      salvarRascunho();
+    } finally {
+      setGerandoUi(false);
+    }
   }
 
   function valorFinalCompleto(orc, extrasEstr) {
@@ -548,6 +598,17 @@
     });
   }
 
+  function setupAtalhos() {
+    document.addEventListener("keydown", (ev) => {
+      if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "enter") {
+        if (!$("tela-form").classList.contains("hidden")) {
+          ev.preventDefault();
+          form.requestSubmit();
+        }
+      }
+    });
+  }
+
   form.addEventListener("submit", gerar);
   $("btn-download").addEventListener("click", baixar);
   $("btn-download-2").addEventListener("click", baixar);
@@ -572,8 +633,15 @@
   $("descricao").addEventListener("input", () => {
     clearTimeout(window._flyingHistUiTimer);
     window._flyingHistUiTimer = setTimeout(atualizarUiHistoricoPdf, 400);
+    clearTimeout(window._flyingDraftTimer);
+    window._flyingDraftTimer = setTimeout(salvarRascunho, 350);
   });
+  document.querySelectorAll('input[name="estrategia"]').forEach((r) => {
+    r.addEventListener("change", salvarRascunho);
+  });
+  restaurarRascunhoSeVazio();
   setupCardsEstrategia();
+  setupAtalhos();
   atualizarUiHistoricoPdf();
   if (window.FlyingEscopo) {
     window.FlyingEscopo.render("escopo-tecnologias-grid");

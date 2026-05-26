@@ -187,7 +187,13 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,92,
 }
 .btn-remover-pdf:hover { background: rgba(255, 80, 80, 0.2); border-color: #ff8a8a; }
 
-.rodape-form { display: flex; justify-content: flex-end; margin-top: 22px; }
+.rodape-form {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+}
 
 .cta {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
@@ -351,3 +357,109 @@ table.itens tfoot td { background: var(--bg-elev); border-top: 1px solid var(--b
   font-family: inherit;
 }
 .historico-word-item-detalhe button:hover { text-decoration: underline; }
+
+/* ===== Refresh visual clean + interativo (sem custo de performance) ===== */
+:root {
+  --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --card-grad: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0));
+}
+
+.main { max-width: 1120px; padding-top: 34px; }
+.hero .lead { font-size: 15px; max-width: 760px; }
+
+.form-card,
+.historico-word,
+.cartao,
+.texto-original details {
+  box-shadow: var(--shadow-soft);
+  background-image: var(--card-grad);
+}
+
+.form-card { padding: 20px; }
+
+.upload-bar .btn-upload {
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.09);
+  border-radius: 999px;
+  padding: 8px 13px;
+}
+
+.upload-formatos { opacity: 0.86; }
+
+.escopo-bloco,
+.opt-card,
+.historico-word-item,
+table.itens {
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.opt-card {
+  padding: 14px 14px 12px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(0, 0, 0, 0.08));
+}
+.opt-desc { margin-bottom: 6px; }
+.opt-quando { font-size: 11.5px; }
+
+.resultado-topo {
+  background: rgba(19, 23, 34, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  backdrop-filter: blur(6px);
+}
+.resultado-topo h1 { font-size: 28px; }
+
+.detalhe h2 {
+  margin-top: 28px;
+  font-size: 20px;
+}
+
+table.itens th,
+table.itens td { padding-top: 10px; padding-bottom: 10px; }
+table.itens tbody tr:hover td { background: rgba(124, 92, 255, 0.06); }
+
+.rodape-form {
+  position: sticky;
+  bottom: 12px;
+  padding-top: 12px;
+  z-index: 2;
+  background: linear-gradient(180deg, rgba(22, 27, 39, 0), rgba(22, 27, 39, 0.85) 28%, rgba(22, 27, 39, 0.95));
+}
+
+.cta,
+.cta-download {
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(124, 92, 255, 0.27);
+}
+
+.form-card.is-loading {
+  pointer-events: none;
+  opacity: 0.9;
+}
+.form-card {
+  position: relative;
+  overflow: hidden;
+}
+.form-card.is-loading::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 20%, rgba(255, 255, 255, 0.06) 45%, transparent 70%);
+  animation: formShimmer 1.2s linear infinite;
+}
+@keyframes formShimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+.topbar {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+@media (max-width: 760px) {
+  .main { padding: 22px 16px 48px; }
+  .hero h1 { font-size: 30px; }
+  .rodape-form { position: static; background: transparent; }
+}
