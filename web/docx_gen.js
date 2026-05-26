@@ -83,22 +83,19 @@
     bullet: 200,
   };
 
-  // Logo no cabeçalho (~3,2 cm). ImageRun: width/height em px (≈ pt no Word).
-  const LOGO_LARGURA_MAX = 120;
+  // Logo no cabeçalho: 3,5 cm (igual docx_writer.py). ImageRun width/height em px.
+  const LOGO_LARGURA_MAX = 133;
   const HEADER_DOC = {
-    padTopoLogo: 200,
-    padBaseLogo: 80,
-    margemTabelaTopo: 60,
-    margemTabelaBase: 40,
-    colLinhaPct: 66,
-    colLogoPct: 34,
+    margemTabelaTopo: 80,
+    margemTabelaBase: 60,
+    colLinhaPct: 62,
+    colLogoPct: 38,
   };
   const PAGE = {
     top: 1701,
     bottom: 1304,
     left: 1417,
     right: 1417,
-    // Distância topo→cabeçalho menor = mais altura útil (evita cortar a logo).
     header: 284,
     footer: 567,
   };
@@ -219,8 +216,8 @@
         bmp.close();
       } catch (_) { /* proporção padrão do asset hi-res */ }
       const width = LOGO_LARGURA_MAX;
-      const height = Math.max(1, Math.round(width * naturalH / naturalW));
-      return { buffer, width, height };
+      const height = Math.max(1, Math.round((width * naturalH) / naturalW));
+      return { buffer, width, height, naturalW, naturalH };
     } catch (e) {
       console.warn("Logo não pôde ser carregado:", e);
       return null;
@@ -244,10 +241,10 @@
     });
   }
 
-  /** Cabeçalho Flying: linha lavanda (~66% largura) + logo inteira à direita, mesma faixa. */
+  /** Cabeçalho Flying: linha lavanda à esquerda + PNG oficial à direita (sem cortar a arte). */
   function montarHeader(logo) {
     const {
-      Header, Paragraph, ImageRun, AlignmentType, TextRun, BorderStyle, LineRuleType,
+      Header, Paragraph, ImageRun, AlignmentType, TextRun, BorderStyle,
       Table, TableRow, TableCell, WidthType, VerticalAlign, HeightRule,
     } = window.docx;
     const bordaNil = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
@@ -255,54 +252,36 @@
     const corLinha = TBL.fillSecao;
     const H = HEADER_DOC;
 
-    function tabelaCabecalho(row) {
-      return new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [row],
-        margins: { top: H.margemTabelaTopo, bottom: H.margemTabelaBase, left: 0, right: 0 },
-      });
-    }
-
     if (!logo) {
-      const pTexto = new Paragraph({
-        alignment: AlignmentType.RIGHT,
-        spacing: { before: 0, after: 0 },
-        children: [new TextRun({ text: "FLYING studio", bold: true, size: TAM, color: COR.primaria, font: FONTE })],
+      return new Header({
+        children: [
+          new Paragraph({
+            alignment: AlignmentType.RIGHT,
+            spacing: { before: 80, after: 60 },
+            children: [new TextRun({ text: "FLYING studio", bold: true, size: 24, color: COR.primaria, font: FONTE })],
+          }),
+          paragrafoLinha(corLinha, { size: 10 }),
+        ],
       });
-      const celLinha = new TableCell({
-        width: { size: H.colLinhaPct, type: WidthType.PERCENTAGE },
-        borders: semBorda,
-        margins: { top: 0, bottom: 0, left: 0, right: 160 },
-        verticalAlign: VerticalAlign.CENTER,
-        children: [paragrafoLinha(corLinha, { size: 10 })],
-      });
-      const celLogo = new TableCell({
-        width: { size: H.colLogoPct, type: WidthType.PERCENTAGE },
-        borders: semBorda,
-        verticalAlign: VerticalAlign.TOP,
-        margins: { top: H.padTopoLogo, bottom: H.padBaseLogo, left: 0, right: 0 },
-        children: [pTexto],
-      });
-      return new Header({ children: [tabelaCabecalho(new TableRow({ children: [celLinha, celLogo] }))] });
     }
 
-    const logoAlturaTw = logo.height * 20;
-    const alturaLinha = logoAlturaTw + H.padTopoLogo + H.padBaseLogo;
+    // Altura mínima da faixa (twips): imagem + folga — AT_LEAST evita clip no Word.
+    const alturaMinTw = Math.round(logo.height * 20 * 1.2) + 320;
 
     const pLinha = new Paragraph({
-      spacing: { before: 0, after: 0, line: 24, lineRule: LineRuleType.EXACT },
+      spacing: { before: 0, after: 0 },
       border: {
         bottom: { color: corLinha, space: 1, style: BorderStyle.SINGLE, size: 10 },
       },
       children: [new TextRun({ text: "\u00A0", size: 2, font: FONTE })],
     });
 
+    // Sem lineRule EXACT: o Word cortava o ponto verde e o “studio”.
     const pLogo = new Paragraph({
       alignment: AlignmentType.RIGHT,
-      spacing: { before: 0, after: 0, line: logoAlturaTw, lineRule: LineRuleType.EXACT },
+      spacing: { before: 0, after: 0 },
       children: [
         new ImageRun({
-          type: "png",
           data: logo.buffer,
           transformation: { width: logo.width, height: logo.height },
         }),
@@ -312,24 +291,33 @@
     const celLinha = new TableCell({
       width: { size: H.colLinhaPct, type: WidthType.PERCENTAGE },
       borders: semBorda,
-      margins: { top: 0, bottom: 0, left: 0, right: 160 },
+      margins: { top: 80, bottom: 80, left: 0, right: 200 },
       verticalAlign: VerticalAlign.CENTER,
       children: [pLinha],
     });
     const celLogo = new TableCell({
       width: { size: H.colLogoPct, type: WidthType.PERCENTAGE },
       borders: semBorda,
-      margins: { top: H.padTopoLogo, bottom: H.padBaseLogo, left: 0, right: 0 },
-      verticalAlign: VerticalAlign.TOP,
+      margins: { top: 40, bottom: 40, left: 0, right: 0 },
+      verticalAlign: VerticalAlign.CENTER,
       children: [pLogo],
     });
 
     const row = new TableRow({
-      height: { value: alturaLinha, rule: HeightRule.EXACT },
+      height: { value: alturaMinTw, rule: HeightRule.AT_LEAST },
+      cantSplit: true,
       children: [celLinha, celLogo],
     });
 
-    return new Header({ children: [tabelaCabecalho(row)] });
+    return new Header({
+      children: [
+        new Table({
+          width: { size: 100, type: WidthType.PERCENTAGE },
+          rows: [row],
+          margins: { top: H.margemTabelaTopo, bottom: H.margemTabelaBase, left: 0, right: 0 },
+        }),
+      ],
+    });
   }
 
   /** Assinatura: data, “De acordo,”, espaço para rubrica, linha e cliente centralizado. */
