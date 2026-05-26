@@ -1,33 +1,31 @@
 # Analisador automático de PDF (plantas do projeto)
 
-Fluxo: o usuário envia o **PDF do projeto** → o navegador gera imagens das páginas → a **Netlify Function** chama IA com visão → a listagem preenche o campo de descrição.
+Fluxo: o usuário envia o **PDF do projeto** → o navegador gera imagens das páginas → a **Netlify Function** chama IA (visão) → a listagem preenche o campo de descrição.
 
-## Configuração no Netlify
+> Observação: para listar imagens a partir de plantas, é necessário **algum provedor de visão** (Anthropic/Gemini). Sem isso não dá para ser automático 100% no site.
+
+## Configuração no Netlify (obrigatória)
 
 Em **Site settings → Environment variables**:
 
 | Variável | Obrigatório | Descrição |
 |----------|-------------|-----------|
-| `GEMINI_API_KEY` | Sim* | Chave em [Google AI Studio](https://aistudio.google.com/apikey). Modelo padrão: `gemini-2.0-flash`. |
-| `PLANTAS_IA_PROVIDER` | Não | `gemini` (padrão) ou `anthropic` |
-| `ANTHROPIC_API_KEY` | Se Claude | Para usar Claude em vez do Gemini |
+| `ANTHROPIC_API_KEY` | Sim | Chave da Anthropic (Claude) |
 | `ANTHROPIC_MODEL` | Não | Ex.: `claude-sonnet-4-20250514` |
+| `PLANTAS_IA_PROVIDER` | Não | `anthropic` (padrão) ou `gemini` |
+| `GEMINI_API_KEY` | Só se `PLANTAS_IA_PROVIDER=gemini` | Chave no Google AI Studio |
 | `GEMINI_MODEL` | Não | Ex.: `gemini-2.0-flash` |
 
-\* Ou `ANTHROPIC_API_KEY` se `PLANTAS_IA_PROVIDER=anthropic`.
-
-Após salvar as variáveis, faça **Redeploy** do site.
+Depois de salvar as variáveis, faça **Redeploy** do site.
 
 ## Custo
 
-- **Gemini**: tier gratuito com limite mensal (adequado para uso interno); depois passa a cobrar por token.
-- **Claude (Anthropic)**: pago por uso — qualidade alta, sem tier gratuito permanente.
-
-Não há como visão em plantas ser **100% automática na nuvem** sem algum provedor de IA (ou servidor próprio com GPU).
+- **Claude (Anthropic)**: pago por uso — qualidade alta para leitura de pranchas.
+- **Gemini (opcional)**: pode funcionar com free tier dependendo do seu plano, mas não é garantido que fique grátis.
 
 ## Limites
 
-- Até **12 páginas** por PDF (as primeiras folhas). Projetos maiores: enviar PDF só com pranchas principais ou dividir.
+- Até **12 páginas** por PDF (as primeiras folhas).
 - Timeout da função: **26 s** (Netlify).
 - Sempre **revisar** a lista antes de gerar a proposta.
 

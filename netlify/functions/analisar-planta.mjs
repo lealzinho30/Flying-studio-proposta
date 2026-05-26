@@ -1,7 +1,7 @@
 /**
  * Analisa PDF de projeto (páginas em JPEG base64) e devolve listagem Flying.
  * Variáveis de ambiente (Netlify):
- *   PLANTAS_IA_PROVIDER = gemini | anthropic  (padrão: gemini)
+ *   PLANTAS_IA_PROVIDER = gemini | anthropic  (padrão: anthropic)
  *   GEMINI_API_KEY      — Google AI Studio (tier gratuito disponível)
  *   ANTHROPIC_API_KEY   — se usar Claude
  */
@@ -158,7 +158,7 @@ export async function handler(event) {
     }
 
     const textoExtraido = payload.textoExtraido || "";
-    const provider = (process.env.PLANTAS_IA_PROVIDER || "gemini").toLowerCase();
+    const provider = (process.env.PLANTAS_IA_PROVIDER || "anthropic").toLowerCase();
     const listagem = provider === "anthropic"
       ? await chamarAnthropic(images, textoExtraido)
       : await chamarGemini(images, textoExtraido);

@@ -393,7 +393,7 @@
       }
       status.innerHTML = `<span class="upload-ok">✓ <strong>${resultado.total}</strong> imagens sugeridas (${nExt} externas · ${nInt} internas · ${nPla} plantas) via ${resultado.provider}.${extra} Revise a lista abaixo e clique em Gerar proposta.</span>`;
     } catch (err) {
-      status.innerHTML = `<span class="upload-erro">❌ ${err.message}<br><span class="upload-aviso">Configure <code>GEMINI_API_KEY</code> ou <code>ANTHROPIC_API_KEY</code> nas variáveis do Netlify. Veja <code>docs/ANALISADOR_PLANTAS.md</code>.</span></span>`;
+      status.innerHTML = `<span class="upload-erro">❌ ${err.message}<br><span class="upload-aviso">Configure <code>ANTHROPIC_API_KEY</code> nas variáveis do Netlify. Veja <code>docs/ANALISADOR_PLANTAS.md</code>.</span></span>`;
     } finally {
       btn.disabled = false;
       ev.target.value = "";
