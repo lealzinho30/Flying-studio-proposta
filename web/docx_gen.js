@@ -195,10 +195,21 @@
     return P(`${pct}% - ${marco}`, { indent: { left: 720 }, after: SP.bullet });
   }
 
+  async function fetchAsset(url, ms) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), ms || 8000);
+    try {
+      return await fetch(url, { signal: ctrl.signal, cache: "force-cache" });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function carregarHeaderBanner() {
     try {
-      let resp = await fetch("assets/flying_header_banner.png");
-      if (!resp.ok) resp = await fetch("assets/flying_header_banner_sm.png");
+      let resp = await fetchAsset("assets/flying_header_banner.png");
+      if (!resp.ok) resp = await fetchAsset("assets/flying_header_banner_sm.png");
+      if (!resp.ok) resp = await fetchAsset("assets/flying_logo_hi.png");
       if (!resp.ok) throw new Error("banner http " + resp.status);
       const buffer = await resp.arrayBuffer();
       let naturalW = 2000;
@@ -631,7 +642,7 @@
             },
           },
         },
-        headers: { default: montarHeader(logo) },
+        headers: { default: montarHeader(headerBanner) },
         footers: { default: montarFooter() },
         children,
       }],

@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Flying Studio · Propostas</title>
-  <link rel="stylesheet" href="styles.css?v=20260527l">
+  <link rel="stylesheet" href="styles.css?v=20260527m">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -15,8 +15,7 @@
 <body>
   <header class="topbar">
     <div class="brand">
-      <span class="dot" aria-hidden="true"></span>
-      <span class="brand-name">Flying Studio</span>
+      <img class="brand-logo" src="assets/flying_header_banner_sm.png" alt="Flying Studio" width="140" height="18">
     </div>
     <nav class="topnav">
       <a href="#" id="link-novo" class="topnav-link">Nova proposta</a>
@@ -32,9 +31,17 @@
       </header>
 
       <div id="erro" class="alerta hidden" role="alert"></div>
+      <p id="gerar-status" class="gerar-status hidden" role="status" aria-live="polite"></p>
 
       <div class="layout-form">
+        <div class="layout-form-main">
         <form class="panel panel-editor" id="form-proposta">
+          <div class="gerar-overlay hidden" id="gerar-overlay" aria-hidden="true">
+            <div class="gerar-overlay-box">
+              <span class="gerar-spinner" aria-hidden="true"></span>
+              <span id="gerar-overlay-text">Gerando proposta…</span>
+            </div>
+          </div>
           <div class="panel-toolbar">
             <div class="toolbar-actions">
               <input type="file" id="arquivo-cliente" accept=".txt,.csv,.pdf,.docx,.xlsx,.xls,.doc" hidden>
@@ -86,11 +93,13 @@ Plantas:
 - Implantação rooftop
 - Apartamento Tipo</textarea>
 
-          <div class="panel-foot">
-            <button type="submit" class="cta" id="btn-gerar">Gerar proposta</button>
-            <span class="kbd-hint" title="Atalho de teclado">Ctrl + Enter</span>
-          </div>
         </form>
+
+        <div class="cta-bar">
+          <button type="submit" class="cta cta-large" id="btn-gerar" form="form-proposta">Gerar proposta</button>
+          <span class="kbd-hint" title="Atalho de teclado">Ctrl + Enter</span>
+        </div>
+        </div>
 
         <aside class="panel-stack" aria-label="Opções da proposta">
           <section class="panel panel-options">
@@ -220,15 +229,15 @@ Plantas:
   <script src="https://unpkg.com/mammoth@1.7.2/mammoth.browser.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 
-  <script src="data.js?v=20260527l"></script>
-  <script src="parser.js?v=20260527l"></script>
-  <script src="escopo_tecnologias.js?v=20260527l"></script>
-  <script src="leitor_historico_pdf.js?v=20260527l"></script>
-  <script src="orcamento.js?v=20260527l"></script>
-  <script src="docx_gen.js?v=20260527l"></script>
-  <script src="historico_downloads.js?v=20260527l"></script>
-  <script src="leitor_arquivo.js?v=20260527l"></script>
-  <script src="analisador_plantas.js?v=20260527l"></script>
-  <script src="app.js?v=20260527l"></script>
+  <script src="data.js?v=20260527m"></script>
+  <script src="parser.js?v=20260527m"></script>
+  <script src="escopo_tecnologias.js?v=20260527m"></script>
+  <script src="leitor_historico_pdf.js?v=20260527m"></script>
+  <script src="orcamento.js?v=20260527m"></script>
+  <script src="docx_gen.js?v=20260527m"></script>
+  <script src="historico_downloads.js?v=20260527m"></script>
+  <script src="leitor_arquivo.js?v=20260527m"></script>
+  <script src="analisador_plantas.js?v=20260527m"></script>
+  <script src="app.js?v=20260527m"></script>
 </body>
 </html>

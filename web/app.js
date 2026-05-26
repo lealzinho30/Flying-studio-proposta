@@ -30,19 +30,55 @@
     }
   }
 
-  function setGerandoUi(ativo) {
-    const btn = $("btn-gerar");
-    if (!btn) return;
-    if (ativo) {
-      btn.dataset.labelOriginal = btn.dataset.labelOriginal || btn.textContent;
-      btn.textContent = "Gerando proposta…";
-      btn.disabled = true;
-      form.classList.add("is-loading");
+  function setStatusGerar(msg) {
+    const el = $("gerar-status");
+    const overlayText = $("gerar-overlay-text");
+    if (overlayText && msg) overlayText.textContent = msg;
+    if (!el) return;
+    if (msg) {
+      el.textContent = msg;
+      el.classList.remove("hidden");
     } else {
-      btn.textContent = btn.dataset.labelOriginal || "Gerar proposta";
-      btn.disabled = false;
-      form.classList.remove("is-loading");
+      el.textContent = "";
+      el.classList.add("hidden");
     }
+  }
+
+  function setGerandoUi(ativo, msg) {
+    const btn = $("btn-gerar");
+    const overlay = $("gerar-overlay");
+    if (btn) {
+      if (ativo) {
+        btn.dataset.labelOriginal = btn.dataset.labelOriginal || btn.textContent;
+        btn.textContent = "Gerando…";
+        btn.disabled = true;
+      } else {
+        btn.textContent = btn.dataset.labelOriginal || "Gerar proposta";
+        btn.disabled = false;
+      }
+    }
+    if (form) form.classList.toggle("is-loading", !!ativo);
+    if (overlay) overlay.classList.toggle("hidden", !ativo);
+    if (ativo && msg) setStatusGerar(msg);
+    if (!ativo) setStatusGerar("");
+  }
+
+  function dependenciasOk() {
+    if (!window.FlyingParser) return "Módulo de leitura não carregou. Use Ctrl+F5 para atualizar.";
+    if (!window.FlyingOrc) return "Módulo de orçamento não carregou. Use Ctrl+F5.";
+    if (!window.docx || !window.FlyingDocx) {
+      return "Biblioteca Word (docx.js) não carregou. Verifique a internet e atualize a página.";
+    }
+    return null;
+  }
+
+  function comTimeout(promise, ms, mensagem) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(mensagem)), ms);
+      }),
+    ]);
   }
 
   function salvarRascunho() {
@@ -177,13 +213,24 @@
   async function gerar(e) {
     e && e.preventDefault();
     mostrarErro("");
-    setGerandoUi(true);
-    const texto = $("descricao").value.trim();
-    if (!texto) { mostrarErro("Descreva o projeto antes de gerar."); setGerandoUi(false); return; }
+    const depErro = dependenciasOk();
+    if (depErro) {
+      mostrarErro(depErro);
+      return;
+    }
+    const texto = ($("descricao") && $("descricao").value || "").trim();
+    if (!texto) {
+      mostrarErro("Descreva o projeto antes de gerar.");
+      return;
+    }
+
+    setGerandoUi(true, "Analisando descrição…");
+    let voltarFormSeFalhar = false;
 
     try {
-      const estrategiaForm = document.querySelector('input[name="estrategia"]:checked').value;
+      const estrategiaForm = document.querySelector('input[name="estrategia"]:checked')?.value || "auto";
       const parsed = window.FlyingParser.parse(texto);
+      if (!parsed._avisos) parsed._avisos = [];
       const escopoSel = window.FlyingEscopo ? window.FlyingEscopo.getSelecionados() : [];
       if (escopoSel.length) {
         window.FlyingEscopo.aplicarNoParsed(parsed, escopoSel);
@@ -282,32 +329,43 @@
     renderExtras(extrasEstr);
     $("r-texto-original").textContent = texto;
 
-    // ===== gera o DOCX em memória =====
-    const ult = ultProp || window.FlyingOrc.ultimaPropostaDe(cliente.empresa);
-    const formaPagamento = ult && ult.forma_pagamento;
-    const prazos = ult && ult.prazos;
-      const blob = await window.FlyingDocx.gerarDocxBlob({
-        cliente,
-        orc,
-        data: new Date(),
-        mostrarPrecos: parsed.mostrar_precos_individuais,
-        formaPagamento,
-        prazos,
-        descontoLabel: parsed.desconto_label,
-        extras: null,
-        extrasEstruturados: extrasEstr,
-      });
+      extrasUltimo = extrasEstr;
+      estadoUltimo = { cliente, orc, estrategia, extrasEstr };
+      voltarFormSeFalhar = true;
+      trocarTela("resultado");
+      salvarRascunho();
+
+      setGerandoUi(true, "Montando arquivo Word…");
+      const ult = ultProp || window.FlyingOrc.ultimaPropostaDe(cliente.empresa);
+      const formaPagamento = ult && ult.forma_pagamento;
+      const prazos = ult && ult.prazos;
+      const blob = await comTimeout(
+        window.FlyingDocx.gerarDocxBlob({
+          cliente,
+          orc,
+          data: new Date(),
+          mostrarPrecos: parsed.mostrar_precos_individuais,
+          formaPagamento,
+          prazos,
+          descontoLabel: parsed.desconto_label,
+          extras: null,
+          extrasEstruturados: extrasEstr,
+        }),
+        90000,
+        "Demorou demais para gerar o Word. Tente de novo ou reduza a lista de itens."
+      );
 
       docxBlob = blob;
       docxNome = `Proposta_Flying_${slug(cliente.empresa)}_${slug(cliente.ref)}_${estrategia}.docx`;
 
-      $("btn-download").textContent = `⬇ Baixar ${docxNome}`;
-      $("btn-download-2").textContent = `⬇ Baixar proposta ${docxNome}`;
-
-      extrasUltimo = extrasEstr;
-      estadoUltimo = { cliente, orc, estrategia, extrasEstr };
-      trocarTela("resultado");
-      salvarRascunho();
+      const btnDl = $("btn-download");
+      const btnDl2 = $("btn-download-2");
+      if (btnDl) btnDl.textContent = `Baixar ${docxNome}`;
+      if (btnDl2) btnDl2.textContent = `Baixar Word`;
+    } catch (err) {
+      console.error("gerar proposta:", err);
+      mostrarErro(err.message || "Erro ao gerar a proposta. Veja o console (F12) para detalhes.");
+      if (voltarFormSeFalhar) trocarTela("form");
     } finally {
       setGerandoUi(false);
     }
@@ -627,7 +685,11 @@
     });
   }
 
-  form.addEventListener("submit", gerar);
+  if (!form) {
+    console.error("form-proposta não encontrado no HTML");
+  } else {
+    form.addEventListener("submit", gerar);
+  }
   $("btn-download").addEventListener("click", baixar);
   $("btn-download-2").addEventListener("click", baixar);
   function voltarClick(ev) {
