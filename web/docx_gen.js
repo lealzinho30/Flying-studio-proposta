@@ -83,13 +83,14 @@
     bullet: 200,
   };
 
-  const LOGO = { width: 133, height: 52 };
+  // ~3,5 cm de largura no Word (docx ImageRun usa px ≈ pt em 96 dpi)
+  const LOGO_LARGURA_MAX = 132;
   const PAGE = {
     top: 1701,
     bottom: 1304,
     left: 1417,
     right: 1417,
-    header: 680,
+    header: 454,
     footer: 567,
   };
 
@@ -188,25 +189,33 @@
     return P(`${pct}% - ${marco}`, { indent: { left: 720 }, after: SP.bullet });
   }
 
-  async function carregarLogoBuffer() {
+  async function carregarLogo() {
     try {
       let resp = await fetch("assets/flying_logo_hi.png");
       if (!resp.ok) resp = await fetch("assets/flying_logo.png");
       if (!resp.ok) throw new Error("logo http " + resp.status);
-      return await resp.arrayBuffer();
+      const buffer = await resp.arrayBuffer();
+      let naturalW = 610;
+      let naturalH = 238;
+      try {
+        const bmp = await createImageBitmap(new Blob([buffer], { type: "image/png" }));
+        naturalW = bmp.width;
+        naturalH = bmp.height;
+        bmp.close();
+      } catch (_) { /* proporção padrão do asset hi-res */ }
+      const width = LOGO_LARGURA_MAX;
+      const height = Math.max(1, Math.round(width * naturalH / naturalW));
+      return { buffer, width, height };
     } catch (e) {
       console.warn("Logo não pôde ser carregado:", e);
       return null;
     }
   }
 
-  function montarHeader(logoBuffer) {
+  function montarHeader(logo) {
     const {
-      Header, Paragraph, ImageRun, AlignmentType, TextRun, BorderStyle,
-      Table, TableRow, TableCell, WidthType, VerticalAlign,
+      Header, Paragraph, ImageRun, AlignmentType, TextRun, BorderStyle, LineRuleType,
     } = window.docx;
-    const bordaNil = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
-    const semBorda = { top: bordaNil, bottom: bordaNil, left: bordaNil, right: bordaNil };
 
     const linhaRoxa = new Paragraph({
       spacing: { before: 0, after: 0 },
@@ -214,7 +223,7 @@
       children: [new TextRun({ text: "" })],
     });
 
-    if (!logoBuffer) {
+    if (!logo) {
       return new Header({
         children: [
           new Paragraph({
@@ -227,40 +236,24 @@
       });
     }
 
-    const celLogo = new TableCell({
-      width: { size: 38, type: WidthType.PERCENTAGE },
-      borders: semBorda,
-      margins: { top: 0, bottom: 40, left: 0, right: 0 },
-      verticalAlign: VerticalAlign.BOTTOM,
+    const linhaLogoTwips = logo.height * 20;
+    const pLogo = new Paragraph({
+      alignment: AlignmentType.RIGHT,
+      spacing: {
+        before: 0,
+        after: 60,
+        line: linhaLogoTwips,
+        lineRule: LineRuleType.EXACT,
+      },
       children: [
-        new Paragraph({
-          alignment: AlignmentType.RIGHT,
-          spacing: { before: 0, after: 0 },
-          children: [new ImageRun({
-            data: logoBuffer,
-            transformation: { width: LOGO.width, height: LOGO.height },
-          })],
+        new ImageRun({
+          data: logo.buffer,
+          transformation: { width: logo.width, height: logo.height },
         }),
       ],
     });
 
-    const celEspaco = new TableCell({
-      width: { size: 62, type: WidthType.PERCENTAGE },
-      borders: semBorda,
-      margins: { top: 0, bottom: 40, left: 0, right: 80 },
-      children: [new Paragraph({ spacing: { before: 0, after: 0 }, children: [] })],
-    });
-
-    return new Header({
-      children: [
-        new Table({
-          width: { size: 100, type: WidthType.PERCENTAGE },
-          rows: [new TableRow({ children: [celEspaco, celLogo] })],
-          margins: { top: 80, bottom: 0 },
-        }),
-        linhaRoxa,
-      ],
-    });
+    return new Header({ children: [pLogo, linhaRoxa] });
   }
 
   function montarFooter() {
@@ -468,7 +461,7 @@
     const { Document, Packer } = window.docx;
 
     data = data || new Date();
-    const logoBuffer = await carregarLogoBuffer();
+    const logo = await carregarLogo();
 
     const subtotalImagens = orc.subtotal;
     const totalExtras = (extrasEstruturados && extrasEstruturados.total) || 0;
@@ -610,7 +603,7 @@
             },
           },
         },
-        headers: { default: montarHeader(logoBuffer) },
+        headers: { default: montarHeader(logo) },
         footers: { default: montarFooter() },
         children,
       }],
