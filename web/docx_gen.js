@@ -83,7 +83,7 @@
   };
 
   const TBL = {
-    fillSecao: "CBBEE1",
+    fillSecao: "9484C4",
     margem: { top: 8, bottom: 8, left: 40, right: 40 },
     col: { item: 11, desc: 54, val: 35 },
   };
@@ -348,15 +348,15 @@
     }));
     rows.push(new TableRow({
       children: [
-        tblCell("Itens", { width: W.item, bold: true }),
-        tblCell("Descrição dos Serviços", { width: W.desc, bold: true, colSpan: 2 }),
+        tblCell("Itens", { width: W.item }),
+        tblCell("Descrição dos Serviços", { width: W.desc, colSpan: 2 }),
       ],
     }));
 
     bloco.linhas.forEach((desc, idx) => {
       rows.push(new TableRow({
         children: [
-          tblCell(`${bloco.numero}.${idx + 1}`, { width: W.item, bold: true }),
+          tblCell(`${bloco.numero}.${idx + 1}`, { width: W.item, align: AlignmentType.CENTER }),
           tblCell(desc, { width: W.desc, colSpan: 2 }),
         ],
       }));
@@ -364,7 +364,7 @@
 
     rows.push(new TableRow({
       children: [
-        tblCell(String(bloco.qtd), { width: W.item, bold: true }),
+        tblCell(String(bloco.qtd), { width: W.item, align: AlignmentType.CENTER }),
         tblCell("Valor Total", { width: W.desc, bold: true }),
         tblCell(precoCelula(bloco), { width: W.val, bold: true, align: AlignmentType.RIGHT }),
       ],
@@ -379,8 +379,8 @@
     return [
       new TableRow({
         children: [
-          tblCell(String(totalItens), { width: W.item, bold: true, fill: TBL.fillSecao }),
-          tblCell("Valor Final", { width: W.desc, bold: true, fill: TBL.fillSecao }),
+          tblCell(String(totalItens), { width: W.item, fill: TBL.fillSecao, align: AlignmentType.CENTER }),
+          tblCell("Valor Final", { width: W.desc, fill: TBL.fillSecao }),
           tblCell(valorNumerico(valorFinal), {
             width: W.val, bold: true, fill: TBL.fillSecao, align: AlignmentType.RIGHT,
           }),

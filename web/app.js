@@ -9,6 +9,7 @@
   let docxBlob = null;
   let docxNome = "Proposta_Flying.docx";
   let estadoUltimo = null;
+  let extrasUltimo = null;
 
   function slug(s) {
     return (s || "")
@@ -245,8 +246,87 @@
     $("btn-download").textContent = `⬇ Baixar ${docxNome}`;
     $("btn-download-2").textContent = `⬇ Baixar proposta ${docxNome}`;
 
-    estadoUltimo = { cliente, orc, estrategia };
+    extrasUltimo = extrasEstr;
+    estadoUltimo = { cliente, orc, estrategia, extrasEstr };
     trocarTela("resultado");
+  }
+
+  function valorFinalCompleto(orc, extrasEstr) {
+    const sub = orc.subtotal + ((extrasEstr && extrasEstr.total) || 0);
+    return sub - sub * (orc.desconto_pct / 100);
+  }
+
+  function registrarDownloadHistorico() {
+    const hd = window.FlyingHistoricoDownloads;
+    if (!hd || !estadoUltimo) return;
+    const { cliente, orc, estrategia, extrasEstr } = estadoUltimo;
+    hd.registrar({
+      arquivo: docxNome,
+      empresa: cliente.empresa,
+      ref: cliente.ref,
+      contato: cliente.contato,
+      estrategia,
+      valorFinal: valorFinalCompleto(orc, extrasEstr),
+      descontoPct: orc.desconto_pct,
+      qtdImagens: orc.total_imagens,
+      qtdExtras: (extrasEstr && extrasEstr.qtd) || 0,
+      resumo: {
+        externas: orc.externas.qtd,
+        internas: orc.internas.qtd,
+        plantas: orc.plantas.qtd,
+        totalExternas: orc.externas.total,
+        totalInternas: orc.internas.total,
+        totalPlantas: orc.plantas.total,
+      },
+    });
+    renderHistoricoDownloads();
+  }
+
+  function renderHistoricoDownloads() {
+    const hd = window.FlyingHistoricoDownloads;
+    const listaEl = $("historico-word-lista");
+    const countEl = $("historico-word-count");
+    if (!hd || !listaEl) return;
+
+    const lista = hd.carregar();
+    if (countEl) countEl.textContent = String(lista.length);
+
+    if (!lista.length) {
+      listaEl.innerHTML = '<p class="historico-word-vazio">Nenhum download registrado ainda. Baixe uma proposta Word para aparecer aqui.</p>';
+      return;
+    }
+
+    const { brl } = window.FlyingDocx;
+    listaEl.innerHTML = lista.map((item) => {
+      const res = item.resumo || {};
+      const detalhe = [
+        `<p><strong>Arquivo:</strong> ${item.arquivo}</p>`,
+        `<p><strong>Baixado em:</strong> ${hd.formatarData(item.baixadoEm)}</p>`,
+        `<p><strong>A/C:</strong> ${item.contato}</p>`,
+        `<p><strong>Estratégia:</strong> ${item.estrategia}</p>`,
+        item.descontoPct ? `<p><strong>Desconto:</strong> ${item.descontoPct}%</p>` : "",
+        `<p><strong>Itens:</strong> ${item.qtdImagens} imagem(ns)${item.qtdExtras ? ` · ${item.qtdExtras} extra(s)` : ""}</p>`,
+        res.externas ? `<p>Externas: ${res.externas} · Internas: ${res.internas || 0} · Plantas: ${res.plantas || 0}</p>` : "",
+        `<div class="hist-acoes"><button type="button" data-hist-remover="${item.id}">Remover do histórico</button></div>`,
+      ].join("");
+      return `
+        <details class="historico-word-item">
+          <summary>
+            <span class="historico-word-item-titulo">${item.empresa} — ${item.ref}</span>
+            <span class="historico-word-item-valor">${brl(item.valorFinal)}</span>
+            <span class="historico-word-item-meta">${hd.formatarData(item.baixadoEm)} · ${item.arquivo}</span>
+          </summary>
+          <div class="historico-word-item-detalhe">${detalhe}</div>
+        </details>`;
+    }).join("");
+
+    listaEl.querySelectorAll("[data-hist-remover]").forEach((btn) => {
+      btn.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        hd.remover(btn.getAttribute("data-hist-remover"));
+        renderHistoricoDownloads();
+      });
+    });
   }
 
   function baixar() {
@@ -259,6 +339,7 @@
     a.click();
     document.body.removeChild(a);
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+    registrarDownloadHistorico();
   }
 
   function voltar() { trocarTela("form"); }
@@ -440,4 +521,16 @@
     window.FlyingEscopo.render("escopo-tecnologias-grid");
     $("btn-escopo-limpar").addEventListener("click", () => window.FlyingEscopo.limpar());
   }
+
+  const btnHistLimpar = $("btn-historico-word-limpar");
+  if (btnHistLimpar) {
+    btnHistLimpar.addEventListener("click", () => {
+      if (!window.FlyingHistoricoDownloads) return;
+      if (window.confirm("Limpar todo o histórico de propostas baixadas neste navegador?")) {
+        window.FlyingHistoricoDownloads.limpar();
+        renderHistoricoDownloads();
+      }
+    });
+  }
+  renderHistoricoDownloads();
 })();

@@ -249,3 +249,95 @@ table.itens tfoot td { background: var(--bg-elev); border-top: 1px solid var(--b
 .link-secundario { color: var(--text-soft); cursor: pointer; }
 
 .hidden { display: none !important; }
+
+.historico-word {
+  margin-bottom: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  box-shadow: var(--shadow);
+}
+.historico-word-detalhes summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.historico-word-detalhes summary::-webkit-details-marker { display: none; }
+.historico-word-summary .rotulo { margin: 0; }
+.historico-word-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: rgba(124, 92, 255, 0.2);
+  color: var(--accent);
+}
+.historico-word-intro {
+  margin: 12px 0 14px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.historico-word-lista { display: flex; flex-direction: column; gap: 10px; max-height: 360px; overflow-y: auto; }
+.historico-word-vazio {
+  color: var(--muted);
+  font-size: 14px;
+  padding: 12px 0;
+}
+.historico-word-item {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  overflow: hidden;
+}
+.historico-word-item summary {
+  cursor: pointer;
+  padding: 12px 14px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px 16px;
+  align-items: center;
+  list-style: none;
+}
+.historico-word-item summary::-webkit-details-marker { display: none; }
+.historico-word-item-titulo {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+.historico-word-item-meta {
+  font-size: 12px;
+  color: var(--muted);
+  grid-column: 1 / -1;
+}
+.historico-word-item-valor {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--green);
+  font-variant-numeric: tabular-nums;
+}
+.historico-word-item-detalhe {
+  padding: 0 14px 12px;
+  font-size: 13px;
+  color: var(--text-soft);
+  border-top: 1px solid var(--border-soft);
+}
+.historico-word-item-detalhe p { margin: 8px 0 0; }
+.historico-word-item-detalhe .hist-acoes {
+  margin-top: 10px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.historico-word-item-detalhe button {
+  background: none;
+  border: none;
+  color: var(--red);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+}
+.historico-word-item-detalhe button:hover { text-decoration: underline; }
