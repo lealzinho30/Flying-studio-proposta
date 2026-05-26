@@ -74,6 +74,16 @@ textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,92,
   font-family: inherit; font-size: 13px; font-weight: 500; transition: border-color .15s, color .15s, background .15s;
 }
 .btn-upload:hover { border-color: var(--accent); color: var(--text); border-style: solid; background: rgba(124,92,255,.08); }
+.btn-upload-ia {
+  border-color: rgba(33, 197, 133, 0.45);
+  color: var(--green);
+  background: rgba(33, 197, 133, 0.06);
+}
+.btn-upload-ia:hover {
+  border-color: var(--green);
+  background: rgba(33, 197, 133, 0.12);
+}
+.btn-upload-ia:disabled { opacity: 0.55; cursor: wait; }
 .upload-formatos { color: var(--muted); font-size: 12px; }
 .upload-status {
   margin-bottom: 12px; padding: 10px 14px; border-radius: var(--radius-sm);

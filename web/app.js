@@ -344,6 +344,62 @@
 
   function voltar() { trocarTela("form"); }
 
+  async function handleAnalisarPlanta(ev) {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    const status = $("analisador-status");
+    const btn = $("btn-analisar-planta");
+    const analisador = window.FlyingAnalisadorPlantas;
+
+    if (!analisador) {
+      mostrarErro("Módulo de análise de plantas não carregou. Recarregue a página.");
+      return;
+    }
+
+    status.classList.remove("hidden");
+    mostrarErro("");
+    btn.disabled = true;
+    const nomeArq = file.name;
+
+    try {
+      status.innerHTML = `<span class="upload-loading">⏳ Preparando <strong>${nomeArq}</strong>…</span>`;
+
+      const resultado = await analisador.analisarPdfProjeto(file, {
+        onProgress: (i, lim, total) => {
+          status.innerHTML = `<span class="upload-loading">⏳ Página ${i}/${lim} de ${total}…</span>`;
+        },
+        onStatus: (msg) => {
+          status.innerHTML = `<span class="upload-loading">⏳ ${msg}</span>`;
+        },
+      });
+
+      const lg = resultado.listagem;
+      const parsed = window.FlyingParser.parse($("descricao").value.trim());
+      const temCliente = parsed.cliente && parsed.cliente.empresa;
+      const bloco = analisador.listagemParaTexto(lg, { mesclarCliente: !temCliente });
+
+      const ta = $("descricao");
+      const atual = ta.value.trim();
+      const cabecalho = `\n\n# === Listagem automática (IA) — ${nomeArq} ===\n`;
+      ta.value = atual ? `${atual}${cabecalho}${bloco}` : bloco;
+      ta.focus();
+
+      const nExt = lg.externas.length;
+      const nInt = lg.internas.length;
+      const nPla = lg.plantas.length;
+      let extra = "";
+      if (resultado.meta.truncado) {
+        extra = ` <span class="upload-aviso">(só as primeiras ${resultado.meta.analisadas} de ${resultado.meta.totalPages} páginas)</span>`;
+      }
+      status.innerHTML = `<span class="upload-ok">✓ <strong>${resultado.total}</strong> imagens sugeridas (${nExt} externas · ${nInt} internas · ${nPla} plantas) via ${resultado.provider}.${extra} Revise a lista abaixo e clique em Gerar proposta.</span>`;
+    } catch (err) {
+      status.innerHTML = `<span class="upload-erro">❌ ${err.message}<br><span class="upload-aviso">Configure <code>GEMINI_API_KEY</code> ou <code>ANTHROPIC_API_KEY</code> nas variáveis do Netlify. Veja <code>docs/ANALISADOR_PLANTAS.md</code>.</span></span>`;
+    } finally {
+      btn.disabled = false;
+      ev.target.value = "";
+    }
+  }
+
   // Upload de arquivo do cliente
   async function handleArquivoCliente(e) {
     const file = e.target.files && e.target.files[0];
@@ -500,6 +556,8 @@
   $("voltar-2").addEventListener("click", voltar);
   $("btn-upload").addEventListener("click", () => $("arquivo-cliente").click());
   $("arquivo-cliente").addEventListener("change", handleArquivoCliente);
+  $("btn-analisar-planta").addEventListener("click", () => $("arquivo-planta-ia").click());
+  $("arquivo-planta-ia").addEventListener("change", handleAnalisarPlanta);
   $("btn-historico-pdf").addEventListener("click", (ev) => {
     ev.preventDefault();
     ev.stopPropagation();

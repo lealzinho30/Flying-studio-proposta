@@ -4,6 +4,13 @@
   publish = "web"
   command = ""
 
+[functions]
+  directory = "netlify/functions"
+
+[functions."analisar-planta"]
+  timeout = 26
+  memory = 1024
+
 # Headers úteis: aceita o CDN docx.js, segurança razoável e cache curto no HTML.
 [[headers]]
   for = "/*"
