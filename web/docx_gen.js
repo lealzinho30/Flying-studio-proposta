@@ -70,14 +70,16 @@
     textoSoft: "333333",
     branco: "FFFFFF",
   };
-  const FONTE = "Arial";
+  const FONTE = "Calibri Light";
+  const TAM = 20; // docx: half-points → 10 pt
   const HIGHLIGHT = "yellow";
 
   const SP = {
-    corpo: 8,
+    corpo: 16,
     linha: 240,
-    tituloSec: 28,
-    entreSecoes: 32,
+    tituloSec: 36,
+    entreSecoes: 48,
+    bullet: 14,
   };
 
   const TBL = {
@@ -94,7 +96,7 @@
       text: texto,
       bold: !!opts.bold,
       italics: !!opts.italics,
-      size: opts.size || 22,
+      size: opts.size ?? TAM,
       color: opts.color || COR.texto,
       font: FONTE,
     };
@@ -124,7 +126,7 @@
       text: texto,
       bold: !!opts.bold,
       italics: !!opts.italics,
-      size: opts.size || 22,
+      size: opts.size ?? TAM,
       color: opts.color || COR.texto,
       font: FONTE,
     };
@@ -136,24 +138,24 @@
   function secaoHeading(numero, titulo, opts = {}) {
     return P(`${numero} — ${titulo}`, {
       bold: true,
-      size: 22,
+      size: TAM,
       after: SP.tituloSec,
       before: opts.before ?? 0,
     });
   }
 
   function tituloBloco(texto, opts = {}) {
-    return P(texto, { bold: true, size: 22, after: opts.after ?? SP.corpo, before: opts.before ?? 0, underline: !!opts.underline });
+    return P(texto, { bold: true, size: TAM, after: opts.after ?? SP.corpo, before: opts.before ?? 0, underline: !!opts.underline });
   }
 
   function bulletSimples(texto) {
     const { Paragraph, TextRun } = window.docx;
     return new Paragraph({
-      spacing: { after: 12, line: SP.linha },
+      spacing: { after: SP.bullet, line: SP.linha },
       indent: { left: 360, hanging: 180 },
       children: [
-        new TextRun({ text: "• ", size: 22, font: FONTE, color: COR.texto }),
-        new TextRun({ text: texto, size: 22, font: FONTE, color: COR.texto }),
+        new TextRun({ text: "• ", size: TAM, font: FONTE, color: COR.texto }),
+        new TextRun({ text: texto, size: TAM, font: FONTE, color: COR.texto }),
       ],
     });
   }
@@ -161,18 +163,18 @@
   function bulletRotulo(rotulo, texto) {
     const { Paragraph, TextRun } = window.docx;
     return new Paragraph({
-      spacing: { after: 12, line: SP.linha },
+      spacing: { after: SP.bullet, line: SP.linha },
       indent: { left: 360, hanging: 180 },
       children: [
-        new TextRun({ text: "• ", size: 22, font: FONTE, color: COR.texto }),
-        new TextRun({ text: `${rotulo}: `, bold: true, size: 22, font: FONTE, color: COR.texto }),
-        new TextRun({ text: texto, size: 22, font: FONTE, color: COR.texto }),
+        new TextRun({ text: "• ", size: TAM, font: FONTE, color: COR.texto }),
+        new TextRun({ text: `${rotulo}: `, bold: true, size: TAM, font: FONTE, color: COR.texto }),
+        new TextRun({ text: texto, size: TAM, font: FONTE, color: COR.texto }),
       ],
     });
   }
 
   function linhaPctPagamento(pct, marco) {
-    return P(`${pct}% - ${marco}`, { indent: { left: 720 }, after: 10 });
+    return P(`${pct}% - ${marco}`, { indent: { left: 720 }, after: SP.bullet });
   }
 
   async function carregarLogoBuffer() {
@@ -217,13 +219,13 @@
     const site = new Paragraph({
       alignment: AlignmentType.CENTER,
       spacing: { after: 20 },
-      children: [new TextRun({ text: "www.flyingstudio.com.br", size: 20, color: COR.primaria, font: FONTE, bold: true })],
+      children: [new TextRun({ text: "www.flyingstudio.com.br", size: TAM, color: COR.primaria, font: FONTE, bold: true })],
     });
     const endereco = new Paragraph({
       alignment: AlignmentType.CENTER,
       children: [new TextRun({
         text: "Av. Eng. Luís Carlos Berrini, 936, 7º andar  ·  Novo Brooklin, São Paulo  ·  Telefone: (11) 2351-4138",
-        size: 18,
+        size: TAM,
         color: COR.textoSoft,
         font: FONTE,
       })],
@@ -243,7 +245,7 @@
       new TextRun({
         text: texto || "",
         bold: !!opts.bold,
-        size: opts.size || 20,
+        size: opts.size ?? TAM,
         color: opts.color || COR.texto,
         font: FONTE,
         highlight: opts.highlight ? HIGHLIGHT : undefined,
@@ -272,10 +274,10 @@
     const contato = (cliente.contato || "—").trim();
     const linhaProjeto = ref.includes(emp) ? ref : `${emp} — ${ref}`;
     return [
-      P("PROPOSTA DE IMAGENS, FILMES E TECNOLOGIAS 3D", { bold: true, size: 22, after: 10 }),
-      P("CLIENTE/PROJETO", { bold: true, size: 22, after: 4 }),
-      P(linhaProjeto, { bold: true, size: 22, after: 10, highlight: true }),
-      P(`A/C. ${contato}`, { bold: true, size: 22, after: SP.entreSecoes, highlight: true }),
+      P("PROPOSTA DE IMAGENS, FILMES E TECNOLOGIAS 3D", { bold: true, after: SP.corpo }),
+      P("CLIENTE/PROJETO", { bold: true, after: SP.bullet }),
+      P(linhaProjeto, { bold: true, after: SP.corpo, highlight: true }),
+      P(`A/C. ${contato}`, { bold: true, after: SP.entreSecoes, highlight: true }),
     ].filter(Boolean);
   }
 
@@ -346,8 +348,8 @@
     }));
     rows.push(new TableRow({
       children: [
-        tblCell("Itens", { width: W.item, bold: true, size: 18 }),
-        tblCell("Descrição dos Serviços", { width: W.desc, bold: true, size: 18, colSpan: 2 }),
+        tblCell("Itens", { width: W.item, bold: true }),
+        tblCell("Descrição dos Serviços", { width: W.desc, bold: true, colSpan: 2 }),
       ],
     }));
 
@@ -443,8 +445,8 @@
     if (tblInvest) children.push(tblInvest);
 
     if (blocosInvest.length) {
-      children.push(P("", { forcar: true, after: 16 }));
-      children.push(tituloBloco("INVESTIMENTO PARA O DESENVOLVIMENTOS DOS ITENS ACIMA DESCRITOS:", { after: 12 }));
+      children.push(P("", { forcar: true, after: SP.corpo }));
+      children.push(tituloBloco("INVESTIMENTO PARA O DESENVOLVIMENTOS DOS ITENS ACIMA DESCRITOS:", { after: SP.corpo }));
       children.push(PRich([
         R(valorNumerico(valorFinal), { bold: true, highlight: true }),
         R(` (${extenso(valorFinal)})`, {}),
@@ -454,7 +456,7 @@
         const rot = descontoLabel || `${orc.desconto_pct}% de desconto`;
         children.push(P(
           `Obs.: desconto ${rot} aplicado sobre o subtotal de ${valorNumerico(subtotal)}.`,
-          { size: 20, color: COR.textoSoft, after: SP.corpo }
+          { color: COR.textoSoft, after: SP.corpo }
         ));
       }
     }
@@ -467,7 +469,7 @@
       }
     }
 
-    children.push(tituloBloco("FORMA DE PAGAMENTO:", { underline: true, before: SP.entreSecoes, after: 12 }));
+    children.push(tituloBloco("FORMA DE PAGAMENTO:", { underline: true, before: SP.entreSecoes, after: SP.corpo }));
     const fp = formaPagamento || [
       { percentual: 50, marco: "Na aprovação desta Proposta" },
       { percentual: 25, marco: "Envio dos Shades" },
@@ -525,11 +527,11 @@
     children.push(PRich([
       R(`São Paulo, ${dataExtenso(data)}.`, { highlight: true }),
     ], { before: SP.entreSecoes, after: SP.corpo }));
-    children.push(P("De acordo,", { after: 20 }));
-    children.push(P("____________________________________________________", { after: 8 }));
-    children.push(P((cliente.empresa || "CLIENTE").toUpperCase(), { bold: true, highlight: true, after: 6 }));
+    children.push(P("De acordo,", { after: SP.corpo }));
+    children.push(P("____________________________________________________", { after: SP.bullet }));
+    children.push(P((cliente.empresa || "CLIENTE").toUpperCase(), { bold: true, highlight: true, after: SP.bullet }));
     if (cliente.contato && cliente.contato !== "—") {
-      children.push(P(`A/C. ${cliente.contato}`, { size: 20, color: COR.textoSoft }));
+      children.push(P(`A/C. ${cliente.contato}`, { color: COR.textoSoft }));
     }
 
     const doc = new Document({
@@ -538,7 +540,7 @@
       styles: {
         default: {
           document: {
-            run: { font: FONTE, size: 22, color: COR.texto },
+            run: { font: FONTE, size: TAM, color: COR.texto },
             paragraph: { spacing: { after: SP.corpo, line: SP.linha } },
           },
         },
