@@ -84,7 +84,7 @@
   };
 
   // Logo oficial no cabeçalho (~4,5 cm).
-  const LOGO_HEADER_LARGURA = 132;
+  const LOGO_HEADER_LARGURA = 156;
   const PAGE = {
     top: 1701,
     bottom: 1304,
@@ -207,8 +207,7 @@
 
   async function carregarLogoHeader() {
     try {
-      let resp = await fetchAsset("assets/flying_logo_hi.png");
-      if (!resp.ok) resp = await fetchAsset("assets/flying_logo.png");
+      const resp = await fetchAsset("assets/flying_logo_header_exact.png", 12000);
       if (!resp.ok) throw new Error("logo http " + resp.status);
       const buffer = await resp.arrayBuffer();
       let naturalW = 610;
