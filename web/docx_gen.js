@@ -273,6 +273,28 @@
     return new Header({ children: [pLogo, pLinha] });
   }
 
+
+  // Alternativa robusta: desenha o "cabeçalho" no topo do corpo (sem usar Header do Word).
+  function blocoTopoVisual(logo) {
+    const { Paragraph, ImageRun, AlignmentType, TextRun } = window.docx;
+    const partes = [];
+    if (logo) {
+      partes.push(new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        spacing: { before: 0, after: 40 },
+        children: [new ImageRun({ data: logo.buffer, transformation: { width: logo.width, height: logo.height } })],
+      }));
+    } else {
+      partes.push(new Paragraph({
+        alignment: AlignmentType.RIGHT,
+        spacing: { before: 0, after: 40 },
+        children: [new TextRun({ text: "FLYING studio", bold: true, size: 24, color: COR.primaria, font: FONTE })],
+      }));
+    }
+    partes.push(paragrafoLinha(TBL.fillSecao, { size: 6, before: 0, after: SP.corpo }));
+    return partes;
+  }
+
   /** Assinatura: data, “De acordo,”, espaço para rubrica, linha e cliente centralizado. */
   function blocoAssinatura(cliente, data) {
     const { AlignmentType, LineRuleType } = window.docx;
@@ -514,6 +536,7 @@
     const totalItens = qtdImagens + qtdExtras;
     const children = [];
 
+    blocoTopoVisual(headerLogo).forEach((p) => children.push(p));
     cabecalhoProposta(cliente).forEach((p) => children.push(p));
 
     children.push(secaoHeading("1", "APRESENTAÇÃO FLYING STUDIO"));
@@ -637,7 +660,6 @@
             },
           },
         },
-        headers: { default: montarHeader(headerLogo) },
         footers: { default: montarFooter() },
         children,
       }],
