@@ -84,9 +84,9 @@
   };
 
   // Logo oficial no cabeçalho (~4,5 cm).
-  const LOGO_HEADER_LARGURA = 156;
+  const LOGO_HEADER_LARGURA = 148;
   const PAGE = {
-    top: 1701,
+    top: 1200,
     bottom: 1304,
     left: 1417,
     right: 1417,
@@ -280,18 +280,18 @@
     const partes = [];
     if (logo) {
       partes.push(new Paragraph({
-        alignment: AlignmentType.RIGHT,
-        spacing: { before: 0, after: 40 },
+        alignment: AlignmentType.LEFT,
+        spacing: { before: 0, after: 12 },
         children: [new ImageRun({ data: logo.buffer, transformation: { width: logo.width, height: logo.height } })],
       }));
     } else {
       partes.push(new Paragraph({
-        alignment: AlignmentType.RIGHT,
-        spacing: { before: 0, after: 40 },
+        alignment: AlignmentType.LEFT,
+        spacing: { before: 0, after: 12 },
         children: [new TextRun({ text: "FLYING studio", bold: true, size: 24, color: COR.primaria, font: FONTE })],
       }));
     }
-    partes.push(paragrafoLinha(TBL.fillSecao, { size: 6, before: 0, after: SP.corpo }));
+    partes.push(paragrafoLinha(TBL.fillSecao, { size: 6, before: 0, after: 80 }));
     return partes;
   }
 
