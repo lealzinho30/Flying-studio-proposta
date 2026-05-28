@@ -83,14 +83,11 @@
     bullet: 200,
   };
 
-  // Logo oficial no cabeçalho (~4,5 cm).
-  const LOGO_HEADER_LARGURA = 148;
   const PAGE = {
-    top: 1200,
+    top: 1417,
     bottom: 1304,
     left: 1417,
     right: 1417,
-    header: 680,
     footer: 567,
   };
 
@@ -195,38 +192,6 @@
     return P(`${pct}% - ${marco}`, { indent: { left: 720 }, after: SP.bullet });
   }
 
-  async function fetchAsset(url, ms) {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), ms || 8000);
-    try {
-      return await fetch(url, { signal: ctrl.signal, cache: "force-cache" });
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  async function carregarLogoHeader() {
-    try {
-      const resp = await fetchAsset("assets/flying_logo_header_exact.png", 12000);
-      if (!resp.ok) throw new Error("logo http " + resp.status);
-      const buffer = await resp.arrayBuffer();
-      let naturalW = 610;
-      let naturalH = 238;
-      try {
-        const bmp = await createImageBitmap(new Blob([buffer], { type: "image/png" }));
-        naturalW = bmp.width;
-        naturalH = bmp.height;
-        bmp.close();
-      } catch (_) { /* noop */ }
-      const width = LOGO_HEADER_LARGURA;
-      const height = Math.max(1, Math.round((width * naturalH) / naturalW));
-      return { buffer, width, height };
-    } catch (e) {
-      console.warn("Logo do cabeçalho não carregou:", e);
-      return null;
-    }
-  }
-
   /** Linha horizontal (borda inferior em parágrafo vazio). */
   function paragrafoLinha(cor, opts = {}) {
     const { Paragraph, TextRun, BorderStyle } = window.docx;
@@ -242,57 +207,6 @@
       },
       children: [new TextRun({ text: "" })],
     });
-  }
-
-  /**
-   * Cabeçalho Flying (robusto no Word): logo oficial em parágrafo (sem célula) + linha abaixo.
-   * Isso evita recorte do lado esquerdo da marca.
-   */
-  function montarHeader(logo) {
-    const { Header, Paragraph, ImageRun, AlignmentType, TextRun } = window.docx;
-
-    const pLogo = logo
-      ? new Paragraph({
-          alignment: AlignmentType.RIGHT,
-          spacing: { before: 80, after: 40 },
-          children: [
-            new ImageRun({
-              data: logo.buffer,
-              transformation: { width: logo.width, height: logo.height },
-            }),
-          ],
-        })
-      : new Paragraph({
-          alignment: AlignmentType.RIGHT,
-          spacing: { before: 80, after: 40 },
-          children: [new TextRun({ text: "FLYING studio", bold: true, size: 24, color: COR.primaria, font: FONTE })],
-        });
-
-    const pLinha = paragrafoLinha(TBL.fillSecao, { size: 6, before: 0, after: 0 });
-
-    return new Header({ children: [pLogo, pLinha] });
-  }
-
-
-  // Alternativa robusta: desenha o "cabeçalho" no topo do corpo (sem usar Header do Word).
-  function blocoTopoVisual(logo) {
-    const { Paragraph, ImageRun, AlignmentType, TextRun } = window.docx;
-    const partes = [];
-    if (logo) {
-      partes.push(new Paragraph({
-        alignment: AlignmentType.LEFT,
-        spacing: { before: 0, after: 12 },
-        children: [new ImageRun({ data: logo.buffer, transformation: { width: logo.width, height: logo.height } })],
-      }));
-    } else {
-      partes.push(new Paragraph({
-        alignment: AlignmentType.LEFT,
-        spacing: { before: 0, after: 12 },
-        children: [new TextRun({ text: "FLYING studio", bold: true, size: 24, color: COR.primaria, font: FONTE })],
-      }));
-    }
-    partes.push(paragrafoLinha(TBL.fillSecao, { size: 6, before: 0, after: 80 }));
-    return partes;
   }
 
   /** Assinatura: data, “De acordo,”, espaço para rubrica, linha e cliente centralizado. */
@@ -523,7 +437,6 @@
     const { Document, Packer } = window.docx;
 
     data = data || new Date();
-    const headerLogo = await carregarLogoHeader();
 
     const subtotalImagens = orc.subtotal;
     const totalExtras = (extrasEstruturados && extrasEstruturados.total) || 0;
@@ -536,7 +449,6 @@
     const totalItens = qtdImagens + qtdExtras;
     const children = [];
 
-    blocoTopoVisual(headerLogo).forEach((p) => children.push(p));
     cabecalhoProposta(cliente).forEach((p) => children.push(p));
 
     children.push(secaoHeading("1", "APRESENTAÇÃO FLYING STUDIO"));
@@ -655,7 +567,6 @@
               bottom: PAGE.bottom,
               left: PAGE.left,
               right: PAGE.right,
-              header: PAGE.header,
               footer: PAGE.footer,
             },
           },
