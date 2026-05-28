@@ -124,14 +124,78 @@
     return null;
   }
 
+  function limparTokenEmpresa(s) {
+    return (s || "")
+      .replace(/[_-]+/g, " ")
+      .replace(/\b(r\d+|rev\d+|anexo\w*|final|orcamento|proposta)\b/gi, "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   function empresaDoArquivo(nome) {
     if (!nome) return "";
     const base = nome.replace(/\.[a-z0-9]+$/i, "");
-    const m =
-      base.match(/flying[_\s-]+([a-z0-9][a-z0-9\s_-]{1,30})/i) ||
-      base.match(/orc[_\s-]+([a-z0-9][a-z0-9\s_-]{1,30})/i);
-    if (!m) return "";
-    return m[1].replace(/[_-]+/g, " ").trim();
+    let m = base.match(/flying[_\s-]+([a-z0-9][a-z0-9\s_-]{1,40})/i);
+    if (m) return limparTokenEmpresa(m[1]).toUpperCase();
+    m = base.match(/^orc[_\s-]+(.+)$/i);
+    if (m) {
+      const tok = limparTokenEmpresa(m[1]);
+      const partes = tok.split(/\s+/).filter((p) => p.length >= 2);
+      if (!partes.length) return "";
+      if (partes.length === 1) return partes[0].toUpperCase();
+      return partes[0].toUpperCase();
+    }
+    m = base.match(/proposta[_\s-]+([a-z0-9][a-z0-9\s_-]{1,40})/i);
+    if (m) return limparTokenEmpresa(m[1]).toUpperCase();
+    return "";
+  }
+
+  function extrairEmpresaDoTextoPdf(texto) {
+    const t = texto || "";
+    const padroes = [
+      /(?:^|\n)\s*cliente\s*[:\-]\s*([A-ZÁÉÍÓÚÃÕÇ0-9][A-ZÁÉÍÓÚÃÕÇ0-9\s.&'-]{2,48}?)(?=\s*\n|\s+ref\b|\s+projeto\b|\s+a\/?c\b|$)/im,
+      /proposta\s+(?:comercial\s+)?(?:para|p\/)\s+([A-ZÁÉÍÓÚÃÕÇ][A-ZÁÉÍÓÚÃÕÇ0-9\s.&'-]{2,48}?)(?=\s*\n|\s+ref\b|\s+projeto\b)/i,
+      /(?:^|\n)\s*empresa\s*[:\-]\s*([A-ZÁÉÍÓÚÃÕÇ0-9][A-ZÁÉÍÓÚÃÕÇ0-9\s.&'-]{2,48}?)(?=\s*\n|\s+ref\b|\s+projeto\b)/im,
+      /\bcliente\s+([A-ZÁÉÍÓÚÃÕÇ][A-ZÁÉÍÓÚÃÕÇ0-9\s&.'-]{2,40}?)\s+projeto\s/i,
+      /\bengicastro\b/i,
+    ];
+    for (const re of padroes) {
+      const m = t.match(re);
+      if (!m) continue;
+      if (!m[1]) return "ENGECASTRO";
+      let emp = m[1].split(/\n|ref|projeto|empreendimento|a\/?c/i)[0].trim();
+      emp = emp.replace(/[.;,]+$/, "");
+      if (emp.length >= 2) return normEmpresa(emp);
+    }
+    const meta = parseClienteRef(t);
+    if (meta.empresa) return normEmpresa(meta.empresa);
+    return "";
+  }
+
+  /**
+   * Define o cliente do PDF: prioridade texto do PDF > nome do arquivo > formulário.
+   */
+  function resolverEmpresaHistorico(texto, nomeArquivo, empresaFormulario) {
+    const doTexto = extrairEmpresaDoTextoPdf(texto);
+    const doArquivo = empresaDoArquivo(nomeArquivo);
+    const doForm = normEmpresa(empresaFormulario || "");
+    let empresa = doTexto || doArquivo || doForm;
+    let origem = doTexto ? "pdf" : doArquivo ? "arquivo" : "formulario";
+    let substituiuForm = false;
+
+    if ((doTexto || doArquivo) && doForm && empresa !== doForm) {
+      substituiuForm = true;
+      origem = doTexto ? "pdf" : "arquivo";
+      empresa = doTexto || doArquivo;
+    }
+
+    return { empresa, origem, substituiuForm, doTexto, doArquivo, doForm };
+  }
+
+  function ultimoRegistro() {
+    const lista = listarRegistros();
+    if (!lista.length) return null;
+    return lista.slice().sort((a, b) => (b.atualizado || 0) - (a.atualizado || 0))[0];
   }
 
   function parseItens(texto) {
@@ -326,6 +390,7 @@
 
     return {
       ref: meta.ref || "Último orçamento (PDF)",
+      empresa_pdf: meta.empresa ? normEmpresa(meta.empresa) : "",
       data: new Date().toISOString().slice(0, 10),
       origem: "pdf_upload",
       desconto_pct: pct,
@@ -420,15 +485,19 @@
   window.FlyingHistoricoPdf = {
     parseTexto,
     empresaDoArquivo,
+    extrairEmpresaDoTextoPdf,
+    resolverEmpresaHistorico,
     extrairTodosPrecos,
     registrar,
     getRegistro,
     listarRegistros,
+    ultimoRegistro,
     ultimaProposta,
     temCliente,
     limpar,
     resumoHtml,
     normEmpresa,
     propostaTemDados,
+    parseClienteRef,
   };
 })();

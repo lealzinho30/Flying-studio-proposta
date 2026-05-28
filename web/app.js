@@ -582,21 +582,49 @@
 
     const empresa = empresaAtualForm();
     const hp = window.FlyingHistoricoPdf;
-    const reg = empresa && hp ? hp.getRegistro(empresa) : null;
+    let reg = empresa && hp ? hp.getRegistro(empresa) : null;
+
+    if (!reg && hp) {
+      const ultimo = hp.ultimoRegistro();
+      if (ultimo && ultimo.proposta) {
+        reg = ultimo;
+        if (status && !status.dataset.fixDismissed) {
+          status.classList.remove("hidden");
+          status.innerHTML = `<span class="upload-aviso">Há PDF do cliente <strong>${ultimo.empresa}</strong>, mas o chat está em <strong>${empresa || "?"}</strong>. Envie o PDF de novo ou <button type="button" class="btn-text" id="btn-usar-pdf-ultimo">usar cliente do último PDF</button>.</span>`;
+          const btnUsar = $("btn-usar-pdf-ultimo");
+          if (btnUsar) {
+            btnUsar.onclick = () => {
+              if (window.FlyingChat) {
+                window.FlyingChat.ingestTexto(
+                  `Cliente: ${ultimo.empresa}\nRef: ${ultimo.proposta.ref || "PROJETO"}\n`,
+                  { resposta: `Briefing ajustado para **${ultimo.empresa}** (último PDF enviado).` }
+                );
+              }
+              status.dataset.fixDismissed = "1";
+              atualizarUiHistoricoPdf();
+            };
+          }
+        }
+      }
+    }
 
     if (reg && reg.proposta) {
       blocoAtivo.classList.remove("hidden");
       $("hist-pdf-nome").textContent = reg.nomeArquivo
-        ? `PDF: ${reg.nomeArquivo}`
+        ? `PDF: ${reg.nomeArquivo} · ${reg.empresa}`
         : `Histórico PDF — ${reg.empresa}`;
       if (btnUpload) btnUpload.textContent = "📄 Trocar PDF do último orçamento";
-      status.classList.remove("hidden");
-      status.innerHTML = `<span class="upload-ok">✓ ${hp.resumoHtml(reg.proposta)}</span>`;
+      if (reg.empresa === empresa || !empresa) {
+        status.classList.remove("hidden");
+        status.innerHTML = `<span class="upload-ok">✓ ${hp.resumoHtml(reg.proposta)} · cliente <strong>${reg.empresa}</strong></span>`;
+      }
     } else {
       blocoAtivo.classList.add("hidden");
       if (btnUpload) btnUpload.textContent = "📄 Último orçamento enviado (PDF)";
       const temOutro = hp && hp.listarRegistros().length;
-      if (!temOutro) status.classList.add("hidden");
+      if (!temOutro && status && !status.querySelector("#btn-usar-pdf-ultimo")) {
+        status.classList.add("hidden");
+      }
     }
   }
 
@@ -637,24 +665,44 @@
         return;
       }
 
-      const parsedMini = window.FlyingParser.parse($("descricao").value.trim());
-      let empresa = (parsedMini.cliente && parsedMini.cliente.empresa) || "";
-      const refFromPdf = (function () {
-        const m = r.texto.match(/(?:ref(?:er[eê]ncia)?|projeto|empreendimento)\s*[:\-]?\s*([^\n$]{3,60})/i);
-        return m ? m[1].trim() : "";
-      })();
+      const hp = window.FlyingHistoricoPdf;
+      const empresaForm = empresaAtualForm();
+      const resolv = hp.resolverEmpresaHistorico(r.texto, file.name, empresaForm);
+      let empresa = resolv.empresa;
+
       if (!empresa) {
-        const mEmp = r.texto.match(/(?:cliente|para|proposta\s+para)\s*[:\-]?\s*([A-ZÁÉÍÓÚÃÕÇ][A-ZÁÉÍÓÚÃÕÇ0-9\s.&-]{2,40})/i);
-        if (mEmp) empresa = mEmp[1].split(/\n|ref|projeto/i)[0].trim();
-      }
-      if (!empresa) empresa = window.FlyingHistoricoPdf.empresaDoArquivo(file.name) || "";
-      if (!empresa) {
-        status.innerHTML = `<span class="upload-erro">❌ Informe <code>Cliente: NOME</code> na descrição <em>ou</em> use um arquivo com o nome do cliente (ex.: Flying_Galli_...pdf).</span>`;
+        status.innerHTML = `<span class="upload-erro">❌ Não identifiquei o cliente no PDF nem no nome do arquivo.<br><span class="upload-aviso">Use PDF com texto (Cliente: …) ou arquivo tipo <code>Orc_NomeCliente_….pdf</code>.</span></span>`;
         return;
       }
 
-      if (refFromPdf && !proposta.ref) proposta.ref = refFromPdf;
-      window.FlyingHistoricoPdf.registrar(empresa, proposta, { nomeArquivo: file.name });
+      const metaCli = hp.parseClienteRef(r.texto);
+      if (metaCli.ref && (!proposta.ref || proposta.ref === "Último orçamento (PDF)")) {
+        proposta.ref = metaCli.ref.replace(/\s+(?:e\s+)?aos\s+cuidados.*$/i, "").trim();
+      }
+      if (!proposta.ref || proposta.ref === "Último orçamento (PDF)") {
+        const mRef = r.texto.match(/(?:ref(?:er[eê]ncia)?|projeto|empreendimento)\s*[:\-]?\s*([^\n$]{3,60})/i);
+        if (mRef) proposta.ref = mRef[1].trim().replace(/\s+e\s+aos.*$/i, "");
+      }
+      proposta.empresa_pdf = empresa;
+
+      hp.registrar(empresa, proposta, { nomeArquivo: file.name });
+
+      if (resolv.substituiuForm && empresaForm && window.FlyingChat) {
+        const refTitulo = proposta.ref && proposta.ref !== "Último orçamento (PDF)"
+          ? proposta.ref
+          : "PROJETO";
+        window.FlyingChat.ingestTexto(
+          `Cliente: ${empresa}\nRef: ${refTitulo}\n`,
+          {
+            resposta: `Atualizei o briefing para o cliente do PDF (**${empresa}**), não ${empresaForm} do chat anterior.`,
+          }
+        );
+      } else if (window.FlyingChat && (!empresaForm || empresaForm === "CLIENTE")) {
+        const refTitulo = proposta.ref || "PROJETO";
+        window.FlyingChat.ingestTexto(`Cliente: ${empresa}\nRef: ${refTitulo}\n`, {
+          resposta: `Cliente **${empresa}** identificado a partir do PDF.`,
+        });
+      }
 
       const radioHist = document.querySelector('input[name="estrategia"][value="historico"]');
       if (radioHist) {
@@ -662,9 +710,16 @@
         document.querySelectorAll(".opt-card").forEach((c) => c.classList.remove("selecionado"));
         radioHist.closest(".opt-card").classList.add("selecionado");
       }
+      syncEstrategiaUi();
 
       atualizarUiHistoricoPdf();
-      status.innerHTML = `<span class="upload-ok">✓ ${window.FlyingHistoricoPdf.resumoHtml(proposta)}<br><span class="upload-aviso">Cliente: <strong>${empresa}</strong> — pronto para gerar. Use <strong>Remover PDF</strong> se enviou o arquivo errado.</span></span>`;
+      let avisoTroca = "";
+      if (resolv.substituiuForm) {
+        avisoTroca = `<br><span class="upload-aviso">O PDF é do cliente <strong>${empresa}</strong> (não ${empresaForm}). O briefing foi atualizado.</span>`;
+      } else if (resolv.origem === "arquivo") {
+        avisoTroca = `<br><span class="upload-aviso">Cliente lido do nome do arquivo.</span>`;
+      }
+      status.innerHTML = `<span class="upload-ok">✓ ${hp.resumoHtml(proposta)}<br><span class="upload-aviso">Histórico vinculado a <strong>${empresa}</strong>.${avisoTroca}</span></span>`;
     } catch (err) {
       status.innerHTML = `<span class="upload-erro">❌ Erro: ${err.message}</span>`;
     }
