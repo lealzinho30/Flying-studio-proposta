@@ -1,5 +1,5 @@
 # Configuração do Netlify para a versão estática (pasta web/).
-# Não tem build step — é só HTML+CSS+JS estático.
+# Produção deve usar a branch **main** (Site settings → Build & deploy → Production branch).
 [build]
   publish = "web"
   command = ""
@@ -20,8 +20,6 @@
     X-Content-Type-Options = "nosniff"
     Cache-Control = "public, max-age=0, must-revalidate"
 
-# Cache curto para os assets — como nomes dos arquivos não têm hash,
-# precisamos revalidar a cada deploy.
 [[headers]]
   for = "/*.js"
   [headers.values]
