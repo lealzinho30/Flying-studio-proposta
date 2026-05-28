@@ -58,6 +58,10 @@ A primeira vez ele pergunta o nome do site. Depois é só rodar `netlify deploy 
 2. Duplo-clique em `web/index.html` — abre em qualquer navegador.
 3. Descreva o projeto, clique em **Gerar proposta**, depois em **Baixar**.
 
+O Word é montado no papel timbrado `web/assets/TIMBRADO_FLYINGSTUDIO.docx`.
+Para usar o arquivo oficial do Windows (`O:\PAPEL_TIMBRADO\TIMBRADO_FLYINGSTUDIO.doc`),
+salve como `.docx` e copie para essa pasta (veja `flying/papel_timbrado/README.md`).
+
 ### Opção E — GitHub Pages
 
 Settings → Pages → Source: `Deploy from a branch` → Branch `main`, Folder `/web`.

@@ -65,6 +65,10 @@ def main(argv: list[str] | None = None) -> int:
                         help="Caminho do DOCX de saída (default: saida/<empresa>_<ref>_<estrategia>.docx).")
     parser.add_argument("--mostrar-precos-individuais", action="store_true",
                         help="Inclui coluna de preço por imagem nas tabelas (estilo BRNPAR).")
+    parser.add_argument("--timbrado", type=Path, default=None,
+                        help="Caminho do papel timbrado (.docx). Default: flying/papel_timbrado/ ou FLYING_TIMBRADO.")
+    parser.add_argument("--sem-timbrado", action="store_true",
+                        help="Gera DOCX sem o modelo timbrado (cabeçalho/rodapé programáticos).")
     args = parser.parse_args(argv)
 
     if not args.entrada.exists():
@@ -156,6 +160,8 @@ def main(argv: list[str] | None = None) -> int:
         creditos=creditos,
         desconto_label=desconto_label,
         extras_estruturados=extras_struct,
+        usar_timbrado=not args.sem_timbrado,
+        timbrado=args.timbrado,
     )
 
     print(f"\n✅ DOCX gerado em: {saida}")

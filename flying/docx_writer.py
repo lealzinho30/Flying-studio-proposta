@@ -1,8 +1,9 @@
 """Gera o DOCX da proposta no formato profissional Flying Studio.
 
-Layout idêntico à versão web (web/docx_gen.js):
-- Header com logo Flying + linha lavanda
-- Footer com www.flyingstudio.com.br + endereço
+Por padrão usa o papel timbrado `papel_timbrado/TIMBRADO_FLYINGSTUDIO.docx`
+(cabeçalho/rodapé do modelo; corpo gerado pela aplicação). Sem timbrado: header/footer programáticos.
+
+Layout CLI (capa) / web (Anexo I em docx_gen.js):
 - Capa com título grande, caixa roxa de cliente/projeto, investimento destacado
 - Páginas seguintes: tabelas estilizadas (header roxo, zebra), considerações, assinatura
 
@@ -18,6 +19,10 @@ Paleta:
 from __future__ import annotations
 
 import datetime as _dt
+import os
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -31,6 +36,9 @@ from docx.shared import Cm, Mm, Pt, RGBColor, Emu
 from .orcamento import Orcamento
 
 LOGO_PATH = Path(__file__).resolve().parent / "flying_logo.png"
+_PAPEL_DIR = Path(__file__).resolve().parent / "papel_timbrado"
+TIMBRADO_DOCX = _PAPEL_DIR / "TIMBRADO_FLYINGSTUDIO.docx"
+TIMBRADO_DOC = _PAPEL_DIR / "TIMBRADO_FLYINGSTUDIO.doc"
 
 MESES_PT = [
     "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -224,6 +232,65 @@ def _add_bullet(doc, texto, *, label=None):
         _run(p, f"{label}: ", bold=True, color=COR_TEXTO, size=11)
     _run(p, texto, color=COR_TEXTO, size=11)
     return p
+
+
+# ---------- papel timbrado ----------
+
+
+def _converter_doc_para_docx(doc_path: Path) -> Path:
+    lo = shutil.which("libreoffice") or shutil.which("soffice")
+    if not lo:
+        raise FileNotFoundError(
+            f"Arquivo .doc encontrado ({doc_path}), mas LibreOffice não está instalado. "
+            "Salve como .docx no Word ou defina FLYING_TIMBRADO apontando para o .docx."
+        )
+    tmp = Path(tempfile.mkdtemp())
+    subprocess.run(
+        [lo, "--headless", "--convert-to", "docx", "--outdir", str(tmp), str(doc_path)],
+        check=True,
+        capture_output=True,
+    )
+    out = tmp / f"{doc_path.stem}.docx"
+    if not out.exists():
+        raise FileNotFoundError(f"Conversão falhou: {doc_path}")
+    dest = TIMBRADO_DOCX
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(out, dest)
+    shutil.rmtree(tmp, ignore_errors=True)
+    return dest
+
+
+def resolver_timbrado(explicito: Path | None = None) -> Path | None:
+    candidatos: list[Path] = []
+    if explicito is not None:
+        candidatos.append(explicito)
+    env = os.getenv("FLYING_TIMBRADO")
+    if env:
+        candidatos.append(Path(env))
+    candidatos.extend([
+        TIMBRADO_DOCX,
+        TIMBRADO_DOC,
+        Path(r"O:/PAPEL_TIMBRADO/TIMBRADO_FLYINGSTUDIO.docx"),
+        Path(r"O:/PAPEL_TIMBRADO/TIMBRADO_FLYINGSTUDIO.doc"),
+        Path("/PAPEL_TIMBRADO/TIMBRADO_FLYINGSTUDIO.docx"),
+        Path("/mnt/o/PAPEL_TIMBRADO/TIMBRADO_FLYINGSTUDIO.docx"),
+        Path("/mnt/o/PAPEL_TIMBRADO/TIMBRADO_FLYINGSTUDIO.doc"),
+    ])
+    for p in candidatos:
+        if not p.exists():
+            continue
+        if p.suffix.lower() == ".doc":
+            return _converter_doc_para_docx(p)
+        return p
+    return None
+
+
+def _limpar_corpo(doc: Document) -> None:
+    body = doc.element.body
+    for child in list(body):
+        if child.tag == qn("w:sectPr"):
+            continue
+        body.remove(child)
 
 
 # ---------- header / footer ----------
@@ -553,20 +620,25 @@ def gerar_docx(
     creditos: list[dict[str, Any]] | None = None,
     desconto_label: str | None = None,
     extras_estruturados: dict[str, Any] | None = None,
+    usar_timbrado: bool = True,
+    timbrado: Path | None = None,
 ) -> Path:
     data = data or _dt.date.today()
-    doc = Document()
-
-    secao = doc.sections[0]
-    secao.left_margin = Cm(2.5)
-    secao.right_margin = Cm(2.5)
-    secao.top_margin = Cm(3.0)
-    secao.bottom_margin = Cm(2.3)
-    secao.header_distance = Cm(1.2)
-    secao.footer_distance = Cm(1.0)
-
-    _setup_header(doc)
-    _setup_footer(doc)
+    tpl = resolver_timbrado(timbrado) if usar_timbrado else None
+    if tpl:
+        doc = Document(str(tpl))
+        _limpar_corpo(doc)
+    else:
+        doc = Document()
+        secao = doc.sections[0]
+        secao.left_margin = Cm(2.5)
+        secao.right_margin = Cm(2.5)
+        secao.top_margin = Cm(3.0)
+        secao.bottom_margin = Cm(2.3)
+        secao.header_distance = Cm(1.2)
+        secao.footer_distance = Cm(1.0)
+        _setup_header(doc)
+        _setup_footer(doc)
 
     subtotal_imagens = orc.subtotal
     total_extras = (extras_estruturados or {}).get("total", 0)

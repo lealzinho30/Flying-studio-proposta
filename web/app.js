@@ -69,6 +69,9 @@
     if (!window.docx || !window.FlyingDocx) {
       return "Biblioteca Word (docx.js) não carregou. Verifique a internet e atualize a página.";
     }
+    if (!window.JSZip || !window.FlyingTimbrado) {
+      return "Módulo do papel timbrado não carregou. Use Ctrl+F5 para atualizar.";
+    }
     return null;
   }
 
@@ -335,7 +338,7 @@
       trocarTela("resultado");
       salvarRascunho();
 
-      setGerandoUi(true, "Montando arquivo Word…");
+      setGerandoUi(true, "Montando proposta no papel timbrado…");
       const ult = ultProp || window.FlyingOrc.ultimaPropostaDe(cliente.empresa);
       const formaPagamento = ult && ult.forma_pagamento;
       const prazos = ult && ult.prazos;

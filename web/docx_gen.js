@@ -83,19 +83,11 @@
     bullet: 200,
   };
 
-  // Largura da logo no cabeçalho (~3,5 cm, igual ao docx_writer.py).
-  const LOGO_HEADER = {
-    url: "assets/flying_logo_hi.png",
-    widthPx: 132,
-  };
-
   const PAGE = {
     top: 1417,
     bottom: 1304,
     left: 1417,
     right: 1417,
-    header: 900,
-    footer: 567,
   };
 
   const TBL = {
@@ -199,62 +191,6 @@
     return P(`${pct}% - ${marco}`, { indent: { left: 720 }, after: SP.bullet });
   }
 
-  async function fetchAsset(url, ms) {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), ms || 8000);
-    try {
-      return await fetch(url, { signal: ctrl.signal, cache: "force-cache" });
-    } finally {
-      clearTimeout(timer);
-    }
-  }
-
-  async function carregarLogoHeader() {
-    try {
-      const resp = await fetchAsset(LOGO_HEADER.url, 12000);
-      if (!resp.ok) throw new Error("logo http " + resp.status);
-      const buffer = await resp.arrayBuffer();
-      let naturalW = 610;
-      let naturalH = 238;
-      try {
-        const bmp = await createImageBitmap(new Blob([buffer], { type: "image/png" }));
-        naturalW = bmp.width;
-        naturalH = bmp.height;
-        bmp.close();
-      } catch (_) { /* noop */ }
-      const width = LOGO_HEADER.widthPx;
-      const height = Math.max(1, Math.round((width * naturalH) / naturalW));
-      return { buffer, width, height };
-    } catch (e) {
-      console.warn("Logo do cabeçalho não carregou:", e);
-      return null;
-    }
-  }
-
-  /** Cabeçalho do Word: apenas a logomarca (sem linha ou texto extra). */
-  function montarHeaderLogo(logo) {
-    const { Header, Paragraph, ImageRun, AlignmentType } = window.docx;
-    if (!logo) {
-      return new Header({
-        children: [new Paragraph({ children: [] })],
-      });
-    }
-    return new Header({
-      children: [
-        new Paragraph({
-          alignment: AlignmentType.RIGHT,
-          spacing: { before: 0, after: 40 },
-          children: [
-            new ImageRun({
-              data: logo.buffer,
-              transformation: { width: logo.width, height: logo.height },
-            }),
-          ],
-        }),
-      ],
-    });
-  }
-
   /** Linha horizontal (borda inferior em parágrafo vazio). */
   function paragrafoLinha(cor, opts = {}) {
     const { Paragraph, TextRun, BorderStyle } = window.docx;
@@ -293,30 +229,6 @@
     }));
 
     return partes.filter(Boolean);
-  }
-
-  function montarFooter() {
-    const { Footer, Paragraph, TextRun, AlignmentType, BorderStyle } = window.docx;
-    const linha = new Paragraph({
-      spacing: { before: 30, after: 40 },
-      border: { top: { color: COR.primaria, space: 1, style: BorderStyle.SINGLE, size: 8 } },
-      children: [new TextRun({ text: "" })],
-    });
-    const site = new Paragraph({
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 20 },
-      children: [new TextRun({ text: "www.flyingstudio.com.br", size: TAM, color: COR.primaria, font: FONTE, bold: true })],
-    });
-    const endereco = new Paragraph({
-      alignment: AlignmentType.CENTER,
-      children: [new TextRun({
-        text: "Av. Eng. Luís Carlos Berrini, 936, 7º andar - Novo Brooklin, São Paulo - Telefone: (11) 2351-4138",
-        size: TAM,
-        color: COR.textoSoft,
-        font: FONTE,
-      })],
-    });
-    return new Footer({ children: [linha, site, endereco] });
   }
 
   function tblBorda() {
@@ -500,7 +412,6 @@
     const { Document, Packer } = window.docx;
 
     data = data || new Date();
-    const headerLogo = await carregarLogoHeader();
 
     const subtotalImagens = orc.subtotal;
     const totalExtras = (extrasEstruturados && extrasEstruturados.total) || 0;
@@ -631,18 +542,18 @@
               bottom: PAGE.bottom,
               left: PAGE.left,
               right: PAGE.right,
-              header: PAGE.header,
-              footer: PAGE.footer,
             },
           },
         },
-        headers: { default: montarHeaderLogo(headerLogo) },
-        footers: { default: montarFooter() },
         children,
       }],
     });
 
-    return await Packer.toBlob(doc);
+    const conteudoBlob = await Packer.toBlob(doc);
+    if (window.FlyingTimbrado && window.FlyingTimbrado.aplicarPapelTimbrado) {
+      return window.FlyingTimbrado.aplicarPapelTimbrado(conteudoBlob);
+    }
+    return conteudoBlob;
   }
 
   window.FlyingDocx = { gerarDocxBlob, brl, extenso };
