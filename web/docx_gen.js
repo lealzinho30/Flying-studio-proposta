@@ -446,15 +446,7 @@
         ],
       }));
     } else {
-      rows.push(new TableRow({
-        children: [
-          tblCell(String(totalItens), { width: W.item, align: AlignmentType.CENTER }),
-          tblCell("Valor Final", { width: W.desc, bold: true }),
-          tblCell(brl(valorFinal), {
-            width: W.val, bold: true, align: AlignmentType.RIGHT,
-          }),
-        ],
-      }));
+      // Sem desconto: só o total do projeto (cada subseção já tem seu "Valor Total").
       rows.push(new TableRow({
         children: [
           tblCell(`Valor Total do Projeto = ${brl(valorFinal)}`, {
