@@ -850,6 +850,42 @@ code {
 }
 .muted { color: var(--muted); font-weight: 500; font-size: 0.85em; }
 
+.totais-investimento {
+  margin: 24px 0 8px;
+  padding: 18px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, rgba(124, 92, 255, 0.08), rgba(124, 92, 255, 0.02));
+}
+.totais-investimento h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.totais-investimento-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.totais-investimento-tbl td {
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+  color: var(--text-soft);
+}
+.totais-investimento-tbl td.preco {
+  text-align: right;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.totais-investimento-tbl tr.linha-desconto td { color: var(--orange); }
+.totais-investimento-tbl tr.linha-final td {
+  border-bottom: 0;
+  padding-top: 12px;
+  color: var(--text);
+}
+.total-com-desconto { display: block; font-size: 1.75rem; font-weight: 700; }
+
 .bloco-cat { margin: 0 0 20px; }
 .bloco-cat h3 {
   font-size: 14px;

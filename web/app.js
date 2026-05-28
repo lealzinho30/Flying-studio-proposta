@@ -119,8 +119,16 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  function renderResumo(orc, prefixoId) {
-    const { brl } = window.FlyingDocx;
+  function renderResumo(orc, prefixoId, extrasEstr) {
+    const { brl, calcularTotaisInvestimento } = window.FlyingDocx;
+    const totais = calcularTotaisInvestimento
+      ? calcularTotaisInvestimento(orc, extrasEstr)
+      : {
+          subtotal: orc.subtotal,
+          valorFinal: orc.total_final,
+          descontoPct: orc.desconto_pct,
+          descontoValor: orc.desconto_valor,
+        };
     const ul = $(`resumo-${prefixoId}`);
     if (ul) {
       ul.innerHTML = "";
@@ -134,16 +142,56 @@
         li.innerHTML = `${nome}: <strong>${brl(c.total)}</strong> (${c.qtd})`;
         ul.appendChild(li);
       }
+      if (extrasEstr && extrasEstr.qtd) {
+        const li = document.createElement("li");
+        li.innerHTML = `Extras: <strong>${brl(extrasEstr.total)}</strong> (${extrasEstr.qtd})`;
+        ul.appendChild(li);
+      }
     }
-    $(`subtotal-${prefixoId}`).textContent = `Subtotal: ${brl(orc.subtotal)}`;
-    if (orc.desconto_pct > 0) {
-      $(`desc-${prefixoId}`).textContent = `Desconto ${orc.desconto_pct}%: -${brl(orc.desconto_valor)}`;
-      $(`desc-${prefixoId}`).classList.remove("hidden");
+    const subEl = $(`subtotal-${prefixoId}`);
+    const descEl = $(`desc-${prefixoId}`);
+    const totalEl = $(`total-${prefixoId}`);
+    if (totais.descontoPct > 0) {
+      if (subEl) subEl.textContent = `Sem desconto: ${brl(totais.subtotal)}`;
+      if (descEl) {
+        descEl.textContent = `Desconto ${totais.descontoPct}%: −${brl(totais.descontoValor)}`;
+        descEl.classList.remove("hidden");
+      }
+      if (totalEl) {
+        totalEl.innerHTML = `<span class="total-com-desconto">Com desconto: ${brl(totais.valorFinal)}</span>`;
+      }
     } else {
-      $(`desc-${prefixoId}`).textContent = "";
-      $(`desc-${prefixoId}`).classList.add("hidden");
+      if (subEl) subEl.textContent = `Subtotal: ${brl(totais.subtotal)}`;
+      if (descEl) {
+        descEl.textContent = "";
+        descEl.classList.add("hidden");
+      }
+      if (totalEl) totalEl.textContent = brl(totais.valorFinal);
     }
-    $(`total-${prefixoId}`).textContent = brl(orc.total_final);
+  }
+
+  function renderTotaisProposta(orc, extrasEstr, descontoLabel) {
+    const wrap = $("r-tabelas");
+    if (!wrap || !window.FlyingDocx.calcularTotaisInvestimento) return;
+    const { brl } = window.FlyingDocx;
+    const totais = window.FlyingDocx.calcularTotaisInvestimento(orc, extrasEstr);
+    const antigo = wrap.querySelector(".totais-investimento");
+    if (antigo) antigo.remove();
+    if (totais.descontoPct <= 0) return;
+
+    const rot = descontoLabel || `${totais.descontoPct}% de desconto`;
+    const box = document.createElement("div");
+    box.className = "totais-investimento";
+    box.innerHTML = `
+      <h3>Resumo do investimento</h3>
+      <table class="totais-investimento-tbl">
+        <tbody>
+          <tr><td>Valor sem desconto</td><td class="preco">${brl(totais.subtotal)}</td></tr>
+          <tr class="linha-desconto"><td>Desconto (${rot})</td><td class="preco">− ${brl(totais.descontoValor)}</td></tr>
+          <tr class="linha-final"><td><strong>Valor com ${totais.descontoPct}% de desconto</strong></td><td class="preco"><strong>${brl(totais.valorFinal)}</strong></td></tr>
+        </tbody>
+      </table>`;
+    wrap.appendChild(box);
   }
 
   function renderExtras(extras) {
@@ -299,7 +347,7 @@
     }
 
     $("cartao-plan").classList.toggle("destaque", estrategia === "planilha");
-    renderResumo(plan, "plan");
+    renderResumo(plan, "plan", extrasEstr);
 
     const cartaoHist = $("cartao-hist");
     const histDiv = $("hist-conteudo");
@@ -322,7 +370,7 @@
         <p class="desc" id="desc-hist"></p>
         <p class="total" id="total-hist"></p>
         ${parcelas ? `<p class="hist-pag-label">Forma de pagamento (último projeto):</p>${parcelas}` : ""}`;
-      renderResumo(hist, "hist");
+      renderResumo(hist, "hist", extrasEstr);
     } else {
       histDiv.innerHTML = `
         <p class="sem-hist">Cliente <strong>${cliente.empresa}</strong> não está no histórico ainda.</p>
@@ -331,6 +379,7 @@
 
     $("r-estrategia-rotulo").textContent = `(estratégia ${estrategia})`;
     renderTabelas(orc);
+    renderTotaisProposta(orc, extrasEstr, parsed.desconto_label);
     renderExtras(extrasEstr);
     $("r-texto-original").textContent = texto;
 
