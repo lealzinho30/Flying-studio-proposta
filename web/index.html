@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Flying Studio · Propostas</title>
-  <link rel="stylesheet" href="styles.css?v=20260527q">
+  <link rel="stylesheet" href="styles.css?v=20260528e">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -28,7 +28,7 @@
     <section id="tela-form" class="tela">
       <header class="page-head">
         <h1>Nova proposta</h1>
-        <p class="page-lead">Descreva cliente e itens. O sistema monta o Word no padrão Flying.</p>
+        <p class="page-lead">Converse em linguagem natural — o sistema monta o briefing e o Word no padrão Flying.</p>
       </header>
 
       <div id="erro" class="alerta hidden" role="alert"></div>
@@ -63,36 +63,27 @@
             <div class="upload-status hidden" id="analisador-status"></div>
           </div>
 
-          <label class="sr-only" for="descricao">Descrição do projeto</label>
-          <textarea id="descricao" rows="18" spellcheck="false" placeholder="Cliente: …&#10;Ref: …&#10;A/C: …&#10;&#10;Externas:&#10;- …&#10;&#10;Internas:&#10;- …&#10;&#10;Plantas:&#10;- …">Cliente: GALLI
-Ref: Said Aiach
-A/C: Daniel Pucci
-Desconto: 12%
-Use o histórico do cliente.
-
-Externas:
-- Fachada vista da calçada
-- Jardim
-- Quadra de areia
-- Piscina
-- Dec c Jacuzzi
-- Playground
-- Gourmet/churrasqueira
-- Terraço rooftop
-- Fachada Bird's View
-
-Internas:
-- Bicicletário
-- Academia
-- Sauna
-- Brinquedoteca
-- Salão de Festas
-
-Plantas:
-- Implantação Térreo
-- Implantação Mezanino lazer
-- Implantação rooftop
-- Apartamento Tipo</textarea>
+          <div class="chat-layout">
+            <div class="chat-col-mensagens">
+              <div class="chat-mensagens" id="chat-mensagens" role="log" aria-live="polite" aria-relevant="additions"></div>
+              <div class="chat-compose">
+                <label class="sr-only" for="chat-input">Mensagem da proposta</label>
+                <textarea id="chat-input" class="chat-input" rows="2" spellcheck="true" placeholder="Ex.: 10 perspectivas internas a definir, empresa Tarraf, projeto Vila Mariana, A/C Larissa…"></textarea>
+                <div class="chat-compose-actions">
+                  <button type="button" class="btn-text" id="chat-limpar">Limpar chat</button>
+                  <button type="button" class="chat-enviar" id="chat-enviar">Enviar</button>
+                </div>
+              </div>
+            </div>
+            <aside class="chat-col-preview" aria-label="Briefing estruturado">
+              <h2 class="chat-preview-title">Briefing</h2>
+              <div class="chat-preview" id="chat-preview"></div>
+              <details class="chat-estruturado-fold">
+                <summary>Ver texto estruturado</summary>
+                <textarea id="descricao" class="chat-descricao-tecnica" rows="10" spellcheck="false" aria-label="Texto estruturado da proposta"></textarea>
+              </details>
+            </aside>
+          </div>
 
         </form>
 
@@ -161,13 +152,12 @@ Plantas:
 
           <details class="panel panel-fold panel-help">
             <summary class="panel-fold-head">
-              <span class="panel-title">Como escrever a descrição</span>
+              <span class="panel-title">Dicas do chat</span>
             </summary>
             <div class="help-body">
-              <p><strong>Cliente</strong> · <strong>Ref</strong> · <strong>A/C</strong> · <strong>Desconto</strong></p>
-              <p>Listas: <code>Externas:</code> <code>Internas:</code> <code>Plantas:</code></p>
-              <p>Extras: <code>Tour Virtual:</code> <code>Filmes:</code> <code>Apps:</code> ou painel ao lado.</p>
-              <p>No texto: <em>use preço de planilha</em> ou <em>siga o histórico</em>.</p>
+              <p>Fale naturalmente: quantidades, empresa, projeto e contato.</p>
+              <p>Ex.: <em>8 externas + 12 internas, cliente XYZ, projeto Alpha, A/C Maria, 10% desconto.</em></p>
+              <p>Importar PDF/planilha continua disponível acima.</p>
             </div>
           </details>
         </aside>
@@ -232,7 +222,8 @@ Plantas:
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 
   <script src="data.js?v=20260527q"></script>
-  <script src="parser.js?v=20260527q"></script>
+  <script src="parser.js?v=20260528e"></script>
+  <script src="chat_ui.js?v=20260528e"></script>
   <script src="escopo_tecnologias.js?v=20260527q"></script>
   <script src="leitor_historico_pdf.js?v=20260527q"></script>
   <script src="orcamento.js?v=20260527q"></script>
@@ -241,6 +232,6 @@ Plantas:
   <script src="historico_downloads.js?v=20260527q"></script>
   <script src="leitor_arquivo.js?v=20260527q"></script>
   <script src="analisador_plantas.js?v=20260527q"></script>
-  <script src="app.js?v=20260528c"></script>
+  <script src="app.js?v=20260528e"></script>
 </body>
 </html>
