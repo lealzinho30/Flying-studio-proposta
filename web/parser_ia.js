@@ -7,6 +7,13 @@
 
   function pareceConversacional(texto) {
     const t = (texto || "").trim();
+    if (
+      window.FlyingParser &&
+      window.FlyingParser.ehMensagemSoCorrecaoDesconto &&
+      window.FlyingParser.ehMensagemSoCorrecaoDesconto(t)
+    ) {
+      return false;
+    }
     if (t.length < 8) return false;
     if (/^(?:externas?|internas?|plantas?)\s*:/im.test(t)) return false;
     if (/^cliente\s*:/im.test(t) && t.split(/\n/).length > 4) return false;

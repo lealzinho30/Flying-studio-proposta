@@ -26,6 +26,7 @@ Regras:
 - empresa sempre MAIÚSCULAS; ref e contato em formato título.
 - estrategia: "planilha" se pedir tabela/planilha; "historico" se pedir histórico do cliente; senão "auto".
 - Ignore valores em R$, forma de pagamento e sinal — não entram no JSON.
+- Se o usuário NEGAR desconto ("não pedi 12%", "sem desconto", "tirar desconto"), use desconto_pct: 0 e NÃO altere cliente/projeto/contato — mantenha empresa "CLIENTE" se não souber o nome.
 - Se faltar dado, use empresa "CLIENTE", ref "PROJETO", contato "—" e explique em avisos.`;
 
 function extrairJson(texto) {

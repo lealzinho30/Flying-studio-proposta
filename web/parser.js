@@ -120,6 +120,37 @@
   const RE_CONTATO = /(?:^|\n|[,;.])\s*(?:a\/?c|contato|aos\s+cuidados\s+de?)\s*[:\-.]?\s+([^\n,;.]+?)(?=$|\n|[,;]|\.\s|\s+(?:cliente|empresa|ref|projeto|empreendimento|\d+\s*%))/i;
   const RE_DESCONTO = /(\d{1,2}(?:[.,]\d{1,2})?)\s*%\s*(?:de\s*)?(?:desconto|desc\.?|off)/i;
   const RE_DESCONTO2 = /desconto\s*(?:de|:)?\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*%/i;
+
+  /** Usuário recusa desconto: "não pedi 12%", "sem desconto", "tirar o desconto". */
+  function detectarRemocaoDesconto(texto) {
+    const t = norm(texto);
+    if (!t) return false;
+    const menciona = /\d+\s*%/.test(t) || /\bdesconto\b/.test(t);
+    if (!menciona) return false;
+    const negacao = [
+      /\bnao\s+(?:pedi|quero|preciso|precisamos|necessito)\b/,
+      /\bsem\s+desconto\b/,
+      /\bsem\s+(?:os?\s+)?\d+\s*%/,
+      /\btir(ar|e|a)\s+(?:o\s+)?desconto\b/,
+      /\bremov(er|a)\s+(?:o\s+)?desconto\b/,
+      /\bretir(ar|a)\s+(?:o\s+)?desconto\b/,
+      /\bretir(ar|a)\s+(?:os?\s+)?\d+\s*%/,
+      /\bcancel(ar|a)\s+(?:o\s+)?desconto\b/,
+      /\bzero\s+desconto\b/,
+      /\bnao\s+(?:preciso|quero)\s+(?:dos?\s+)?\d+\s*%/,
+    ];
+    return negacao.some((re) => re.test(t));
+  }
+
+  /** Mensagem curta só para corrigir desconto — não deve virar nome de cliente. */
+  function ehMensagemSoCorrecaoDesconto(texto) {
+    const t = (texto || "").trim();
+    if (!detectarRemocaoDesconto(t)) return false;
+    if (t.length > 120) return false;
+    if (/\b(?:empresa|cliente|projeto|ref)\s*[:]/i.test(t)) return false;
+    if (/\bempresa\s+[a-záéíóú]{3,}/i.test(t) && !/\bnao\s+pedi\b/i.test(t)) return false;
+    return true;
+  }
   const RE_ESTRATEGIA_PLAN = /\b(?:planilha|tabela\s*padr[aã]o|pre[cç]o\s*de\s*planilha|pre[cç]o\s*padr[aã]o)\b/i;
   const RE_ESTRATEGIA_HIST = /\bhist[oó]ric|cliente\s*(?:antigo|anterior|recorrente)|m[eé]dia\s*do\s*cliente|mesma?\s*base\b/i;
   const RE_PRECOS_IND = /pre[cç]os?\s*(?:individuais?|por\s*item|por\s*imagem)|coluna\s*de\s*pre[cç]o|estilo\s*brnpar/i;
@@ -359,7 +390,13 @@
     if (novo.cliente.empresa !== "CLIENTE") out.cliente.empresa = novo.cliente.empresa;
     if (novo.cliente.ref !== "PROJETO") out.cliente.ref = novo.cliente.ref;
     if (novo.cliente.contato !== "—") out.cliente.contato = novo.cliente.contato;
-    if (novo.desconto_pct > 0) out.desconto_pct = novo.desconto_pct;
+    if (novo._remove_desconto) {
+      out.desconto_pct = 0;
+      out.desconto_label = null;
+    } else if (novo.desconto_pct > 0) {
+      out.desconto_pct = novo.desconto_pct;
+      if (novo.desconto_label) out.desconto_label = novo.desconto_label;
+    }
     if (novo.estrategia && novo.estrategia !== "auto") out.estrategia = novo.estrategia;
     if (novo.mostrar_precos_individuais) out.mostrar_precos_individuais = true;
 
@@ -369,6 +406,16 @@
 
   function parseConversacional(textoOrig) {
     const out = parse(textoOrig);
+    if (detectarRemocaoDesconto(textoOrig)) {
+      out.desconto_pct = 0;
+      out.desconto_label = null;
+      out._remove_desconto = true;
+      if (ehMensagemSoCorrecaoDesconto(textoOrig)) {
+        out.cliente = { empresa: "CLIENTE", ref: "PROJETO", contato: "—" };
+        out._avisos = (out._avisos || []).filter((a) => !/assumi.*cliente/i.test(a));
+        out._avisos.push("Desconto removido conforme sua mensagem.");
+      }
+    }
     enriquecerLinguagemNatural(textoOrig, out);
     if (!out.externas.length && !out.internas.length && !out.plantas.length &&
         !(out.tour_virtual && out.tour_virtual.length)) {
@@ -435,6 +482,9 @@
       };
     }
 
+    const removeDesconto = detectarRemocaoDesconto(texto);
+    const soCorrecaoDesconto = ehMensagemSoCorrecaoDesconto(texto);
+
     const mCli = RE_CLIENTE.exec(texto);
     const mRef = RE_REF.exec(texto);
     const mCon = RE_CONTATO.exec(texto);
@@ -443,7 +493,7 @@
     let ref = mRef ? mRef[1].trim().replace(/[.;,]+$/, "") : "";
     let contato = mCon ? mCon[1].trim().replace(/[.;,]+$/, "") : "";
 
-    if (!cliente) {
+    if (!cliente && !soCorrecaoDesconto) {
       const primeira = texto.split(/\r?\n/, 1)[0].trim();
       const mCaps = primeira.match(
         /^([A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9](?:[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9 &]*[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9])?)\b/
@@ -472,8 +522,10 @@
     }
 
     let desconto_pct = 0;
-    const mD = RE_DESCONTO.exec(texto) || RE_DESCONTO2.exec(texto);
-    if (mD) desconto_pct = parseFloat(mD[1].replace(",", "."));
+    if (!removeDesconto) {
+      const mD = RE_DESCONTO.exec(texto) || RE_DESCONTO2.exec(texto);
+      if (mD) desconto_pct = parseFloat(mD[1].replace(",", "."));
+    }
 
     let estrategia = "auto";
     if (RE_ESTRATEGIA_PLAN.test(texto)) estrategia = "planilha";
@@ -627,6 +679,8 @@
     serializar,
     mesclarBriefing,
     enriquecerLinguagemNatural,
+    detectarRemocaoDesconto,
+    ehMensagemSoCorrecaoDesconto,
     norm,
     limpaItem,
   };

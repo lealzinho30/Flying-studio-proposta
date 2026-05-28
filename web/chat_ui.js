@@ -99,8 +99,9 @@
       (parsed.internas && parsed.internas.length) +
       (parsed.plantas && parsed.plantas.length);
     let msg = `Entendi: **${c.empresa}** · projeto **${c.ref}** · A/C **${c.contato}**.`;
+    if (parsed._remove_desconto) msg += " **Desconto removido** — proposta sem percentual de desconto.";
     if (nImg) msg += ` ${nImg} imagem(ns) na proposta.`;
-    else msg += " Ainda não identifiquei imagens — informe quantidades ou liste os ambientes.";
+    else if (!parsed._remove_desconto) msg += " Ainda não identifiquei imagens — informe quantidades ou liste os ambientes.";
     if (opts && opts.ia) msg += " _(interpretado com IA)_";
     const av = (parsed._avisos || []).filter((a) => !/interpretado|lidos do texto/i.test(a));
     if (av.length) msg += `\n\n_${av.slice(0, 2).join(" ")}_`;
@@ -110,7 +111,12 @@
   async function interpretarMensagem(texto, baseAnterior) {
     const local = window.FlyingParser.parseConversacional(texto);
     let novo = local;
+    const soCorrecao =
+      window.FlyingParser &&
+      window.FlyingParser.ehMensagemSoCorrecaoDesconto &&
+      window.FlyingParser.ehMensagemSoCorrecaoDesconto(texto);
     const querIA =
+      !soCorrecao &&
       window.FlyingParserIA &&
       (window.FlyingParserIA.pareceConversacional(texto) ||
         (local.cliente.empresa === "CLIENTE" && !local.internas.length && !local.externas.length));
