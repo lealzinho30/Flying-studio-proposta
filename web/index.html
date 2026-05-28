@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Flying Studio · Propostas</title>
+  <link rel="stylesheet" href="styles.css?v=20260527q">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="brand-name">Flying Studio</span>
+    </div>
+    <nav class="topnav">
+      <a href="#" id="link-novo" class="topnav-link">Nova proposta</a>
+    </nav>
+  </header>
+
+  <main class="shell">
+
+    <section id="tela-form" class="tela">
+      <header class="page-head">
+        <h1>Nova proposta</h1>
+        <p class="page-lead">Descreva cliente e itens. O sistema monta o Word no padrão Flying.</p>
+      </header>
+
+      <div id="erro" class="alerta hidden" role="alert"></div>
+      <p id="gerar-status" class="gerar-status hidden" role="status" aria-live="polite"></p>
+
+      <div class="layout-form">
+        <div class="layout-form-main">
+        <form class="panel panel-editor" id="form-proposta">
+          <div class="gerar-overlay hidden" id="gerar-overlay" aria-hidden="true">
+            <div class="gerar-overlay-box">
+              <span class="gerar-spinner" aria-hidden="true"></span>
+              <span id="gerar-overlay-text">Gerando proposta…</span>
+            </div>
+          </div>
+          <div class="panel-toolbar">
+            <div class="toolbar-actions">
+              <input type="file" id="arquivo-cliente" accept=".txt,.csv,.pdf,.docx,.xlsx,.xls,.doc" hidden>
+              <input type="file" id="arquivo-planta-ia" accept=".pdf" hidden>
+              <button type="button" class="tool-btn" id="btn-upload" title="Importar lista ou planilha do cliente">
+                <span class="tool-icon" aria-hidden="true">↑</span>
+                Importar arquivo
+              </button>
+              <button type="button" class="tool-btn tool-btn-accent" id="btn-analisar-planta" title="PDF do projeto — listagem automática (até 12 páginas)">
+                <span class="tool-icon" aria-hidden="true">◎</span>
+                Analisar PDF
+              </button>
+            </div>
+          </div>
+
+          <div class="status-stack">
+            <div class="upload-status hidden" id="upload-status"></div>
+            <div class="upload-status hidden" id="analisador-status"></div>
+          </div>
+
+          <label class="sr-only" for="descricao">Descrição do projeto</label>
+          <textarea id="descricao" rows="18" spellcheck="false" placeholder="Cliente: …&#10;Ref: …&#10;A/C: …&#10;&#10;Externas:&#10;- …&#10;&#10;Internas:&#10;- …&#10;&#10;Plantas:&#10;- …">Cliente: GALLI
+Ref: Said Aiach
+A/C: Daniel Pucci
+Desconto: 12%
+Use o histórico do cliente.
+
+Externas:
+- Fachada vista da calçada
+- Jardim
+- Quadra de areia
+- Piscina
+- Dec c Jacuzzi
+- Playground
+- Gourmet/churrasqueira
+- Terraço rooftop
+- Fachada Bird's View
+
+Internas:
+- Bicicletário
+- Academia
+- Sauna
+- Brinquedoteca
+- Salão de Festas
+
+Plantas:
+- Implantação Térreo
+- Implantação Mezanino lazer
+- Implantação rooftop
+- Apartamento Tipo</textarea>
+
+        </form>
+
+        <div class="cta-bar">
+          <button type="submit" class="cta cta-large" id="btn-gerar" form="form-proposta">Gerar proposta</button>
+          <span class="kbd-hint" title="Atalho de teclado">Ctrl + Enter</span>
+        </div>
+        </div>
+
+        <aside class="panel-stack" aria-label="Opções da proposta">
+          <section class="panel panel-options">
+            <h2 class="panel-title">Preço</h2>
+            <p class="panel-desc">Como precificar as imagens desta proposta</p>
+
+            <div class="seg-control" role="radiogroup" aria-label="Estratégia de preço">
+              <label class="seg-item opt-card" data-valor="auto">
+                <input type="radio" name="estrategia" value="auto" checked>
+                <span class="seg-title">Automático</span>
+                <span class="seg-desc">Histórico ou tabela padrão</span>
+              </label>
+              <label class="seg-item opt-card" data-valor="planilha">
+                <input type="radio" name="estrategia" value="planilha">
+                <span class="seg-title">Tabela padrão</span>
+                <span class="seg-desc">Planilha de custos Flying</span>
+              </label>
+              <label class="seg-item opt-card" data-valor="historico">
+                <input type="radio" name="estrategia" value="historico">
+                <span class="seg-title">Histórico</span>
+                <span class="seg-desc">Mesmos preços do cliente</span>
+              </label>
+            </div>
+
+            <div class="aside-extra hidden" id="hist-upload-bloco">
+              <input type="file" id="arquivo-historico" accept=".pdf,.docx,.doc" hidden>
+              <button type="button" class="tool-btn tool-btn-block" id="btn-historico-pdf">
+                Último orçamento (PDF/DOCX)
+              </button>
+              <div class="upload-status hidden" id="hist-upload-status"></div>
+              <div class="hist-pdf-ativo hidden" id="hist-pdf-ativo">
+                <span class="hist-pdf-nome" id="hist-pdf-nome"></span>
+                <button type="button" class="btn-text-danger" id="btn-remover-historico-pdf">Remover</button>
+              </div>
+            </div>
+          </section>
+
+          <details class="panel panel-fold" id="escopo-bloco">
+            <summary class="panel-fold-head">
+              <span class="panel-title">Tecnologias extras</span>
+              <span class="panel-desc">Tour, filmes, apps, drone…</span>
+            </summary>
+            <p class="fold-note">Só entram se marcar aqui ou listar na descrição.</p>
+            <div class="fold-actions">
+              <button type="button" class="btn-text" id="btn-escopo-limpar">Limpar seleção</button>
+            </div>
+            <div id="escopo-tecnologias-grid" class="escopo-tecnologias-grid"></div>
+          </details>
+
+          <details class="panel panel-fold" id="historico-word">
+            <summary class="panel-fold-head">
+              <span class="panel-title">Downloads recentes</span>
+              <span class="historico-word-badge" id="historico-word-count">0</span>
+            </summary>
+            <div id="historico-word-lista" class="historico-word-lista"></div>
+            <button type="button" class="btn-text" id="btn-historico-word-limpar">Limpar histórico</button>
+          </details>
+
+          <details class="panel panel-fold panel-help">
+            <summary class="panel-fold-head">
+              <span class="panel-title">Como escrever a descrição</span>
+            </summary>
+            <div class="help-body">
+              <p><strong>Cliente</strong> · <strong>Ref</strong> · <strong>A/C</strong> · <strong>Desconto</strong></p>
+              <p>Listas: <code>Externas:</code> <code>Internas:</code> <code>Plantas:</code></p>
+              <p>Extras: <code>Tour Virtual:</code> <code>Filmes:</code> <code>Apps:</code> ou painel ao lado.</p>
+              <p>No texto: <em>use preço de planilha</em> ou <em>siga o histórico</em>.</p>
+            </div>
+          </details>
+        </aside>
+      </div>
+    </section>
+
+    <section id="tela-resultado" class="tela hidden">
+      <header class="result-head">
+        <div class="result-head-main">
+          <p class="bread"><a href="#" id="voltar">← Voltar</a></p>
+          <h1 id="r-titulo"></h1>
+          <div class="chip-row" id="r-meta"></div>
+        </div>
+        <button type="button" class="cta cta-download" id="btn-download">Baixar Word</button>
+      </header>
+
+      <div id="r-avisos"></div>
+
+      <div class="compare-grid">
+        <article id="cartao-plan" class="compare-card">
+          <span class="compare-label">Planilha</span>
+          <ul class="resumo" id="resumo-plan"></ul>
+          <p class="subtotal" id="subtotal-plan"></p>
+          <p class="desc hidden" id="desc-plan"></p>
+          <p class="total" id="total-plan"></p>
+        </article>
+        <article id="cartao-hist" class="compare-card">
+          <span class="compare-label">Histórico</span>
+          <div id="hist-conteudo"></div>
+        </article>
+      </div>
+
+      <section class="section-block">
+        <h2 class="section-title">Itens da proposta <span class="muted" id="r-estrategia-rotulo"></span></h2>
+        <div id="r-tabelas"></div>
+      </section>
+
+      <section class="section-block hidden" id="r-extras"></section>
+
+      <details class="panel panel-fold panel-fold-inline">
+        <summary>Texto original</summary>
+        <pre id="r-texto-original" class="pre-scroll"></pre>
+      </details>
+
+      <div class="result-foot">
+        <button type="button" class="cta" id="btn-download-2">Baixar Word</button>
+        <a href="#" class="btn-text" id="voltar-2">Nova proposta</a>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-foot">
+    Flying Studio · Propostas no navegador
+  </footer>
+
+  <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>if (window.pdfjsLib) { pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"; }</script>
+  <script src="https://unpkg.com/mammoth@1.7.2/mammoth.browser.min.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+
+  <script src="data.js?v=20260527q"></script>
+  <script src="parser.js?v=20260527q"></script>
+  <script src="escopo_tecnologias.js?v=20260527q"></script>
+  <script src="leitor_historico_pdf.js?v=20260527q"></script>
+  <script src="orcamento.js?v=20260527q"></script>
+  <script src="docx_timbrado.js?v=20260528d"></script>
+  <script src="docx_gen.js?v=20260528d"></script>
+  <script src="historico_downloads.js?v=20260527q"></script>
+  <script src="leitor_arquivo.js?v=20260527q"></script>
+  <script src="analisador_plantas.js?v=20260527q"></script>
+  <script src="app.js?v=20260528c"></script>
+</body>
+</html>

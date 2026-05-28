@@ -1,0 +1,34 @@
+# Exemplo: Cliente JÁ existente no histórico (GALLI).
+# Vai gerar 2 levantamentos: planilha e histórico do próprio GALLI.
+
+cliente:
+  empresa: GALLI
+  ref: SAID AIACH
+  contato: DANIEL PUCCI
+
+desconto_pct: 12
+desconto_label: "12% de Desconto de Parceria"
+
+externas:
+  - Fachada vista da calçada
+  - Jardim
+  - Quadra de areia
+  - Piscina
+  - Dec c Jacuzzi
+  - Playground
+  - Gourmet/churrasqueira
+  - Terraço rooftop
+  - Fachada Bird's View
+
+internas:
+  - Bicicletário
+  - Academia
+  - Sauna
+  - Brinquedoteca
+  - Salão de Festas
+
+plantas:
+  - Implantação Térreo
+  - Implantação Mezanino lazer
+  - Implantação rooftop
+  - Apartamento Tipo

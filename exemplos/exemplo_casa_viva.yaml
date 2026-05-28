@@ -1,0 +1,38 @@
+# Reproduz a proposta original CASA VIVA - PRESTES MAIA (R01).
+# Total esperado pelo histórico: subtotal R$38.100, com 22% = R$29.720.
+
+cliente:
+  empresa: CASA VIVA
+  ref: PRESTES MAIA
+  contato: ANA BEATRIZ
+
+desconto_pct: 22
+desconto_label: "Desconto especial de 22%"
+data: "2026-05-15"
+
+externas:
+  - Fachada
+  - Portaria
+  - PetPlace
+  - Churrasqueira
+  - Horta/Pomar
+  - Redário
+  - Fitness Externo
+  - Bicicletário
+
+internas:
+  - Lobby
+  - Mini Market
+  - Lavanderia
+  - Espaço Camarote
+  - Maleiro
+  - Coworking
+  - Espaço Beauty
+  - Academia
+
+plantas:
+  - Implantação térreo
+  - tipo a - 30m² - 1 dorm com varanda
+  - tipo b - 24m² - 1 dorm sem varanda
+  - tipo c - 37,5m² - 2 dorm com varanda
+  - tipo d - 27,5m² - 1 dorm com office

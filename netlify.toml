@@ -1,0 +1,38 @@
+# Configuração do Netlify para a versão estática (pasta web/).
+# Não tem build step — é só HTML+CSS+JS estático.
+[build]
+  publish = "web"
+  command = ""
+
+[functions]
+  directory = "netlify/functions"
+
+[functions."analisar-planta"]
+  timeout = 26
+  memory = 1024
+
+# Headers úteis: aceita o CDN docx.js, segurança razoável e cache curto no HTML.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    X-Content-Type-Options = "nosniff"
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# Cache curto para os assets — como nomes dos arquivos não têm hash,
+# precisamos revalidar a cada deploy.
+[[headers]]
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=86400"

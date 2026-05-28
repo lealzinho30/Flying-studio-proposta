@@ -1,0 +1,29 @@
+# Exemplo: BRNPAR - cliente que costuma trabalhar com preços individuais
+# por imagem (formato com coluna de Valor).
+
+cliente:
+  empresa: BRNPAR
+  ref: NOVO PROJETO 2026
+  contato: MARCELLE HASHIMOTO
+
+desconto_pct: 8
+mostrar_precos_individuais: true
+
+externas:
+  - Fotomontagem (Diurna)
+  - Fachada (Entardecer)
+  - Portaria (Entardecer)
+  - Playground (Diurna)
+  - Quadra (Diurna)
+
+internas:
+  - Salão de festas (Diurna)
+  - Espaço Pet (Diurna)
+  - Quarto Casal (Diurna)
+  - Living (Diurna)
+  - Banho (Diurna)
+
+plantas:
+  - Implantação
+  - Tipo Humanizada
+  - Mosca Pavimento Completo

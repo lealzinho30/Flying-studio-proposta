@@ -1,0 +1,29 @@
+# Exemplo: cliente NOVO (sem histórico). Vai usar somente planilha.
+
+cliente:
+  empresa: SETIN
+  ref: NOVO LANÇAMENTO MOEMA
+  contato: JOÃO SILVA
+
+desconto_pct: 10
+
+externas:
+  - Fachada
+  - Voo de Pássaro
+  - Portaria
+  - Piscina
+  - Playground
+  - Churrasqueira
+
+internas:
+  - Lobby
+  - Academia
+  - Salão de Festas
+  - Coworking
+  - Brinquedoteca
+
+plantas:
+  - Implantação Térreo
+  - Implantação Lazer
+  - Apartamento Tipo
+  - Apartamento Garden
