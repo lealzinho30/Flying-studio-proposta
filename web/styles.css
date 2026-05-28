@@ -234,23 +234,181 @@ code {
 .upload-erro { color: var(--red); }
 .upload-aviso { color: var(--orange); font-size: 12px; }
 
-#descricao {
+/* —— Chat —— */
+.chat-layout {
+  display: grid;
+  grid-template-columns: 1fr minmax(220px, 280px);
+  gap: 0;
   flex: 1;
+  min-height: 400px;
+}
+@media (max-width: 720px) {
+  .chat-layout { grid-template-columns: 1fr; }
+  .chat-col-preview { border-top: 1px solid var(--border); }
+}
+
+.chat-col-mensagens {
+  display: flex;
+  flex-direction: column;
+  min-height: 380px;
+  min-width: 0;
+}
+
+.chat-mensagens {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: min(52vh, 480px);
+}
+
+.chat-msg { display: flex; max-width: 92%; }
+.chat-msg--user { align-self: flex-end; }
+.chat-msg--assistant { align-self: flex-start; }
+
+.chat-msg-corpo {
+  padding: 10px 14px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.chat-msg--user .chat-msg-corpo {
+  background: var(--accent);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.chat-msg--assistant .chat-msg-corpo {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  border-bottom-left-radius: 4px;
+}
+.chat-msg--assistant .chat-msg-corpo strong { color: var(--text); }
+
+.chat-compose {
+  border-top: 1px solid var(--border);
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.chat-input {
   width: 100%;
-  min-height: 340px;
-  resize: vertical;
-  border: 0;
-  background: transparent;
+  resize: none;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
   color: var(--text);
-  padding: 16px 18px;
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.65;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.45;
   outline: none;
 }
-#descricao::placeholder { color: var(--muted); }
-#descricao:focus {
-  box-shadow: inset 0 0 0 2px var(--accent-dim);
+.chat-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.chat-compose-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  gap: 8px;
+}
+
+.chat-enviar {
+  padding: 8px 18px;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--accent), #6b4fff);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chat-enviar:hover { filter: brightness(1.08); }
+
+.chat-col-preview {
+  padding: 14px 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  max-height: min(62vh, 560px);
+}
+
+.chat-preview-title {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.chat-preview-vazio {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.chat-kv {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 4px 8px;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+.chat-kv span { color: var(--muted); }
+.chat-kv strong { color: var(--text); font-weight: 600; }
+
+.chat-lista { margin-top: 10px; }
+.chat-lista-titulo {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-2);
+  margin-bottom: 4px;
+}
+.chat-lista ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--text-soft);
+  line-height: 1.4;
+}
+
+.chat-estruturado-fold {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.chat-estruturado-fold summary {
+  cursor: pointer;
+  color: var(--text-soft);
+  margin-bottom: 8px;
+}
+
+.chat-descricao-tecnica,
+#descricao.chat-descricao-tecnica {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text-soft);
+  padding: 10px 12px;
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  outline: none;
 }
 
 .gerar-status {

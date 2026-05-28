@@ -124,6 +124,168 @@
   const RE_ESTRATEGIA_HIST = /\bhist[oó]ric|cliente\s*(?:antigo|anterior|recorrente)|m[eé]dia\s*do\s*cliente|mesma?\s*base\b/i;
   const RE_PRECOS_IND = /pre[cç]os?\s*(?:individuais?|por\s*item|por\s*imagem)|coluna\s*de\s*pre[cç]o|estilo\s*brnpar/i;
 
+  function tituloPalavra(w) {
+    if (!w) return "";
+    const lower = w.toLowerCase();
+    if (["de", "da", "do", "das", "dos", "e"].includes(lower)) return lower;
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  }
+
+  function tituloCase(s) {
+    return (s || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(tituloPalavra)
+      .join(" ");
+  }
+
+  function empresaFormatada(s) {
+    return (s || "").trim().toUpperCase() || "CLIENTE";
+  }
+
+  function gerarListaPlaceholder(qtd, rotulo) {
+    const n = Math.max(1, Math.min(99, parseInt(qtd, 10) || 0));
+    const base = rotulo || "Item";
+    const itens = [];
+    for (let i = 1; i <= n; i += 1) {
+      const num = String(i).padStart(2, "0");
+      itens.push(`${base} ${num}`);
+    }
+    return itens;
+  }
+
+  /** Interpreta frases livres (chat) quando não há listas com cabeçalho. */
+  function enriquecerLinguagemNatural(texto, out) {
+    const t = texto || "";
+    const avisos = out._avisos || [];
+
+    const mEmpresa = t.match(
+      /(?:^|[\s,;.\-–—])(?:da\s+)?empresa\s+([a-záéúâêôãõç0-9][a-záéúâêôãõç0-9\s&.'-]{1,48}?)(?=\s*[-–—,]|\s+projeto\b|\s+empreendimento\b|\s+aos\s+cuidados|\s+desconto\b|$)/i
+    );
+    const mProjeto = t.match(
+      /(?:^|[\s,;.\-–—])projeto\s+([a-záéúâêôãõç0-9][a-záéúâêôãõç0-9\s&.'-]{1,60}?)(?=\s+e\s+aos\s+cuidados|\s+aos\s+cuidados\s+de|\s+desconto\b|[,.]|$)/i
+    );
+    const mContato = t.match(
+      /aos\s+cuidados\s+de\s+([a-záéúâêôãõç][a-záéúâêôãõç\s.'-]{1,40}?)(?=\s*[,.\-–—]|$)/i
+    );
+
+    if ((!out.cliente.empresa || out.cliente.empresa === "CLIENTE") && mEmpresa) {
+      out.cliente.empresa = empresaFormatada(mEmpresa[1]);
+      avisos.push(`Cliente interpretado: ${out.cliente.empresa}.`);
+    }
+    if (mProjeto) {
+      let refNl = mProjeto[1].trim().replace(/\s+e$/i, "").replace(/[.;,]+$/, "");
+      if ((!out.cliente.ref || out.cliente.ref === "PROJETO" || /\s+e$/i.test(out.cliente.ref)) && refNl) {
+        out.cliente.ref = tituloCase(refNl);
+        avisos.push(`Projeto interpretado: ${out.cliente.ref}.`);
+      }
+    } else if (out.cliente.ref && /\s+e$/i.test(out.cliente.ref)) {
+      out.cliente.ref = tituloCase(out.cliente.ref.replace(/\s+e$/i, ""));
+    }
+    if ((!out.cliente.contato || out.cliente.contato === "—") && mContato) {
+      out.cliente.contato = tituloCase(mContato[1]);
+      avisos.push(`A/C interpretado: ${out.cliente.contato}.`);
+    }
+
+    const aDefinir = /\ba\s+definir\b/i.test(t);
+    const padroesQtd = [
+      {
+        cat: "internas",
+        re: /(\d{1,3})\s*(?:(?:perspectivas?|imagens?|ilustra[cç][oõ]es?|views?)\s*)?internas?/gi,
+        rotulo: aDefinir ? "A definir" : "Perspectiva interna",
+      },
+      {
+        cat: "externas",
+        re: /(\d{1,3})\s*(?:(?:perspectivas?|imagens?|ilustra[cç][oõ]es?)\s*)?externas?/gi,
+        rotulo: aDefinir ? "A definir" : "Perspectiva externa",
+      },
+      {
+        cat: "plantas",
+        re: /(\d{1,3})\s*plantas?(?:\s+humanizadas?)?/gi,
+        rotulo: aDefinir ? "A definir" : "Planta",
+      },
+    ];
+
+    for (const { cat, re, rotulo } of padroesQtd) {
+      if (out[cat] && out[cat].length) continue;
+      const m = re.exec(t);
+      if (!m) continue;
+      const qtd = parseInt(m[1], 10);
+      if (qtd > 0 && qtd <= 99) {
+        out[cat] = gerarListaPlaceholder(qtd, rotulo);
+        avisos.push(`${qtd} ${cat} (${rotulo.toLowerCase()}).`);
+      }
+    }
+
+    const soInternas = /\binternas?\b/i.test(t) && !/\bexternas?\b/i.test(t);
+    const soExternas = /\bexternas?\b/i.test(t) && !/\binternas?\b/i.test(t);
+    if (!out.internas.length && soInternas && /\bdefinir\b/i.test(t)) {
+      const m = /(\d{1,3})\s+/.exec(t);
+      const qtd = m ? parseInt(m[1], 10) : 1;
+      if (qtd > 0) {
+        out.internas = gerarListaPlaceholder(qtd, "A definir");
+        avisos.push(`${qtd} internas a definir.`);
+      }
+    }
+
+    out._avisos = avisos;
+    return out;
+  }
+
+  function parseConversacional(textoOrig) {
+    const out = parse(textoOrig);
+    enriquecerLinguagemNatural(textoOrig, out);
+    if (!out.externas.length && !out.internas.length && !out.plantas.length &&
+        !(out.tour_virtual && out.tour_virtual.length)) {
+      const det = detectarExtrasSoltos(textoOrig, {
+        tour_virtual: out.tour_virtual,
+        filmes: out.filmes,
+        apps: out.apps,
+        drone: out.drone,
+        extras_diversos: out.extras_diversos,
+      });
+      if (det.length) out.extras_detectados = det;
+    }
+    const av = out._avisos || [];
+    if (!out.externas.length && !out.internas.length && !out.plantas.length) {
+      const idx = av.findIndex((a) => a.includes("Não consegui identificar nenhuma seção"));
+      if (idx >= 0) av.splice(idx, 1);
+    }
+    out._avisos = av;
+    out._origem = "conversacional";
+    return out;
+  }
+
+  function serializar(parsed) {
+    const p = parsed || {};
+    const c = p.cliente || { empresa: "CLIENTE", ref: "PROJETO", contato: "—" };
+    const linhas = [
+      `Cliente: ${c.empresa}`,
+      `Ref: ${c.ref}`,
+      `A/C: ${c.contato}`,
+    ];
+    if (p.desconto_pct > 0) linhas.push(`Desconto: ${p.desconto_pct}%`);
+    if (p.estrategia === "historico") linhas.push("Use o histórico do cliente.");
+    else if (p.estrategia === "planilha") linhas.push("Use preço de planilha.");
+
+    function bloco(titulo, itens) {
+      if (!itens || !itens.length) return;
+      linhas.push("", `${titulo}:`);
+      for (const it of itens) linhas.push(`- ${it}`);
+    }
+
+    bloco("Externas", p.externas);
+    bloco("Internas", p.internas);
+    bloco("Plantas", p.plantas);
+    bloco("Tour Virtual", p.tour_virtual);
+    bloco("Filmes", p.filmes);
+    bloco("Apps", p.apps);
+    bloco("Drone", p.drone);
+    bloco("Extras", p.extras_diversos);
+    return linhas.join("\n").trim();
+  }
+
   function parse(textoOrig) {
     const texto = (textoOrig || "").trim();
     const avisos = [];
@@ -325,5 +487,12 @@
     return det;
   }
 
-  window.FlyingParser = { parse, norm, limpaItem };
+  window.FlyingParser = {
+    parse,
+    parseConversacional,
+    serializar,
+    enriquecerLinguagemNatural,
+    norm,
+    limpaItem,
+  };
 })();

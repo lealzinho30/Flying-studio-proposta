@@ -96,18 +96,19 @@
   }
 
   function restaurarRascunhoSeVazio() {
-    const ta = $("descricao");
-    if (!ta || (ta.value || "").trim()) return;
     try {
       const raw = localStorage.getItem(STORAGE_RASCUNHO);
       if (!raw) return;
       const data = JSON.parse(raw);
-      if (data && typeof data.descricao === "string" && data.descricao.trim()) {
-        ta.value = data.descricao;
-      }
       if (data && data.estrategia) {
         const radio = document.querySelector(`input[name="estrategia"][value="${data.estrategia}"]`);
         if (radio) radio.checked = true;
+      }
+      if (data && typeof data.descricao === "string" && data.descricao.trim() && window.FlyingChat) {
+        const jaChat = localStorage.getItem("flying_chat_v1");
+        if (!jaChat) {
+          window.FlyingChat.ingestTexto(data.descricao, { resposta: "Rascunho anterior restaurado." });
+        }
       }
     } catch (_) { /* noop */ }
   }
@@ -221,18 +222,19 @@
       mostrarErro(depErro);
       return;
     }
-    const texto = ($("descricao") && $("descricao").value || "").trim();
-    if (!texto) {
-      mostrarErro("Descreva o projeto antes de gerar.");
+    const texto = ($("descricao") && $("descricao").value || "").trim() ||
+      (window.FlyingChat && window.FlyingChat.getTexto && window.FlyingChat.getTexto()) || "";
+    if (!texto.trim()) {
+      mostrarErro("Envie uma mensagem no chat com os dados da proposta antes de gerar.");
       return;
     }
 
-    setGerandoUi(true, "Analisando descrição…");
+    setGerandoUi(true, "Interpretando briefing…");
     let voltarFormSeFalhar = false;
 
     try {
       const estrategiaForm = document.querySelector('input[name="estrategia"]:checked')?.value || "auto";
-      const parsed = window.FlyingParser.parse(texto);
+      const parsed = window.FlyingParser.parseConversacional(texto);
       if (!parsed._avisos) parsed._avisos = [];
       const escopoSel = window.FlyingEscopo ? window.FlyingEscopo.getSelecionados() : [];
       if (escopoSel.length) {
@@ -497,15 +499,22 @@
       });
 
       const lg = resultado.listagem;
-      const parsed = window.FlyingParser.parse($("descricao").value.trim());
-      const temCliente = parsed.cliente && parsed.cliente.empresa;
+      const parsed = window.FlyingParser.parseConversacional(
+        (window.FlyingChat && window.FlyingChat.getTexto()) || ($("descricao") && $("descricao").value) || ""
+      );
+      const temCliente = parsed.cliente && parsed.cliente.empresa && parsed.cliente.empresa !== "CLIENTE";
       const bloco = analisador.listagemParaTexto(lg, { mesclarCliente: !temCliente });
-
-      const ta = $("descricao");
-      const atual = ta.value.trim();
-      const cabecalho = `\n\n# === Listagem automática (IA) — ${nomeArq} ===\n`;
-      ta.value = atual ? `${atual}${cabecalho}${bloco}` : bloco;
-      ta.focus();
+      const cabecalho = `# Listagem automática (IA) — ${nomeArq}\n`;
+      if (window.FlyingChat) {
+        window.FlyingChat.ingestTexto(`${cabecalho}${bloco}`, {
+          resposta: `Listagem do PDF adicionada (${resultado.total} imagens sugeridas). Revise o briefing.`,
+        });
+      } else {
+        const ta = $("descricao");
+        const atual = ta.value.trim();
+        ta.value = atual ? `${atual}\n\n${cabecalho}${bloco}` : `${cabecalho}${bloco}`;
+        ta.focus();
+      }
 
       const nExt = lg.externas.length;
       const nInt = lg.internas.length;
@@ -537,15 +546,18 @@
         status.innerHTML = `<span class="upload-erro">❌ Não consegui extrair texto de ${file.name}.${r.aviso ? " " + r.aviso : ""}</span>`;
         return;
       }
-      const ta = $("descricao");
-      const atual = ta.value.trim();
-      if (!atual) {
-        ta.value = r.texto;
+      const bloco = `# Importado de ${file.name}\n${r.texto}`;
+      if (window.FlyingChat) {
+        window.FlyingChat.ingestTexto(bloco, {
+          resposta: `Arquivo ${file.name} importado (${r.linhas} linhas). Confira o briefing.`,
+        });
       } else {
-        ta.value = atual + "\n\n# === Importado de " + file.name + " ===\n" + r.texto;
+        const ta = $("descricao");
+        const atual = ta.value.trim();
+        ta.value = atual ? `${atual}\n\n${bloco}` : bloco;
+        ta.focus();
       }
       status.innerHTML = `<span class="upload-ok">✓ Importado <strong>${file.name}</strong> (${r.linhas} linhas).${r.aviso ? "<br><span class='upload-aviso'>⚠ " + r.aviso + "</span>" : ""}</span>`;
-      ta.focus();
     } catch (err) {
       status.innerHTML = `<span class="upload-erro">❌ Erro: ${err.message}</span>`;
     }
@@ -553,7 +565,12 @@
   }
 
   function empresaAtualForm() {
-    const parsed = window.FlyingParser.parse($("descricao").value.trim());
+    const p = window.FlyingChat && window.FlyingChat.getParsed && window.FlyingChat.getParsed();
+    if (p && p.cliente && p.cliente.empresa && p.cliente.empresa !== "CLIENTE") {
+      return p.cliente.empresa;
+    }
+    const texto = ($("descricao") && $("descricao").value) || "";
+    const parsed = window.FlyingParser.parseConversacional(texto.trim());
     return (parsed.cliente && parsed.cliente.empresa) || "";
   }
 
@@ -717,12 +734,29 @@
     ev.stopPropagation();
     removerHistoricoPdf();
   });
-  $("descricao").addEventListener("input", () => {
-    clearTimeout(window._flyingHistUiTimer);
-    window._flyingHistUiTimer = setTimeout(atualizarUiHistoricoPdf, 400);
-    clearTimeout(window._flyingDraftTimer);
-    window._flyingDraftTimer = setTimeout(salvarRascunho, 350);
-  });
+  const taDesc = $("descricao");
+  if (taDesc) {
+    taDesc.addEventListener("input", () => {
+      clearTimeout(window._flyingHistUiTimer);
+      window._flyingHistUiTimer = setTimeout(atualizarUiHistoricoPdf, 400);
+      clearTimeout(window._flyingDraftTimer);
+      window._flyingDraftTimer = setTimeout(salvarRascunho, 350);
+      if (window.FlyingChat && window.FlyingChat.atualizarDeDescricao) {
+        window.FlyingChat.atualizarDeDescricao();
+      }
+    });
+  }
+  if (window.FlyingChat) {
+    window.FlyingChat.init({
+      onAtualizou: () => {
+        clearTimeout(window._flyingHistUiTimer);
+        window._flyingHistUiTimer = setTimeout(atualizarUiHistoricoPdf, 200);
+        clearTimeout(window._flyingDraftTimer);
+        window._flyingDraftTimer = setTimeout(salvarRascunho, 200);
+      },
+    });
+  }
+  window.atualizarUiHistoricoPdf = atualizarUiHistoricoPdf;
   restaurarRascunhoSeVazio();
   setupCardsEstrategia();
   setupAtalhos();
