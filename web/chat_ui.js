@@ -37,18 +37,27 @@
       .join("\n\n");
   }
 
+  function reparseLocal() {
+    let acc = null;
+    for (const m of mensagens) {
+      if (m.role !== "user") continue;
+      const p = window.FlyingParser.parseConversacional(m.text);
+      acc = window.FlyingParser.mesclarBriefing(acc, p);
+    }
+    parsedAtual = acc;
+    if ($("descricao") && parsedAtual) {
+      $("descricao").value = window.FlyingParser.serializar(parsedAtual);
+    }
+    return parsedAtual;
+  }
+
   function reparse() {
-    const texto = textoCompleto();
-    if (!texto.trim()) {
+    if (!textoCompleto().trim()) {
       parsedAtual = null;
       if ($("descricao")) $("descricao").value = "";
       return null;
     }
-    parsedAtual = window.FlyingParser.parseConversacional(texto);
-    if ($("descricao")) {
-      $("descricao").value = window.FlyingParser.serializar(parsedAtual);
-    }
-    return parsedAtual;
+    return reparseLocal();
   }
 
   function resumoHtml(parsed) {
@@ -82,7 +91,7 @@
     return partes.filter(Boolean).join("");
   }
 
-  function respostaAssistente(parsed) {
+  function respostaAssistente(parsed, opts) {
     if (!parsed) return "Pode começar — diga cliente, projeto e quantas imagens (externas, internas ou plantas).";
     const c = parsed.cliente;
     const nImg =
@@ -92,9 +101,37 @@
     let msg = `Entendi: **${c.empresa}** · projeto **${c.ref}** · A/C **${c.contato}**.`;
     if (nImg) msg += ` ${nImg} imagem(ns) na proposta.`;
     else msg += " Ainda não identifiquei imagens — informe quantidades ou liste os ambientes.";
-    const av = (parsed._avisos || []).filter((a) => !a.includes("interpretado"));
+    if (opts && opts.ia) msg += " _(interpretado com IA)_";
+    const av = (parsed._avisos || []).filter((a) => !/interpretado|lidos do texto/i.test(a));
     if (av.length) msg += `\n\n_${av.slice(0, 2).join(" ")}_`;
     return msg;
+  }
+
+  async function interpretarMensagem(texto, baseAnterior) {
+    const local = window.FlyingParser.parseConversacional(texto);
+    let novo = local;
+    const querIA =
+      window.FlyingParserIA &&
+      (window.FlyingParserIA.pareceConversacional(texto) ||
+        (local.cliente.empresa === "CLIENTE" && !local.internas.length && !local.externas.length));
+
+    if (querIA) {
+      try {
+        const ia = await window.FlyingParserIA.interpretar(texto);
+        if (ia) novo = window.FlyingParser.mesclarBriefing(local, ia);
+      } catch (e) {
+        console.warn("IA briefing:", e);
+        local._avisos = local._avisos || [];
+        if (!/indisponível|503|API_KEY/i.test(e.message)) {
+          local._avisos.push(`IA: ${e.message} — usei interpretação local.`);
+        }
+        novo = local;
+      }
+    }
+    return {
+      parsed: window.FlyingParser.mesclarBriefing(baseAnterior, novo),
+      usouIa: !!(novo && novo._origem === "ia"),
+    };
   }
 
   function renderMensagens() {
@@ -158,22 +195,59 @@
     renderPreview();
   }
 
-  function enviarMensagem(texto) {
+  async function enviarMensagem(texto) {
     const t = (texto || "").trim();
     if (!t) return null;
+
+    const btn = $("chat-enviar");
+    const input = $("chat-input");
+    if (btn) btn.disabled = true;
+    if (input) input.disabled = true;
+
+    const baseAnterior = parsedAtual;
     mensagens.push({ role: "user", text: t });
-    const parsed = reparse();
-    const resp = respostaAssistente(parsed);
+    renderMensagens();
+
     mensagens.push({
       role: "assistant",
-      text: resp.replace(/\*\*/g, "").replace(/_/g, ""),
-      html: formatAssistantHtml(resp),
+      text: "Interpretando…",
+      html: "<em>Interpretando sua mensagem…</em>",
     });
+    renderMensagens();
+
+    let usouIa = false;
+    try {
+      const { parsed, usouIa: iaFlag } = await interpretarMensagem(t, baseAnterior);
+      usouIa = iaFlag;
+      parsedAtual = parsed;
+      if ($("descricao") && parsedAtual) {
+        $("descricao").value = window.FlyingParser.serializar(parsedAtual);
+      }
+      mensagens.pop();
+      const resp = respostaAssistente(parsedAtual, { ia: usouIa });
+      mensagens.push({
+        role: "assistant",
+        text: resp.replace(/\*\*/g, "").replace(/_/g, ""),
+        html: formatAssistantHtml(resp),
+      });
+    } catch (err) {
+      mensagens.pop();
+      mensagens.push({
+        role: "assistant",
+        text: err.message || "Erro ao interpretar.",
+        html: formatAssistantHtml(`Não consegui interpretar: ${err.message || "erro"}. Tente reformular.`),
+      });
+      reparseLocal();
+    }
+
+    if (btn) btn.disabled = false;
+    if (input) input.disabled = false;
     renderMensagens();
     notificar();
     salvarChat();
     salvarRascunhoSync();
-    return parsed;
+    if (input) input.focus();
+    return parsedAtual;
   }
 
   function salvarRascunhoSync() {
@@ -238,12 +312,13 @@
     if (!restaurarChat()) iniciarBoasVindas();
 
     function submit() {
-      if (!input) return;
+      if (!input || btn.disabled) return;
       const v = input.value;
       input.value = "";
       input.style.height = "";
-      enviarMensagem(v);
-      if (window.atualizarUiHistoricoPdf) window.atualizarUiHistoricoPdf();
+      enviarMensagem(v).then(() => {
+        if (window.atualizarUiHistoricoPdf) window.atualizarUiHistoricoPdf();
+      });
     }
 
     if (btn) btn.addEventListener("click", submit);

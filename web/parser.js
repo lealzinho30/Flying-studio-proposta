@@ -155,13 +155,68 @@
     return itens;
   }
 
+  function clientePadrao(c) {
+    return !c || c.empresa === "CLIENTE" || c.ref === "PROJETO";
+  }
+
+  function extrairRotulosCompactos(t, out, avisos) {
+    const mSeq = t.match(
+      /\bcliente\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9][A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9\s&.'-]{1,40}?)\s+projeto\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9][A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9\s&.'-]{1,50}?)\s+(?:a\/?c|ac)\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-ZÁÉÍÓÚÂÊÔÃÕÇa-záéíóúâêôãõç\s.'-]{1,40}?)(?=\s+planta\b|\s+valor\b|\s+externas?\b|\s+internas?\b|$)/i
+    );
+    if (mSeq) {
+      if (out.cliente.empresa === "CLIENTE") out.cliente.empresa = empresaFormatada(mSeq[1]);
+      if (out.cliente.ref === "PROJETO") out.cliente.ref = tituloCase(mSeq[2]);
+      if (out.cliente.contato === "—") out.cliente.contato = tituloCase(mSeq[3]);
+      avisos.push("Cliente, projeto e A/C lidos do texto corrido.");
+      return true;
+    }
+
+    const mCli = t.match(/\bcliente\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9][\w\s&.'-]{2,40}?)(?=\s+projeto\b|\s+ref\b|\s+a\/?c\b|\s+planta\b|$)/i);
+    const mProj = t.match(/\b(?:projeto|ref)\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9][\w\s&.'-]{2,50}?)(?=\s+a\/?c\b|\s+planta\b|\s+valor\b|$)/i);
+    const mAc = t.match(/\b(?:a\/?c|ac)\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][\w\s.'-]{2,40}?)(?=\s+planta\b|\s+valor\b|\s+externas?\b|$)/i);
+    if (mCli && out.cliente.empresa === "CLIENTE") {
+      out.cliente.empresa = empresaFormatada(mCli[1]);
+      avisos.push(`Cliente: ${out.cliente.empresa}.`);
+    }
+    if (mProj && (out.cliente.ref === "PROJETO" || /\s+e$/i.test(out.cliente.ref))) {
+      out.cliente.ref = tituloCase(mProj[1].replace(/\s+e$/i, ""));
+    }
+    if (mAc && out.cliente.contato === "—") {
+      out.cliente.contato = tituloCase(mAc[1]);
+    }
+    return !!(mSeq || mCli || mProj || mAc);
+  }
+
+  function extrairPlantasTextoCorrido(t, out, avisos) {
+    if (out.plantas && out.plantas.length) return;
+    const bloco = t.split(/\bvalor\s+s[eé]r\b/i)[0];
+    const partes = bloco.split(/\bplanta\s+/i).slice(1);
+    if (!partes.length) return;
+    const itens = partes
+      .map((p) => limpaItem(p.split(/\b(?:valor|externas?|internas?)\b/i)[0]))
+      .filter((x) => x.length >= 3 && x.length < 80);
+    if (itens.length) {
+      out.plantas = itens.map((x) => ( /^planta/i.test(x) ? x : `Planta ${tituloCase(x)}`));
+      avisos.push(`${itens.length} planta(s) identificada(s) no texto.`);
+    }
+  }
+
   /** Interpreta frases livres (chat) quando não há listas com cabeçalho. */
   function enriquecerLinguagemNatural(texto, out) {
     const t = texto || "";
     const avisos = out._avisos || [];
 
+    extrairRotulosCompactos(t, out, avisos);
+    extrairPlantasTextoCorrido(t, out, avisos);
+
     const mEmpresa = t.match(
       /(?:^|[\s,;.\-–—])(?:da\s+)?empresa\s+([a-záéúâêôãõç0-9][a-záéúâêôãõç0-9\s&.'-]{1,48}?)(?=\s*[-–—,]|\s+projeto\b|\s+empreendimento\b|\s+aos\s+cuidados|\s+desconto\b|$)/i
+    );
+    const mEmpresa2 = t.match(
+      /(?:apenas\s+)?(?:da\s+)?empresa\s+([a-záéúâêôãõç][a-záéúâêôãõç0-9\s&.'-]{2,40}?)(?=\s*[-–—,]|\s+projeto\b|\s*,|\s+e\s+aos|\s+aos\s+cuidados|$)/i
+    );
+    const mClienteSo = t.match(
+      /\bcliente\s+([a-záéúâêôãõç][a-záéúâêôãõç0-9\s&.'-]{2,40}?)(?=\s*[-–—,]|\s+projeto\b|\s+ref\b|\s+aos\s+cuidados|$)/i
     );
     const mProjeto = t.match(
       /(?:^|[\s,;.\-–—])projeto\s+([a-záéúâêôãõç0-9][a-záéúâêôãõç0-9\s&.'-]{1,60}?)(?=\s+e\s+aos\s+cuidados|\s+aos\s+cuidados\s+de|\s+desconto\b|[,.]|$)/i
@@ -169,23 +224,38 @@
     const mContato = t.match(
       /aos\s+cuidados\s+de\s+([a-záéúâêôãõç][a-záéúâêôãõç\s.'-]{1,40}?)(?=\s*[,.\-–—]|$)/i
     );
+    const mAcCurto = t.match(
+      /(?:^|[\s,;.\-–—])(?:a\/?c)\s+([a-záéúâêôãõç][a-záéúâêôãõç\s.'-]{2,35}?)(?=\s*[,.\-–—]|$)/i
+    );
 
-    if ((!out.cliente.empresa || out.cliente.empresa === "CLIENTE") && mEmpresa) {
+    if (out.cliente.empresa === "CLIENTE" && mEmpresa) {
       out.cliente.empresa = empresaFormatada(mEmpresa[1]);
+      avisos.push(`Cliente interpretado: ${out.cliente.empresa}.`);
+    } else if (out.cliente.empresa === "CLIENTE" && mEmpresa2) {
+      out.cliente.empresa = empresaFormatada(mEmpresa2[1]);
+      avisos.push(`Cliente interpretado: ${out.cliente.empresa}.`);
+    } else if (out.cliente.empresa === "CLIENTE" && mClienteSo) {
+      out.cliente.empresa = empresaFormatada(mClienteSo[1]);
       avisos.push(`Cliente interpretado: ${out.cliente.empresa}.`);
     }
     if (mProjeto) {
-      let refNl = mProjeto[1].trim().replace(/\s+e$/i, "").replace(/[.;,]+$/, "");
-      if ((!out.cliente.ref || out.cliente.ref === "PROJETO" || /\s+e$/i.test(out.cliente.ref)) && refNl) {
+      const refNl = mProjeto[1].trim().replace(/\s+e$/i, "").replace(/[.;,]+$/, "");
+      if (refNl) {
         out.cliente.ref = tituloCase(refNl);
         avisos.push(`Projeto interpretado: ${out.cliente.ref}.`);
       }
+    } else if (out.cliente.ref && /\s+(?:e\s+)?aos\s+cuidados/i.test(out.cliente.ref)) {
+      out.cliente.ref = tituloCase(
+        out.cliente.ref.replace(/\s+(?:e\s+)?aos\s+cuidados.*$/i, "").replace(/\s+e$/i, "")
+      );
     } else if (out.cliente.ref && /\s+e$/i.test(out.cliente.ref)) {
       out.cliente.ref = tituloCase(out.cliente.ref.replace(/\s+e$/i, ""));
     }
-    if ((!out.cliente.contato || out.cliente.contato === "—") && mContato) {
+    if (out.cliente.contato === "—" && mContato) {
       out.cliente.contato = tituloCase(mContato[1]);
       avisos.push(`A/C interpretado: ${out.cliente.contato}.`);
+    } else if (out.cliente.contato === "—" && mAcCurto) {
+      out.cliente.contato = tituloCase(mAcCurto[1]);
     }
 
     const aDefinir = /\ba\s+definir\b/i.test(t);
@@ -230,6 +300,70 @@
     }
 
     out._avisos = avisos;
+    return out;
+  }
+
+  function mesclarBriefing(anterior, novo) {
+    if (!novo) return anterior;
+    if (!anterior) return novo;
+
+    const out = {
+      cliente: { ...anterior.cliente },
+      externas: [...(anterior.externas || [])],
+      internas: [...(anterior.internas || [])],
+      plantas: [...(anterior.plantas || [])],
+      tour_virtual: [...(anterior.tour_virtual || [])],
+      filmes: [...(anterior.filmes || [])],
+      apps: [...(anterior.apps || [])],
+      drone: [...(anterior.drone || [])],
+      extras_diversos: [...(anterior.extras_diversos || [])],
+      extras_detectados: [...(anterior.extras_detectados || [])],
+      desconto_pct: anterior.desconto_pct || 0,
+      desconto_label: anterior.desconto_label,
+      estrategia: anterior.estrategia || "auto",
+      mostrar_precos_individuais: anterior.mostrar_precos_individuais,
+      _origem: novo._origem || anterior._origem,
+      _avisos: [...(anterior._avisos || []), ...(novo._avisos || [])],
+    };
+
+    const trocaCliente =
+      novo.cliente.empresa !== "CLIENTE" &&
+      anterior.cliente.empresa !== "CLIENTE" &&
+      norm(novo.cliente.empresa) !== norm(anterior.cliente.empresa);
+    const novoTemListas =
+      (novo.externas && novo.externas.length) +
+      (novo.internas && novo.internas.length) +
+      (novo.plantas && novo.plantas.length) > 0;
+
+    if (trocaCliente && novoTemListas) {
+      out.externas = [...(novo.externas || [])];
+      out.internas = [...(novo.internas || [])];
+      out.plantas = [...(novo.plantas || [])];
+    } else {
+      function uni(cat) {
+        const vistos = new Set();
+        const lista = [];
+        for (const item of [...(anterior[cat] || []), ...(novo[cat] || [])]) {
+          const k = norm(item);
+          if (!k || vistos.has(k)) continue;
+          vistos.add(k);
+          lista.push(item);
+        }
+        return lista;
+      }
+      out.externas = uni("externas");
+      out.internas = uni("internas");
+      out.plantas = uni("plantas");
+    }
+
+    if (novo.cliente.empresa !== "CLIENTE") out.cliente.empresa = novo.cliente.empresa;
+    if (novo.cliente.ref !== "PROJETO") out.cliente.ref = novo.cliente.ref;
+    if (novo.cliente.contato !== "—") out.cliente.contato = novo.cliente.contato;
+    if (novo.desconto_pct > 0) out.desconto_pct = novo.desconto_pct;
+    if (novo.estrategia && novo.estrategia !== "auto") out.estrategia = novo.estrategia;
+    if (novo.mostrar_precos_individuais) out.mostrar_precos_individuais = true;
+
+    out._avisos = [...new Set(out._avisos)].slice(0, 8);
     return out;
   }
 
@@ -491,6 +625,7 @@
     parse,
     parseConversacional,
     serializar,
+    mesclarBriefing,
     enriquecerLinguagemNatural,
     norm,
     limpaItem,
