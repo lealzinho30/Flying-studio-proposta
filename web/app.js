@@ -152,14 +152,14 @@
     const descEl = $(`desc-${prefixoId}`);
     const totalEl = $(`total-${prefixoId}`);
     if (totais.descontoPct > 0) {
-      if (subEl) subEl.textContent = `Sem desconto: ${brl(totais.subtotal)}`;
+      if (subEl) {
+        subEl.textContent = `Valor Total das Imagens: ${brl(totais.subtotalImagens)}`;
+      }
       if (descEl) {
-        descEl.textContent = `Desconto ${totais.descontoPct}%: −${brl(totais.descontoValor)}`;
+        descEl.textContent = `Valor Total com ${totais.descontoPct}% de Desconto = ${brl(totais.valorFinal)}`;
         descEl.classList.remove("hidden");
       }
-      if (totalEl) {
-        totalEl.innerHTML = `<span class="total-com-desconto">Com desconto: ${brl(totais.valorFinal)}</span>`;
-      }
+      if (totalEl) totalEl.textContent = brl(totais.valorFinal);
     } else {
       if (subEl) subEl.textContent = `Subtotal: ${brl(totais.subtotal)}`;
       if (descEl) {
@@ -170,7 +170,7 @@
     }
   }
 
-  function renderTotaisProposta(orc, extrasEstr, descontoLabel) {
+  function renderTotaisProposta(orc, extrasEstr) {
     const wrap = $("r-tabelas");
     if (!wrap || !window.FlyingDocx.calcularTotaisInvestimento) return;
     const { brl } = window.FlyingDocx;
@@ -179,18 +179,26 @@
     if (antigo) antigo.remove();
     if (totais.descontoPct <= 0) return;
 
-    const rot = descontoLabel || `${totais.descontoPct}% de desconto`;
+    const linhas = [];
+    if (totais.subtotalImagens > 0) {
+      linhas.push(
+        `<tr><td>Valor Total das Imagens</td><td class="preco">${brl(totais.subtotalImagens)}</td></tr>`
+      );
+    }
+    if (totais.totalExtras > 0) {
+      linhas.push(
+        `<tr><td>Valor Total</td><td class="preco">${brl(totais.totalExtras)}</td></tr>`
+      );
+    }
+    linhas.push(
+      `<tr class="linha-final"><td colspan="2"><strong>Valor Total com ${totais.descontoPct}% de Desconto = ${brl(totais.valorFinal)}</strong></td></tr>`
+    );
+
     const box = document.createElement("div");
     box.className = "totais-investimento";
     box.innerHTML = `
       <h3>Resumo do investimento</h3>
-      <table class="totais-investimento-tbl">
-        <tbody>
-          <tr><td>Valor sem desconto</td><td class="preco">${brl(totais.subtotal)}</td></tr>
-          <tr class="linha-desconto"><td>Desconto (${rot})</td><td class="preco">− ${brl(totais.descontoValor)}</td></tr>
-          <tr class="linha-final"><td><strong>Valor com ${totais.descontoPct}% de desconto</strong></td><td class="preco"><strong>${brl(totais.valorFinal)}</strong></td></tr>
-        </tbody>
-      </table>`;
+      <table class="totais-investimento-tbl"><tbody>${linhas.join("")}</tbody></table>`;
     wrap.appendChild(box);
   }
 
@@ -379,7 +387,7 @@
 
     $("r-estrategia-rotulo").textContent = `(estratégia ${estrategia})`;
     renderTabelas(orc);
-    renderTotaisProposta(orc, extrasEstr, parsed.desconto_label);
+    renderTotaisProposta(orc, extrasEstr);
     renderExtras(extrasEstr);
     $("r-texto-original").textContent = texto;
 
@@ -426,8 +434,12 @@
   }
 
   function valorFinalCompleto(orc, extrasEstr) {
-    const sub = orc.subtotal + ((extrasEstr && extrasEstr.total) || 0);
-    return sub - sub * (orc.desconto_pct / 100);
+    if (window.FlyingDocx && window.FlyingDocx.calcularTotaisInvestimento) {
+      return window.FlyingDocx.calcularTotaisInvestimento(orc, extrasEstr).valorFinal;
+    }
+    const subImg = orc.subtotal;
+    const extras = (extrasEstr && extrasEstr.total) || 0;
+    return subImg - subImg * ((orc.desconto_pct || 0) / 100) + extras;
   }
 
   function registrarDownloadHistorico() {

@@ -374,75 +374,46 @@
     const totalExtras = (extrasEstruturados && extrasEstruturados.total) || 0;
     const subtotal = subtotalImagens + totalExtras;
     const descontoPct = orc.desconto_pct || 0;
-    const descontoValor = subtotal * (descontoPct / 100);
-    const valorFinal = subtotal - descontoValor;
+    // Desconto só sobre imagens (padrão Flying); extras entram sem desconto.
+    const descontoValor = subtotalImagens * (descontoPct / 100);
+    const valorFinal = subtotalImagens - descontoValor + totalExtras;
     return { subtotalImagens, totalExtras, subtotal, descontoPct, descontoValor, valorFinal };
   }
 
-  function linhasTotaisFinaisTabela(totalItens, totais, descontoLabel) {
+  function linhasTotaisFinaisTabela(qtdImagens, qtdExtras, totais) {
     const { TableRow, AlignmentType } = window.docx;
     const W = TBL.col;
-    const {
-      subtotal, valorFinal, descontoPct, descontoValor, subtotalImagens, totalExtras,
-    } = totais;
+    const { valorFinal, descontoPct, subtotalImagens, totalExtras } = totais;
     const rows = [];
 
     if (descontoPct > 0) {
-      const rotuloDesconto = descontoLabel || `${descontoPct}% de desconto`;
-      const descSemDesc =
-        totalExtras > 0
-          ? "Valor Total do projeto (sem desconto)"
-          : "Valor Total das Imagens (sem desconto)";
-
-      rows.push(new TableRow({
-        children: [
-          tblCell(String(totalItens), { width: W.item, align: AlignmentType.CENTER }),
-          tblCell(descSemDesc, { width: W.desc, bold: true }),
-          tblCell(brl(subtotal), { width: W.val, bold: true, align: AlignmentType.RIGHT }),
-        ],
-      }));
-
-      if (totalExtras > 0) {
+      if (subtotalImagens > 0) {
         rows.push(new TableRow({
           children: [
-            tblCell("", { width: W.item }),
-            tblCell("Imagens", { width: W.desc }),
-            tblCell(brl(subtotalImagens), { width: W.val, align: AlignmentType.RIGHT }),
-          ],
-        }));
-        rows.push(new TableRow({
-          children: [
-            tblCell("", { width: W.item }),
-            tblCell("Serviços extras", { width: W.desc }),
-            tblCell(brl(totalExtras), { width: W.val, align: AlignmentType.RIGHT }),
+            tblCell(String(qtdImagens), { width: W.item, align: AlignmentType.CENTER }),
+            tblCell("Valor Total das Imagens", { width: W.desc, bold: true }),
+            tblCell(brl(subtotalImagens), {
+              width: W.val, bold: true, align: AlignmentType.RIGHT,
+            }),
           ],
         }));
       }
-
+      if (totalExtras > 0) {
+        rows.push(new TableRow({
+          children: [
+            tblCell(String(qtdExtras), { width: W.item, align: AlignmentType.CENTER }),
+            tblCell("Valor Total", { width: W.desc, bold: true }),
+            tblCell(brl(totalExtras), {
+              width: W.val, bold: true, align: AlignmentType.RIGHT,
+            }),
+          ],
+        }));
+      }
       rows.push(new TableRow({
         children: [
-          tblCell("", { width: W.item }),
-          tblCell(`Desconto (${rotuloDesconto})`, { width: W.desc, bold: true }),
-          tblCell(`− ${brl(descontoValor)}`, {
-            width: W.val, bold: true, align: AlignmentType.RIGHT,
+          tblCell(`Valor Total com ${descontoPct}% de Desconto = ${brl(valorFinal)}`, {
+            colSpan: 3, bold: true, align: AlignmentType.CENTER,
           }),
-        ],
-      }));
-
-      rows.push(new TableRow({
-        children: [
-          tblCell(String(totalItens), { width: W.item, align: AlignmentType.CENTER }),
-          tblCell(`Valor Total com ${descontoPct}% de Desconto`, { width: W.desc, bold: true }),
-          tblCell(brl(valorFinal), { width: W.val, bold: true, align: AlignmentType.RIGHT }),
-        ],
-      }));
-
-      rows.push(new TableRow({
-        children: [
-          tblCell(
-            `Valor Total do Projeto = ${brl(valorFinal)}  (de ${brl(subtotal)} − ${descontoPct}%)`,
-            { colSpan: 3, bold: true, align: AlignmentType.CENTER }
-          ),
         ],
       }));
     } else {
@@ -459,12 +430,12 @@
     return rows;
   }
 
-  function tabelaInvestimentosContinua(blocos, totalItens, totais, descontoLabel) {
+  function tabelaInvestimentosContinua(blocos, qtdImagens, qtdExtras, totais) {
     const { Table, WidthType } = window.docx;
     const rows = [];
     for (const bloco of blocos) rows.push(...linhasSubsecaoTabela(bloco));
     if (blocos.length) {
-      rows.push(...linhasTotaisFinaisTabela(totalItens, totais, descontoLabel));
+      rows.push(...linhasTotaisFinaisTabela(qtdImagens, qtdExtras, totais));
     }
     if (!rows.length) return null;
     return new Table({
@@ -505,7 +476,7 @@
 
     children.push(secaoHeading("2", "ITENS A SEREM DESENVOLVIDOS / INVESTIMENTOS:"));
     const tblInvest = tabelaInvestimentosContinua(
-      blocosInvest, totalItens, totais, descontoLabel
+      blocosInvest, qtdImagens, qtdExtras, totais
     );
     if (tblInvest) children.push(tblInvest);
 
@@ -514,21 +485,6 @@
         before: SP.corpo,
         after: SP.corpo,
       }));
-
-      if (descontoPct > 0) {
-        const rot = descontoLabel || `${descontoPct}% de desconto`;
-        children.push(PRich([
-          R("Valor sem desconto: ", { color: COR.textoSoft }),
-          R(brl(subtotal), { bold: true }),
-          R("    →    Valor com desconto: ", { color: COR.textoSoft }),
-          R(brl(valorFinal), { bold: true, color: COR.primaria }),
-        ], { after: SP.corpo }));
-        children.push(P(
-          `Desconto ${rot}: economia de ${brl(descontoValor)} sobre ${brl(subtotal)}.`,
-          { color: COR.textoSoft, after: SP.corpo }
-        ));
-      }
-
       children.push(PRich([
         R(brl(valorFinal), { bold: true }),
         R(` (${extenso(valorFinal)})`, {}),
