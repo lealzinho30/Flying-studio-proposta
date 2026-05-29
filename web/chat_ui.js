@@ -242,9 +242,11 @@
       msg += " Ainda não identifiquei imagens — informe quantidades ou liste os ambientes.";
     }
     if (opts && opts.ia) msg += " _(interpretado com IA)_";
-    else if (opts && opts.iaIndisponivel) {
+    else if (opts && opts.modoLocal) {
+      msg += "\n\n_Modo local — sem API paga; cliente e escopo vêm do interpretador do site e do PDF._";
+    } else if (opts && opts.iaIndisponivel) {
       msg +=
-        "\n\n_Interpretação local (Gemini sem cota no plano gratuito — escopo e cliente vêm do sistema e do PDF)._";
+        "\n\n_Interpretação local (API de IA indisponível — use o parser do site ou configure chave no Netlify)._";
     }
     const av = (parsed._avisos || []).filter(
       (a) =>
@@ -265,10 +267,19 @@
     const localOk =
       window.FlyingParser.briefingLocalSuficiente &&
       window.FlyingParser.briefingLocalSuficiente(local);
+    const baseTemCliente =
+      baseAnterior &&
+      baseAnterior.cliente &&
+      baseAnterior.cliente.empresa !== "CLIENTE" &&
+      !window.FlyingParser.empresaPareceInvalida(baseAnterior.cliente.empresa);
+    const localOkComBase =
+      localOk || (local._somente_escopo && baseTemCliente && local.internas && local.internas.length);
 
+    const modoLocal = window.FLYING_MODO_LOCAL !== false;
     const querIA =
+      !modoLocal &&
       !soCorrecao &&
-      !localOk &&
+      !localOkComBase &&
       window.FlyingParserIA &&
       window.FlyingParserIA.pareceConversacional(texto);
 
@@ -301,7 +312,8 @@
     return {
       parsed: merged,
       usouIa: !!(novo && novo._origem === "ia"),
-      iaIndisponivel: iaIndisponivel && !localOk,
+      iaIndisponivel: iaIndisponivel && !localOkComBase,
+      modoLocal,
     };
   }
 
@@ -396,7 +408,11 @@
         $("descricao").value = window.FlyingParser.serializar(parsedAtual);
       }
       mensagens.pop();
-      const resp = respostaAssistente(parsedAtual, { ia: usouIa, iaIndisponivel });
+      const resp = respostaAssistente(parsedAtual, {
+        ia: usouIa,
+        iaIndisponivel,
+        modoLocal: window.FLYING_MODO_LOCAL !== false,
+      });
       mensagens.push({
         role: "assistant",
         text: resp.replace(/\*\*/g, "").replace(/_/g, ""),

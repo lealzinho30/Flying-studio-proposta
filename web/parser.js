@@ -287,6 +287,12 @@
     );
   }
 
+  function textoTemSecoesEstruturadas(texto) {
+    return /(?:^|\n)\s*(?:cliente|externas?|internas?|plantas?|tour\s+virtual|filmes?|apps?|drone)\s*:/im.test(
+      texto || ""
+    );
+  }
+
   /** Frase sobre escopo (imagens/ambientes) — não altera cliente/projeto/A/C. */
   function ehMensagemSoEscopo(texto) {
     const t = norm(texto);
@@ -296,10 +302,11 @@
     if (/\b(?:cliente|empresa|projeto)\s+(?:é|eh|ser[aá])\b/i.test(t)) return false;
 
     const temEscopo =
-      /\b(?:perspectivas?|plantas?|ilustra[cç][oõ]es?|imagens?|render|fachada|vista|ambientes?|escopo|views?)\b/i.test(
+      /\b(?:perspectivas?|plantas?|ilustra[cç][oõ]es?|imagens?|render|fachada|vista|ambientes?|escopo|views?|fotomontagem|bird\s*view|humanizada)\b/i.test(
         t
       );
     if (!temEscopo) return false;
+    if (textoTemSecoesEstruturadas(texto)) return false;
 
     if (/\bescopo\s*[=:]/i.test(texto)) return true;
     if (/\bimagens?\s*[=:]/i.test(texto)) return true;
@@ -324,6 +331,120 @@
   function marcarSomenteEscopo(out) {
     out._somente_escopo = true;
     out.cliente = { empresa: "CLIENTE", ref: "PROJETO", contato: "—" };
+  }
+
+  /** "tirar brinquedoteca", "remover suite", "sem a academia" */
+  function aplicarRemocaoEscopo(texto, out) {
+    const alvos = [];
+    const re =
+      /\b(?:tirar|remover|retirar|excluir|cancelar|sem)\s+(?:a\s+|o\s+|as\s+|os\s+)?([a-záéíóúâêôãõç][a-záéíóúâêôãõç0-9\s-]{2,45}?)(?=\s*$|[,.]|\s+e\s+|\s+nao\b)/gi;
+    let m;
+    while ((m = re.exec(texto || "")) !== null) {
+      const alvo = norm(m[1].trim());
+      if (alvo.length >= 3) alvos.push(alvo);
+    }
+    if (!alvos.length) return false;
+    const cats = [
+      "externas",
+      "internas",
+      "plantas",
+      "tour_virtual",
+      "filmes",
+      "apps",
+      "drone",
+      "extras_diversos",
+    ];
+    let removidos = 0;
+    for (const cat of cats) {
+      const antes = (out[cat] || []).length;
+      out[cat] = (out[cat] || []).filter((item) => {
+        const ni = norm(item);
+        return !alvos.some((a) => ni.includes(a) || a.includes(ni));
+      });
+      removidos += antes - out[cat].length;
+    }
+    out._remover_alvos = alvos;
+    if (removidos > 0) {
+      out._somente_escopo = true;
+      out._avisos = out._avisos || [];
+      out._avisos.push(`Removido(s) ${removidos} item(ns) do escopo.`);
+    }
+    return alvos.length > 0;
+  }
+
+  function aplicarRemocaoAlvos(out, alvos) {
+    if (!alvos || !alvos.length) return 0;
+    const cats = [
+      "externas",
+      "internas",
+      "plantas",
+      "tour_virtual",
+      "filmes",
+      "apps",
+      "drone",
+      "extras_diversos",
+    ];
+    let removidos = 0;
+    for (const cat of cats) {
+      const antes = (out[cat] || []).length;
+      out[cat] = (out[cat] || []).filter((item) => {
+        const ni = norm(item);
+        return !alvos.some((a) => ni.includes(a) || a.includes(ni));
+      });
+      removidos += antes - out[cat].length;
+    }
+    return removidos;
+  }
+
+  /** Linhas "- Fachada" ou "1. Suite" */
+  function extrairListasPorLinhas(texto, out, avisos) {
+    const linhas = (texto || "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+    const itens = [];
+    for (const linha of linhas) {
+      const m = linha.match(/^(?:[-*•–—]|\d{1,2}[.)])\s+(.+)$/);
+      if (!m) continue;
+      const item = limpaItem(m[1]);
+      if (item.length >= 2 && item.length < 70) itens.push(tituloCase(item));
+    }
+    if (itens.length < 2) return false;
+    const cat = categoriaEscopo(texto);
+    if (out[cat] && out[cat].length) {
+      const vistos = new Set((out[cat] || []).map((x) => norm(x)));
+      for (const it of itens) {
+        if (!vistos.has(norm(it))) out[cat].push(it);
+      }
+    } else {
+      out[cat] = itens;
+    }
+    marcarSomenteEscopo(out);
+    avisos.push(`Lista (${cat}): ${itens.length} ambiente(s).`);
+    return true;
+  }
+
+  /** "fachada, portaria e lobby" numa frase de escopo */
+  function extrairAmbientesPorVirgula(texto, out, avisos) {
+    if (!ehMensagemSoEscopo(texto) && !/\bescopo\b/i.test(texto)) return false;
+    if (!/,/.test(texto)) return false;
+    const stop = texto.search(/\b(?:cliente|empresa|projeto|ref|desconto|valor|pagamento)\s*[=:]/i);
+    const trecho = stop > 0 ? texto.slice(0, stop) : texto;
+    const partes = trecho
+      .split(/[,;]/)
+      .map(limpaItem)
+      .filter((x) => {
+        const n = norm(x);
+        return (
+          x.length >= 3 &&
+          x.length < 50 &&
+          !/^(?:apenas|somente|imagens?|perspectivas?|escopo|internas?|externas?)$/i.test(n) &&
+          !/^\d+\s/.test(x)
+        );
+      });
+    if (partes.length < 2) return false;
+    const cat = categoriaEscopo(texto);
+    out[cat] = partes.map((x) => tituloCase(x));
+    marcarSomenteEscopo(out);
+    avisos.push(`Escopo: ${partes.length} ambiente(s).`);
+    return true;
   }
 
   function empresaPareceInvalida(empresa) {
@@ -527,11 +648,13 @@
   /** "Integra voluntarios da patria raquel chiara" → empresa + ref + A/C */
   function extrairEmpresaProjetoNomeCorrido(t, out, avisos) {
     const s = (t || "").trim();
+    if (textoTemSecoesEstruturadas(s)) return false;
+    if (/(?:^|\n)\s*cliente\s*:/im.test(s)) return false;
     if (ehMensagemSoEscopo(s)) return false;
     if (/^\s*(?:apenas|somente|s[oó]|uma|um|\d+)\b/i.test(s) && /\bperspectivas?\b/i.test(s)) {
       return false;
     }
-    if (/\b(?:projeto|cliente|empresa|ref)\s*=/i.test(s)) return false;
+    if (/\b(?:projeto|cliente|empresa|ref)\s*[=:]/i.test(s)) return false;
     if (/\d+\s+perspectivas?|\bpelo\s+valor\b/i.test(s)) return false;
     const partes = s.split(/\s+/).filter(Boolean);
     if (partes.length < 4 || partes.length > 12) return false;
@@ -672,7 +795,17 @@
       out.cliente.empresa = "CLIENTE";
     }
 
+    const estruturado = textoTemSecoesEstruturadas(t);
+
     if (extrairEscopoImagens(t, out, avisos)) {
+      out._avisos = avisos;
+      return out;
+    }
+    if (!estruturado && extrairListasPorLinhas(t, out, avisos)) {
+      out._avisos = avisos;
+      return out;
+    }
+    if (!estruturado && extrairAmbientesPorVirgula(t, out, avisos)) {
       out._avisos = avisos;
       return out;
     }
@@ -885,6 +1018,14 @@
     if (novo.estrategia && novo.estrategia !== "auto") out.estrategia = novo.estrategia;
     if (novo.mostrar_precos_individuais) out.mostrar_precos_individuais = true;
 
+    if (novo._remover_alvos && novo._remover_alvos.length) {
+      const n = aplicarRemocaoAlvos(out, novo._remover_alvos);
+      if (n > 0) {
+        out._somente_escopo = true;
+        out._avisos.push(`Removido(s) ${n} item(ns) do escopo.`);
+      }
+    }
+
     out._avisos = [...new Set(out._avisos)].slice(0, 8);
     return out;
   }
@@ -933,6 +1074,14 @@
         if (/Não consegui identificar nenhuma seção/.test(av[i])) av.splice(i, 1);
       }
     }
+    aplicarRemocaoEscopo(textoOrig, out);
+
+    const nTec =
+      (out.tour_virtual && out.tour_virtual.length) +
+      (out.filmes && out.filmes.length) +
+      (out.apps && out.apps.length);
+    if (nTec && ehMensagemSoEscopo(textoOrig)) marcarSomenteEscopo(out);
+
     out._avisos = av;
     out._origem = "conversacional";
     return out;
@@ -1002,7 +1151,9 @@
     let ref = mRef ? mRef[1].trim().replace(/[.;,]+$/, "") : "";
     let contato = mCon ? mCon[1].trim().replace(/[.;,]+$/, "") : "";
 
-    if (!cliente && !soCorrecaoDesconto && !ehMensagemSoEscopo(texto)) {
+    const estruturado = textoTemSecoesEstruturadas(texto);
+
+    if (!cliente && !soCorrecaoDesconto && !ehMensagemSoEscopo(texto) && !estruturado) {
       const primeira = texto.split(/\r?\n/, 1)[0].trim();
       const linhaSoMeta = /^\s*(?:projeto|ref|empreendimento|a\/?c|contato)\s*=/i.test(primeira);
       const mCaps =
@@ -1211,6 +1362,9 @@
     detectarPropostaAdicional,
     briefingLocalSuficiente,
     ehMensagemSoEscopo,
+    textoTemSecoesEstruturadas,
+    aplicarRemocaoEscopo,
+    empresaPareceInvalida,
     ehMensagemSoCorrecaoDesconto,
     norm,
     limpaItem,

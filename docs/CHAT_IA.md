@@ -1,9 +1,11 @@
 # Chat com interpretação por IA
 
-O campo de chat usa duas camadas:
+Por padrão o site usa **modo local** (`FLYING_MODO_LOCAL = true` em `index.html`) — sem custo de API. Veja **`docs/PARSER_LOCAL.md`** para todas as frases que o parser entende.
+
+Camadas:
 
 1. **Parser local** (sempre ativo) — escopo (imagens), cliente/projeto/A/C, PDF.
-2. **IA** (Netlify) — quando configurada: **Claude**, **ChatGPT (OpenAI)** ou **Gemini**.
+2. **IA** (opcional, Netlify) — **Claude**, **ChatGPT** ou **Gemini**, se você desativar o modo local e configurar chaves.
 
 ## Provedores suportados
 

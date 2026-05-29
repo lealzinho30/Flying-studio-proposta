@@ -79,7 +79,7 @@
               <div class="chat-mensagens" id="chat-mensagens" role="log" aria-live="polite" aria-relevant="additions"></div>
               <div class="chat-compose">
                 <label class="sr-only" for="chat-input">Mensagem da proposta</label>
-                <textarea id="chat-input" class="chat-input" rows="2" spellcheck="true" placeholder="Ex.: 10 perspectivas internas a definir, empresa Tarraf, projeto Vila Mariana, A/C Larissa…"></textarea>
+                <textarea id="chat-input" class="chat-input" rows="2" spellcheck="true" placeholder="Cliente/projeto uma vez; depois só escopo: ex. «3 imagens: suite, gourmet, lobby» ou «apenas perspectiva da brinquedoteca»"></textarea>
                 <div class="chat-compose-actions">
                   <button type="button" class="btn-text" id="chat-limpar">Limpar chat</button>
                   <button type="button" class="chat-enviar" id="chat-enviar">Enviar</button>
@@ -174,10 +174,11 @@
               <span class="panel-title">Dicas do chat</span>
             </summary>
             <div class="help-body">
-              <p>Fale naturalmente: quantidades, empresa, projeto e contato.</p>
-              <p>Ex.: <em>3 plantas adicionais, mesmo valor do contrato, cliente XYZ.</em></p>
-              <p>Desconto só se você pedir: <em>10% de desconto</em> (parcelas 50/50 não contam).</p>
-              <p>Importar PDF/planilha continua disponível acima.</p>
+              <p><strong>1.</strong> Cliente: <em>empresa Integra, projeto Voluntários da Pátria, A/C Fernanda</em> — ou envie o PDF do orçamento.</p>
+              <p><strong>2.</strong> Escopo (imagens): <em>apenas uma perspectiva da brinquedoteca</em>, <em>3 imagens internas: suite, gourmet, lobby</em>, listas com <em>Externas:</em> / <em>Internas:</em>.</p>
+              <p><strong>3.</strong> Ajustes: <em>tirar brinquedoteca</em>, <em>projeto = Vila Mariana</em>, proposta adicional com <em>pelo valor de 1.650</em>.</p>
+              <p>Desconto só se pedir (<em>10% de desconto</em>). Parcelas 50/50 não são desconto.</p>
+              <p>Modo <strong>sem API paga</strong> — tudo interpretado no navegador + PDF. Guia: <code>docs/PARSER_LOCAL.md</code>.</p>
             </div>
           </details>
         </aside>
@@ -241,10 +242,11 @@
   <script src="https://unpkg.com/mammoth@1.7.2/mammoth.browser.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 
+  <script>window.FLYING_MODO_LOCAL = true;</script>
   <script src="data.js?v=20260527q"></script>
-  <script src="parser.js?v=20260531c"></script>
-  <script src="parser_ia.js?v=20260531c"></script>
-  <script src="chat_ui.js?v=20260531c"></script>
+  <script src="parser.js?v=20260601a"></script>
+  <script src="parser_ia.js?v=20260601a"></script>
+  <script src="chat_ui.js?v=20260601a"></script>
   <script src="escopo_tecnologias.js?v=20260527q"></script>
   <script src="leitor_historico_pdf.js?v=20260531a"></script>
   <script src="orcamento.js?v=20260530d"></script>
