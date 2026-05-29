@@ -7,7 +7,7 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Proposta inteligente · Flying Studio</title>
-  <link rel="stylesheet" href="styles.css?v=20260529e">
+  <link rel="stylesheet" href="styles.css?v=20260530b">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet">
@@ -27,8 +27,19 @@
 
     <section id="tela-form" class="tela">
       <header class="page-head">
-        <h1>Nova proposta</h1>
-        <p class="page-lead">Converse em linguagem natural — o sistema monta o briefing e o Word no padrão Flying.</p>
+        <div class="page-head-row">
+          <div>
+            <h1>Nova proposta</h1>
+            <p class="page-lead">Converse no chat → revise o briefing → gere o Word no padrão Flying.</p>
+          </div>
+          <div class="page-steps" aria-label="Passos">
+            <span class="page-step page-step--on"><span class="page-step-n">1</span> Chat</span>
+            <span class="page-step-arrow" aria-hidden="true">→</span>
+            <span class="page-step" id="step-briefing"><span class="page-step-n">2</span> Briefing</span>
+            <span class="page-step-arrow" aria-hidden="true">→</span>
+            <span class="page-step" id="step-gerar"><span class="page-step-n">3</span> Word</span>
+          </div>
+        </div>
       </header>
 
       <div id="erro" class="alerta hidden" role="alert"></div>
@@ -48,12 +59,12 @@
               <input type="file" id="arquivo-cliente" accept=".txt,.csv,.pdf,.docx,.xlsx,.xls,.doc" hidden>
               <input type="file" id="arquivo-planta-ia" accept=".pdf" hidden>
               <button type="button" class="tool-btn" id="btn-upload" title="Importar lista ou planilha do cliente">
-                <span class="tool-icon" aria-hidden="true">↑</span>
+                <span class="tool-icon tool-icon--file" aria-hidden="true">📄</span>
                 Importar arquivo
               </button>
               <button type="button" class="tool-btn tool-btn-accent" id="btn-analisar-planta" title="PDF do projeto — listagem automática (até 12 páginas)">
-                <span class="tool-icon" aria-hidden="true">◎</span>
-                Analisar PDF
+                <span class="tool-icon tool-icon--pdf" aria-hidden="true">🔍</span>
+                Analisar PDF do projeto
               </button>
             </div>
           </div>
@@ -76,7 +87,12 @@
               </div>
             </div>
             <aside class="chat-col-preview" aria-label="Briefing estruturado">
-              <h2 class="chat-preview-title">Briefing</h2>
+              <div class="briefing-head">
+                <h2 class="chat-preview-title">Briefing</h2>
+                <div class="briefing-progress" id="briefing-progress" title="Completude do briefing">
+                  <div class="briefing-progress-bar" id="briefing-progress-bar"></div>
+                </div>
+              </div>
               <div class="chat-preview" id="chat-preview"></div>
               <details class="chat-estruturado-fold">
                 <summary>Ver texto estruturado</summary>
@@ -101,16 +117,19 @@
             <div class="seg-control" role="radiogroup" aria-label="Estratégia de preço">
               <label class="seg-item opt-card" data-valor="auto">
                 <input type="radio" name="estrategia" value="auto" checked>
+                <span class="seg-icon" aria-hidden="true">⚡</span>
                 <span class="seg-title">Automático</span>
                 <span class="seg-desc">Histórico ou tabela padrão</span>
               </label>
               <label class="seg-item opt-card" data-valor="planilha">
                 <input type="radio" name="estrategia" value="planilha">
+                <span class="seg-icon" aria-hidden="true">📊</span>
                 <span class="seg-title">Tabela padrão</span>
                 <span class="seg-desc">Planilha de custos Flying</span>
               </label>
               <label class="seg-item opt-card" data-valor="historico">
                 <input type="radio" name="estrategia" value="historico">
+                <span class="seg-icon" aria-hidden="true">📋</span>
                 <span class="seg-title">Histórico</span>
                 <span class="seg-desc">Mesmos preços do cliente</span>
               </label>
@@ -224,7 +243,7 @@
   <script src="data.js?v=20260527q"></script>
   <script src="parser.js?v=20260529d"></script>
   <script src="parser_ia.js?v=20260529d"></script>
-  <script src="chat_ui.js?v=20260529d"></script>
+  <script src="chat_ui.js?v=20260530b"></script>
   <script src="escopo_tecnologias.js?v=20260527q"></script>
   <script src="leitor_historico_pdf.js?v=20260529b"></script>
   <script src="orcamento.js?v=20260527q"></script>

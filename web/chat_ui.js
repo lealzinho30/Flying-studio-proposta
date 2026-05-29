@@ -60,33 +60,150 @@
     return reparseLocal();
   }
 
+  function iniciaisEmpresa(nome) {
+    const p = (nome || "CL").trim().split(/\s+/).filter(Boolean);
+    if (!p.length) return "CL";
+    if (p.length === 1) return p[0].slice(0, 2).toUpperCase();
+    return (p[0][0] + p[p.length - 1][0]).toUpperCase();
+  }
+
+  function contagemImagens(parsed) {
+    return (
+      (parsed.externas && parsed.externas.length) +
+      (parsed.internas && parsed.internas.length) +
+      (parsed.plantas && parsed.plantas.length)
+    );
+  }
+
+  function progressoBriefing(parsed) {
+    if (!parsed) return 0;
+    let ok = 0;
+    const c = parsed.cliente || {};
+    if (c.empresa && c.empresa !== "CLIENTE") ok++;
+    if (c.ref && c.ref !== "PROJETO") ok++;
+    if (c.contato && c.contato !== "—") ok++;
+    if (contagemImagens(parsed) > 0) ok++;
+    return Math.round((ok / 4) * 100);
+  }
+
+  function atualizarProgressoBriefing(parsed) {
+    const bar = $("briefing-progress-bar");
+    const stepBrief = $("step-briefing");
+    const stepGerar = $("step-gerar");
+    const pct = progressoBriefing(parsed);
+    if (bar) bar.style.width = `${pct}%`;
+    if (stepBrief) stepBrief.classList.toggle("page-step--on", pct >= 50);
+    if (stepGerar) stepGerar.classList.toggle("page-step--on", pct >= 100);
+  }
+
+  function estimeResumoFinanceiro(parsed) {
+    if (!parsed || !window.FlyingOrc || !window.FlyingDocx) return null;
+    const qtd = contagemImagens(parsed);
+    if (!qtd) return null;
+    try {
+      const orc = window.FlyingOrc.orcarPelaPlanilha(
+        {
+          externas: parsed.externas || [],
+          internas: parsed.internas || [],
+          plantas: parsed.plantas || [],
+        },
+        parsed.desconto_pct || 0
+      );
+      return window.FlyingDocx.calcularTotaisInvestimento(orc, null);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function cardFinanceiroHtml(parsed) {
+    const totais = estimeResumoFinanceiro(parsed);
+    if (!totais || !window.FlyingDocx) return "";
+    const { brl } = window.FlyingDocx;
+    const pct = totais.descontoPct || 0;
+
+    if (pct > 0) {
+      return `
+        <div class="briefing-finance">
+          <p class="briefing-finance-label">Estimativa · tabela padrão</p>
+          <div class="briefing-finance-row">
+            <span>Valor Total das Imagens</span>
+            <strong>${brl(totais.subtotalImagens)}</strong>
+          </div>
+          <div class="briefing-finance-row briefing-finance-row--destaque">
+            <span>Com ${pct}% de desconto</span>
+            <strong class="briefing-finance-total">${brl(totais.valorFinal)}</strong>
+          </div>
+          <p class="briefing-finance-hint">No Word: uma linha com o total das imagens e o rodapé com desconto.</p>
+        </div>`;
+    }
+
+    return `
+      <div class="briefing-finance">
+        <p class="briefing-finance-label">Estimativa · tabela padrão</p>
+        <div class="briefing-finance-row briefing-finance-row--destaque">
+          <span>Investimento estimado</span>
+          <strong class="briefing-finance-total">${brl(totais.valorFinal)}</strong>
+        </div>
+      </div>`;
+  }
+
   function resumoHtml(parsed) {
     if (!parsed) {
-      return "<p class=\"chat-preview-vazio\">Envie uma mensagem para ver o briefing estruturado.</p>";
+      return `
+        <div class="briefing-empty">
+          <div class="briefing-empty-icon" aria-hidden="true">💬</div>
+          <p class="briefing-empty-title">Nada montado ainda</p>
+          <p class="briefing-empty-text">Descreva cliente, projeto, imagens e desconto em uma mensagem no chat.</p>
+        </div>`;
     }
+
     const c = parsed.cliente || {};
-    const partes = [
-      `<div class="chat-kv"><span>Cliente</span><strong>${escapeHtml(c.empresa)}</strong></div>`,
-      `<div class="chat-kv"><span>Projeto</span><strong>${escapeHtml(c.ref)}</strong></div>`,
-      `<div class="chat-kv"><span>A/C</span><strong>${escapeHtml(c.contato)}</strong></div>`,
-    ];
+    const nExt = (parsed.externas && parsed.externas.length) || 0;
+    const nInt = (parsed.internas && parsed.internas.length) || 0;
+    const nPla = (parsed.plantas && parsed.plantas.length) || 0;
+    const nImg = nExt + nInt + nPla;
+
+    const chips = [];
+    if (nImg) chips.push(`<span class="briefing-chip">${nImg} imagem(ns)</span>`);
+    if (nExt) chips.push(`<span class="briefing-chip briefing-chip--ext">${nExt} ext.</span>`);
+    if (nInt) chips.push(`<span class="briefing-chip briefing-chip--int">${nInt} int.</span>`);
+    if (nPla) chips.push(`<span class="briefing-chip briefing-chip--pla">${nPla} plantas</span>`);
     if (parsed.desconto_pct > 0) {
-      partes.push(`<div class="chat-kv"><span>Desconto</span><strong>${parsed.desconto_pct}%</strong></div>`);
+      chips.push(`<span class="briefing-chip briefing-chip--desc">${parsed.desconto_pct}% desc.</span>`);
     }
 
-    function lista(titulo, itens) {
+    function listaVisual(titulo, itens, tipo) {
       if (!itens || !itens.length) return "";
-      const lis = itens.map((x) => `<li>${escapeHtml(x)}</li>`).join("");
-      return `<div class="chat-lista"><span class="chat-lista-titulo">${titulo} (${itens.length})</span><ul>${lis}</ul></div>`;
+      const lis = itens
+        .map(
+          (x) =>
+            `<li><span class="briefing-item-dot briefing-item-dot--${tipo}" aria-hidden="true"></span>${escapeHtml(x)}</li>`
+        )
+        .join("");
+      return `
+        <section class="briefing-secao">
+          <h3 class="briefing-secao-titulo">${titulo} <span class="briefing-secao-qtd">${itens.length}</span></h3>
+          <ul class="briefing-lista">${lis}</ul>
+        </section>`;
     }
 
-    partes.push(
-      lista("Externas", parsed.externas),
-      lista("Internas", parsed.internas),
-      lista("Plantas", parsed.plantas),
-      lista("Tour virtual", parsed.tour_virtual),
-      lista("Filmes", parsed.filmes)
-    );
+    const partes = [
+      `<div class="briefing-cliente-card">
+        <div class="briefing-avatar" aria-hidden="true">${escapeHtml(iniciaisEmpresa(c.empresa))}</div>
+        <div class="briefing-cliente-meta">
+          <p class="briefing-cliente-nome">${escapeHtml(c.empresa)}</p>
+          <p class="briefing-cliente-sub">${escapeHtml(c.ref)}</p>
+          <p class="briefing-cliente-ac">A/C ${escapeHtml(c.contato)}</p>
+        </div>
+      </div>`,
+      chips.length ? `<div class="briefing-chips">${chips.join("")}</div>` : "",
+      cardFinanceiroHtml(parsed),
+      listaVisual("Externas", parsed.externas, "ext"),
+      listaVisual("Internas", parsed.internas, "int"),
+      listaVisual("Plantas", parsed.plantas, "pla"),
+      listaVisual("Tour virtual", parsed.tour_virtual, "tour"),
+      listaVisual("Filmes", parsed.filmes, "filme"),
+    ];
 
     return partes.filter(Boolean).join("");
   }
@@ -163,6 +280,7 @@
   function renderPreview() {
     const prev = $("chat-preview");
     if (prev) prev.innerHTML = resumoHtml(parsedAtual);
+    atualizarProgressoBriefing(parsedAtual);
   }
 
   function notificar() {
