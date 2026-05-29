@@ -234,11 +234,17 @@
       }
     }
     if (parsed._remove_desconto) msg += " **Desconto removido** — proposta sem percentual de desconto.";
-    if (nImg) msg += ` ${nImg} imagem(ns) na proposta.`;
-    else if (!parsed._remove_desconto) msg += " Ainda não identifiquei imagens — informe quantidades ou liste os ambientes.";
+    if (nImg) {
+      msg += parsed._somente_escopo
+        ? ` **Escopo:** ${nImg} imagem(ns) adicionada(s) — cliente e projeto mantidos.`
+        : ` ${nImg} imagem(ns) na proposta.`;
+    } else if (!parsed._remove_desconto) {
+      msg += " Ainda não identifiquei imagens — informe quantidades ou liste os ambientes.";
+    }
     if (opts && opts.ia) msg += " _(interpretado com IA)_";
     else if (opts && opts.iaIndisponivel) {
-      msg += "\n\n_Interpretação local (a IA está sem cota no momento — o briefing foi montado pelo sistema)._";
+      msg +=
+        "\n\n_Interpretação local (Gemini sem cota no plano gratuito — escopo e cliente vêm do sistema e do PDF)._";
     }
     const av = (parsed._avisos || []).filter(
       (a) =>
@@ -277,6 +283,10 @@
             ia._desconto_explicito = false;
           }
           if (local._desconto_explicito) ia._desconto_explicito = true;
+          if (local._somente_escopo) {
+            ia.cliente = { empresa: "CLIENTE", ref: "PROJETO", contato: "—" };
+            ia._somente_escopo = true;
+          }
           novo = window.FlyingParser.mesclarBriefing(local, ia);
         } else {
           iaIndisponivel = true;

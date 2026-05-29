@@ -29,6 +29,8 @@ Regras:
 - desconto_pct: use valor > 0 SOMENTE se o usuário pedir desconto explicitamente (ex.: "10% de desconto"). Caso contrário sempre 0.
 - Proposta adicional / imagens adicionais / mesmo valor do contrato: liste só os itens mencionados; não invente escopo grande.
 - Se o usuário NEGAR desconto ("não pedi 12%", "sem desconto", "tirar desconto"), use desconto_pct: 0 e NÃO altere cliente/projeto/contato — mantenha empresa "CLIENTE" se não souber o nome.
+- ESCOPO vs CLIENTE: se a mensagem fala só de imagens/perspectivas/plantas/ambientes ("apenas uma perspectiva da brinquedoteca", "3 imagens: suite, gourmet", "mais imagens"), preencha SOMENTE externas/internas/plantas e deixe cliente {"empresa":"CLIENTE","ref":"PROJETO","contato":"—"} — NUNCA use palavras da frase como nome de empresa.
+- Quando o usuário diz "imagens", trata como escopo (lista de ambientes), não como cadastro de cliente.
 - Se faltar dado, use empresa "CLIENTE", ref "PROJETO", contato "—" e explique em avisos.`;
 
 function extrairJson(texto) {
@@ -80,7 +82,11 @@ async function chamarGemini(texto) {
     }),
   });
   const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error?.message || res.statusText);
+  if (!res.ok) {
+    const err = new Error(body.error?.message || res.statusText);
+    if (/quota|rate limit|exceeded|free_tier/i.test(err.message)) err.code = "QUOTA";
+    throw err;
+  }
   const out = body.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") || "";
   return normalizar(extrairJson(out));
 }
@@ -165,10 +171,17 @@ export async function handler(event) {
       body: JSON.stringify({ ok: true, provider, parsed }),
     };
   } catch (err) {
+    const msg = err.message || String(err);
+    const quota = err.code === "QUOTA" || /quota|rate limit|exceeded|free_tier/i.test(msg);
     return {
-      statusCode: 500,
+      statusCode: quota ? 429 : 500,
       headers,
-      body: JSON.stringify({ erro: err.message || String(err) }),
+      body: JSON.stringify({
+        erro: quota
+          ? "Cota da API Gemini esgotada. O site usa interpretação local até você ativar billing ou outro modelo."
+          : msg,
+        quota,
+      }),
     };
   }
 }

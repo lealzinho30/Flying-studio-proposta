@@ -7,12 +7,13 @@
 
   function pareceConversacional(texto) {
     const t = (texto || "").trim();
-    if (
-      window.FlyingParser &&
-      window.FlyingParser.ehMensagemSoCorrecaoDesconto &&
-      window.FlyingParser.ehMensagemSoCorrecaoDesconto(t)
-    ) {
-      return false;
+    if (window.FlyingParser) {
+      if (window.FlyingParser.ehMensagemSoCorrecaoDesconto && window.FlyingParser.ehMensagemSoCorrecaoDesconto(t)) {
+        return false;
+      }
+      if (window.FlyingParser.ehMensagemSoEscopo && window.FlyingParser.ehMensagemSoEscopo(t)) {
+        return false;
+      }
     }
     if (t.length < 8) return false;
     if (/^(?:externas?|internas?|plantas?)\s*:/im.test(t)) return false;
@@ -33,7 +34,12 @@
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         const msg = String(data.erro || res.statusText || "");
-        if (res.status === 503 || res.status === 429 || /quota|rate limit|exceeded/i.test(msg)) {
+        if (
+          res.status === 503 ||
+          res.status === 429 ||
+          res.status === 500 ||
+          /quota|rate limit|exceeded|free_tier/i.test(msg)
+        ) {
           return null;
         }
         throw new Error(msg);

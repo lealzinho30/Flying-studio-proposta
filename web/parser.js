@@ -287,25 +287,43 @@
     );
   }
 
-  /** Frase só descreve imagem/ambiente — não é nome de cliente. */
+  /** Frase sobre escopo (imagens/ambientes) — não altera cliente/projeto/A/C. */
   function ehMensagemSoEscopo(texto) {
     const t = norm(texto);
-    if (!t || t.length > 220) return false;
+    if (!t || t.length > 420) return false;
     if (/\b(?:cliente|empresa)\s*[=:]/i.test(texto)) return false;
     if (/(?:^|\n)\s*cliente\s*:/im.test(texto)) return false;
-    const temImagem =
-      /\b(?:perspectivas?|plantas?|ilustra[cç][oõ]es?|imagens?|render|fachada|vista)\b/i.test(t);
-    if (!temImagem) return false;
+    if (/\b(?:cliente|empresa|projeto)\s+(?:é|eh|ser[aá])\b/i.test(t)) return false;
+
+    const temEscopo =
+      /\b(?:perspectivas?|plantas?|ilustra[cç][oõ]es?|imagens?|render|fachada|vista|ambientes?|escopo|views?)\b/i.test(
+        t
+      );
+    if (!temEscopo) return false;
+
+    if (/\bescopo\s*[=:]/i.test(texto)) return true;
+    if (/\bimagens?\s*[=:]/i.test(texto)) return true;
+    if (/\b\d{1,2}\s+imagens?\b/i.test(t)) return true;
+    if (/\b(?:mais|outras?|outros?|adicional|incluir|adicionar|preciso|quero|faltam?)\b/i.test(t) && temEscopo) {
+      return true;
+    }
     if (
-      /\b(?:apenas|somente|s[oó]|uma|um|\d{1,2})\s+(?:(?:uma|um)\s+)?(?:perspectivas?|plantas?)\b/i.test(
+      /\b(?:apenas|somente|s[oó]|uma|um|\d{1,2})\s+(?:(?:uma|um)\s+)?(?:perspectivas?|plantas?|imagens?)\b/i.test(
         t
       )
     ) {
       return true;
     }
     if (/\bperspectivas?\s+(?:da|de|do|das|dos)\s+\w/i.test(t)) return true;
-    if (/\b(?:apenas|somente|s[oó])\s+(?:a\s+)?[a-záéíóú]{4,}/i.test(t) && temImagem) return true;
+    if (/\bimagens?\s+(?:da|de|do|das|dos)\s+\w/i.test(t)) return true;
+    if (/\b(?:apenas|somente|s[oó])\s+(?:a\s+)?[a-záéíóú]{4,}/i.test(t)) return true;
+    if (/,/.test(texto) && temEscopo && !/\bempresa\s+\w/i.test(t)) return true;
     return false;
+  }
+
+  function marcarSomenteEscopo(out) {
+    out._somente_escopo = true;
+    out.cliente = { empresa: "CLIENTE", ref: "PROJETO", contato: "—" };
   }
 
   function empresaPareceInvalida(empresa) {
@@ -383,26 +401,127 @@
     return mudou;
   }
 
-  /** "apenas uma perspectiva da brinquedoteca" → 1 interna Brinquedoteca */
-  function extrairPerspectivaAmbiente(t, out, avisos) {
-    if (!/\bperspectivas?\b|\bplantas?\b/i.test(t)) return false;
+  function categoriaEscopo(t) {
+    if (/\bexternas?\b/i.test(t) && !/\binternas?\b/i.test(t)) return "externas";
+    if (/\bplantas?\b/i.test(t) && !/\bperspectivas?\b/i.test(t) && !/\bimagens?\b/i.test(t)) {
+      return "plantas";
+    }
+    return "internas";
+  }
+
+  /** Mensagens sobre imagens/escopo → listas em externas/internas/plantas */
+  function extrairEscopoImagens(t, out, avisos) {
+    if (!ehMensagemSoEscopo(t)) return false;
+
+    const cat = categoriaEscopo(t);
+
+    const mLista = t.match(
+      /\b(?:escopo|imagens?|perspectivas?|internas?|externas?)\s*[=:]\s*([^\n]+)/i
+    );
+    if (mLista) {
+      const itens = mLista[1]
+        .split(/[,;]| e (?=[a-záéíóú])/i)
+        .map(limpaItem)
+        .filter((x) => x.length >= 3 && x.length < 60);
+      if (itens.length) {
+        out[cat] = itens.map((x) => tituloCase(x));
+        marcarSomenteEscopo(out);
+        avisos.push(`Escopo (${cat}): ${itens.length} ambiente(s).`);
+        return true;
+      }
+    }
+
+    const mQtdImg = t.match(/\b(\d{1,2})\s+imagens?\s*(internas?|externas?)?/i);
+    if (mQtdImg) {
+      const qtd = parseInt(mQtdImg[1], 10);
+      const c = mQtdImg[2] ? categoriaEscopo(mQtdImg[2]) : cat;
+      const resto = t.slice(mQtdImg.index + mQtdImg[0].length);
+      const nomes = resto
+        .split(/[,;]| e (?=[a-záéíóú])/i)
+        .map(limpaItem)
+        .filter((x) => x.length >= 3 && x.length < 50);
+      if (nomes.length >= 2) {
+        out[c] = nomes.map((x) => tituloCase(x));
+      } else {
+        out[c] = gerarListaPlaceholder(qtd, c === "externas" ? "Perspectiva externa" : "Perspectiva interna");
+      }
+      marcarSomenteEscopo(out);
+      avisos.push(`${qtd} imagem(ns) em ${c}.`);
+      return true;
+    }
+
     let m = t.match(
-      /\b(?:apenas|somente|s[oó])?\s*(?:uma|um|\d{1,2})?\s*(?:perspectivas?|plantas?)\s+(?:da|de|do|das|dos)\s+([a-záéíóúâêôãõç][a-záéíóúâêôãõç0-9\s-]{2,45}?)(?=\s*$|[,.])/i
+      /\b(?:apenas|somente|s[oó]|mais)?\s*(?:uma|um|\d{1,2})?\s*(?:perspectivas?|plantas?|imagens?)\s+(?:da|de|do|das|dos)\s+([a-záéíóúâêôãõç][a-záéíóúâêôãõç0-9\s-]{2,45}?)(?=\s*$|[,.])/i
     );
     if (!m) {
+      const mDa = t.match(/\bimagens?\s+(?:da|de|do|das|dos)\s+(.+?)(?=\s*$|[,.])/i);
+      if (mDa) {
+        const pedaco = mDa[1].trim();
+        if (/\s+e\s+/i.test(pedaco)) {
+          const itens = pedaco
+            .split(/\s+e\s+/i)
+            .map(limpaItem)
+            .filter((x) => x.length >= 3);
+          if (itens.length >= 2) {
+            out[cat] = itens.map((x) => tituloCase(x));
+            marcarSomenteEscopo(out);
+            avisos.push(`Escopo: ${itens.length} ambiente(s).`);
+            return true;
+          }
+        }
+        m = [, pedaco];
+      }
+    }
+    if (!m) {
       m = t.match(
-        /\b(?:apenas|somente|s[oó])\s+(?:a\s+)?([a-záéíóúâêôãõç][a-záéíóúâêôãõç0-9\s-]{3,45}?)(?=\s*$|[,.])/i
+        /\b(?:apenas|somente|s[oó]|mais)\s+(?:a\s+)?([a-záéíóúâêôãõç][a-záéíóúâêôãõç0-9\s-]{3,45}?)(?=\s*$|[,.])/i
       );
     }
-    if (!m) return false;
-    let amb = tituloCase(m[1].trim().replace(/^(?:da|de|do)\s+/i, ""));
-    if (!amb || amb.length < 3) return false;
-    const cat = /\bplantas?\b/i.test(t) && !/\bperspectivas?\b/i.test(t) ? "plantas" : "internas";
-    if (out[cat] && out[cat].length) return false;
-    out[cat] = [amb];
-    out._somente_escopo = true;
-    avisos.push(`1 ${cat === "plantas" ? "planta" : "perspectiva"}: ${amb}.`);
-    return true;
+    if (m && m[1]) {
+      const raw = m[1].trim().replace(/^(?:da|de|do)\s+/i, "");
+      if (/\s+e\s+/i.test(raw)) {
+        const itens = raw
+          .split(/\s+e\s+/i)
+          .map(limpaItem)
+          .filter((x) => x.length >= 3);
+        if (itens.length >= 2) {
+          out[cat] = itens.map((x) => tituloCase(x));
+          marcarSomenteEscopo(out);
+          avisos.push(`Escopo: ${itens.length} ambiente(s).`);
+          return true;
+        }
+      }
+      const amb = tituloCase(raw);
+      if (amb && amb.length >= 3) {
+        const c = /\bplantas?\b/i.test(t) && !/\bimagens?\b/i.test(t) ? "plantas" : cat;
+        out[c] = [amb];
+        marcarSomenteEscopo(out);
+        avisos.push(`Escopo: ${amb}.`);
+        return true;
+      }
+    }
+
+    if (/,/.test(t)) {
+      const itens = t
+        .split(/[,;]| e (?=[a-záéíóú])/i)
+        .map(limpaItem)
+        .filter((x) => {
+          const n = norm(x);
+          return (
+            x.length >= 3 &&
+            x.length < 50 &&
+            !/^(?:apenas|somente|imagens?|perspectivas?|internas?|externas?|escopo)$/i.test(n)
+          );
+        });
+      if (itens.length >= 2) {
+        out[cat] = itens.map((x) => tituloCase(x));
+        marcarSomenteEscopo(out);
+        avisos.push(`Escopo: ${itens.length} ambiente(s) listados.`);
+        return true;
+      }
+    }
+
+    return false;
   }
 
   /** "Integra voluntarios da patria raquel chiara" → empresa + ref + A/C */
@@ -471,6 +590,7 @@
     const cat = /\bexterna/i.test(t) ? "externas" : "internas";
     if (out[cat] && out[cat].length) return false;
     out[cat] = qtd === 1 ? [amb] : gerarListaPlaceholder(qtd, amb);
+    if (ehMensagemSoEscopo(t)) marcarSomenteEscopo(out);
     avisos.push(`${qtd} perspectiva(s) ${cat}: ${amb}.`);
     if (!out.modo || out.modo === "completo") {
       out.modo = "adicional";
@@ -497,6 +617,7 @@
     if (p.modo === "adicional" && temCli && (nImg > 0 || p.preco_unitario_contrato > 0)) {
       return true;
     }
+    if (p._somente_escopo && nImg > 0) return true;
     return false;
   }
 
@@ -551,7 +672,7 @@
       out.cliente.empresa = "CLIENTE";
     }
 
-    if (extrairPerspectivaAmbiente(t, out, avisos)) {
+    if (extrairEscopoImagens(t, out, avisos)) {
       out._avisos = avisos;
       return out;
     }
@@ -781,14 +902,15 @@
       }
     }
     if (ehMensagemSoEscopo(textoOrig)) {
-      out.cliente = { empresa: "CLIENTE", ref: "PROJETO", contato: "—" };
-      out._somente_escopo = true;
+      marcarSomenteEscopo(out);
       out._avisos = (out._avisos || []).filter((a) => !/assumi.*cliente/i.test(a));
     }
     enriquecerLinguagemNatural(textoOrig, out);
     if (out._somente_escopo) {
-      out.cliente = { empresa: "CLIENTE", ref: "PROJETO", contato: "—" };
-      out._avisos = (out._avisos || []).filter((a) => !/interpretados do texto/i.test(a));
+      marcarSomenteEscopo(out);
+      out._avisos = (out._avisos || []).filter(
+        (a) => !/interpretados do texto|assumi.*cliente/i.test(a)
+      );
     }
     aplicarModoAdicional(textoOrig, out);
     if (!out.preco_unitario_contrato) aplicarPrecoContrato(textoOrig, out);
@@ -1088,6 +1210,7 @@
     detectarPedidoDesconto,
     detectarPropostaAdicional,
     briefingLocalSuficiente,
+    ehMensagemSoEscopo,
     ehMensagemSoCorrecaoDesconto,
     norm,
     limpaItem,
