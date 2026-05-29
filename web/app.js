@@ -673,10 +673,13 @@
           if (btnUsar) {
             btnUsar.onclick = () => {
               if (window.FlyingChat) {
-                window.FlyingChat.ingestTexto(
-                  `Cliente: ${ultimo.empresa}\nRef: ${ultimo.proposta.ref || "PROJETO"}\n`,
-                  { resposta: `Briefing ajustado para **${ultimo.empresa}** (último PDF enviado).` }
-                );
+                const pr = ultimo.proposta || {};
+                const ac = pr.contato_pdf || "";
+                let txt = `Cliente: ${ultimo.empresa}\nRef: ${pr.ref || "PROJETO"}\n`;
+                if (ac) txt += `A/C: ${ac}\n`;
+                window.FlyingChat.ingestTexto(txt, {
+                  resposta: `Briefing ajustado para **${ultimo.empresa}** (último PDF).`,
+                });
               }
               status.dataset.fixDismissed = "1";
               atualizarUiHistoricoPdf();
@@ -754,31 +757,46 @@
       }
 
       const metaCli = hp.parseClienteRef(r.texto);
+      const metaArq = resolv.metaArq || hp.metaFromArquivo(file.name);
+      if (metaArq.ref && (!proposta.ref || proposta.ref === "Último orçamento (PDF)")) {
+        proposta.ref = metaArq.ref;
+      }
       if (metaCli.ref && (!proposta.ref || proposta.ref === "Último orçamento (PDF)")) {
         proposta.ref = metaCli.ref.replace(/\s+(?:e\s+)?aos\s+cuidados.*$/i, "").trim();
       }
       if (!proposta.ref || proposta.ref === "Último orçamento (PDF)") {
-        const mRef = r.texto.match(/(?:ref(?:er[eê]ncia)?|projeto|empreendimento)\s*[:\-]?\s*([^\n$]{3,60})/i);
+        const mRef = r.texto.match(
+          /(?:ref(?:er[eê]ncia)?|projeto|empreendimento)\s*[=:\-]?\s*([^\n$]{3,60})/i
+        );
         if (mRef) proposta.ref = mRef[1].trim().replace(/\s+e\s+aos.*$/i, "");
       }
+      const contatoPdf =
+        proposta.contato_pdf ||
+        hp.extrairContatoDoTextoPdf(r.texto) ||
+        metaArq.contato ||
+        "";
       proposta.empresa_pdf = empresa;
+      proposta.contato_pdf = contatoPdf;
 
       hp.registrar(empresa, proposta, { nomeArquivo: file.name });
+
+      function textoBriefingPdf(emp, ref, ac) {
+        let t = `Cliente: ${emp}\nRef: ${ref || "PROJETO"}\n`;
+        if (ac) t += `A/C: ${ac}\n`;
+        return t;
+      }
 
       if (resolv.substituiuForm && empresaForm && window.FlyingChat) {
         const refTitulo = proposta.ref && proposta.ref !== "Último orçamento (PDF)"
           ? proposta.ref
-          : "PROJETO";
-        window.FlyingChat.ingestTexto(
-          `Cliente: ${empresa}\nRef: ${refTitulo}\n`,
-          {
-            resposta: `Atualizei o briefing para o cliente do PDF (**${empresa}**), não ${empresaForm} do chat anterior.`,
-          }
-        );
-      } else if (window.FlyingChat && (!empresaForm || empresaForm === "CLIENTE")) {
-        const refTitulo = proposta.ref || "PROJETO";
-        window.FlyingChat.ingestTexto(`Cliente: ${empresa}\nRef: ${refTitulo}\n`, {
-          resposta: `Cliente **${empresa}** identificado a partir do PDF.`,
+          : metaArq.ref || "PROJETO";
+        window.FlyingChat.ingestTexto(textoBriefingPdf(empresa, refTitulo, contatoPdf), {
+          resposta: `Atualizei o briefing para **${empresa}** · ${refTitulo}${contatoPdf ? ` · A/C ${contatoPdf}` : ""} (dados do PDF).`,
+        });
+      } else if (window.FlyingChat && (!empresaForm || empresaForm === "CLIENTE" || empresaForm.includes("PROJETO"))) {
+        const refTitulo = proposta.ref || metaArq.ref || "PROJETO";
+        window.FlyingChat.ingestTexto(textoBriefingPdf(empresa, refTitulo, contatoPdf), {
+          resposta: `**${empresa}** · ${refTitulo}${contatoPdf ? ` · A/C ${contatoPdf}` : ""} — identificado pelo PDF.`,
         });
       }
 

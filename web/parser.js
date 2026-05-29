@@ -115,9 +115,9 @@
       .filter(Boolean);
   }
 
-  const RE_CLIENTE = /(?:^|\n|[,;.])\s*(?:cliente|empresa)\s*[:\-]?\s+([^\n,;.]+?)(?=$|\n|[,;]|\.\s|\s+(?:ref|projeto|empreendimento|a\/?c|contato|aos\s+cuidados))/i;
-  const RE_REF = /(?:^|\n|[,;.\-–—])\s*(?:ref(?:er[eê]ncia)?|projeto|empreendimento)\s*[:\-]?\s+([^\n,;.]+?)(?=$|\n|[,;]|\.\s|\s+(?:cliente|empresa|a\/?c|contato|aos\s+cuidados|\d+\s*%))/i;
-  const RE_CONTATO = /(?:^|\n|[,;.])\s*(?:a\/?c|contato|aos\s+cuidados\s+de?)\s*[:\-.]?\s+([^\n,;.]+?)(?=$|\n|[,;]|\.\s|\s+(?:cliente|empresa|ref|projeto|empreendimento|\d+\s*%))/i;
+  const RE_CLIENTE = /(?:^|\n|[,;.])\s*(?:cliente|empresa)\s*[=:\-]?\s+([^\n,;.]+?)(?=$|\n|[,;]|\.\s|\s+(?:ref|projeto|empreendimento|a\/?c|contato|aos\s+cuidados))/i;
+  const RE_REF = /(?:^|\n|[,;.\-–—])\s*(?:ref(?:er[eê]ncia)?|projeto|empreendimento)\s*[=:\-]?\s+([^\n,;.]+?)(?=$|\n|[,;]|\.\s|\s+(?:cliente|empresa|a\/?c|contato|aos\s+cuidados|\d+\s*%))/i;
+  const RE_CONTATO = /(?:^|\n|[,;.])\s*(?:a\/?c|contato|aos\s+cuidados\s+de?)\s*[=:\-.]?\s+([^\n,;.]+?)(?=$|\n|[,;]|\.\s|\s+(?:cliente|empresa|ref|projeto|empreendimento|\d+\s*%))/i;
   const RE_DESCONTO = /(\d{1,2}(?:[.,]\d{1,2})?)\s*%\s*(?:de\s*)?(?:desconto|desc\.?|off)/i;
   const RE_DESCONTO2 = /desconto\s*(?:de|:)?\s*(\d{1,2}(?:[.,]\d{1,2})?)\s*%/i;
 
@@ -292,9 +292,80 @@
     return (
       !e ||
       e === "CLIENTE" ||
+      /^PROJETO\s*=/.test(e) ||
+      /^=\s/.test(e) ||
       /É\s+O\s+NOME|É\s+A\s+EMPRESA|NOME\s+DAS?\s+CLIENTE/.test(e) ||
+      /DESENVOLVIMENTO|ITENS\s+ACIMA|OR[CÇ]AMENTO\s+ANTERIOR|DESCRI(?:TO|ÇÃO)/.test(e) ||
       e.length > 48
     );
+  }
+
+  function limparValorAtribuido(s) {
+    return (s || "")
+      .trim()
+      .replace(/^=\s*/, "")
+      .replace(/[.;,]+$/, "")
+      .trim();
+  }
+
+  /** projeto = X · A/C = Y · cliente = Z (não altera empresa se só projeto/A/C) */
+  function extrairAtribuicoesIgual(t, out, avisos) {
+    let mudou = false;
+    const mEmp = t.match(
+      /\b(?:cliente|empresa)\s*=\s*([^\n]+?)(?=\s+(?:projeto|ref|empreendimento|a\/?c)\s*=|$)/i
+    );
+    const mProj = t.match(
+      /\b(?:ref(?:er[eê]ncia)?|projeto|empreendimento)\s*=\s*([^\n]+?)(?=\s+(?:a\/?c|contato)\s*=|$)/i
+    );
+    const mAc = t.match(/\b(?:a\/?c|contato)\s*=\s*([^\n]+?)(?=\s+(?:cliente|empresa|projeto|ref)\s*=|$)/i);
+
+    if (mEmp) {
+      const emp = empresaFormatada(limparValorAtribuido(mEmp[1]));
+      if (!empresaPareceInvalida(emp)) {
+        out.cliente.empresa = emp;
+        mudou = true;
+        avisos.push(`Cliente: ${emp}.`);
+      }
+    }
+    if (mProj) {
+      const ref = tituloCase(limparValorAtribuido(mProj[1]));
+      if (ref) {
+        out.cliente.ref = ref;
+        mudou = true;
+        avisos.push(`Projeto: ${ref}.`);
+      }
+    }
+    if (mAc) {
+      const ac = tituloCase(limparValorAtribuido(mAc[1]));
+      if (ac) {
+        out.cliente.contato = ac;
+        out._atualizou_ac = true;
+        mudou = true;
+        avisos.push(`A/C: ${ac}.`);
+      }
+    }
+    if (mudou && !mEmp) out._somente_meta_cliente = true;
+    return mudou;
+  }
+
+  /** "Integra voluntarios da patria raquel chiara" → empresa + ref + A/C */
+  function extrairEmpresaProjetoNomeCorrido(t, out, avisos) {
+    const s = (t || "").trim();
+    if (/\b(?:projeto|cliente|empresa|ref)\s*=/i.test(s)) return false;
+    if (/\d+\s+perspectivas?|\bpelo\s+valor\b/i.test(s)) return false;
+    const partes = s.split(/\s+/).filter(Boolean);
+    if (partes.length < 4 || partes.length > 12) return false;
+    const contato = partes.slice(-2).join(" ");
+    if (!/^[a-záéíóúâêôãõç]/i.test(contato) || contato.length < 5) return false;
+    const empresa = partes[0];
+    const ref = partes.slice(1, -2).join(" ");
+    if (empresa.length < 3 || ref.length < 4) return false;
+    if (/^(?:projeto|cliente|ref|externas|internas)$/i.test(empresa)) return false;
+    out.cliente.empresa = empresaFormatada(empresa);
+    out.cliente.ref = tituloCase(ref);
+    out.cliente.contato = tituloCase(contato);
+    avisos.push("Cliente, projeto e A/C interpretados do texto.");
+    return true;
   }
 
   /** "empresa - integra projeto voluntarios da patria ac/ raquel chiara" */
@@ -419,8 +490,10 @@
       out.cliente.empresa = "CLIENTE";
     }
 
+    extrairAtribuicoesIgual(t, out, avisos);
     extrairNomeExplicito(t, out, avisos);
     extrairLinhaEmpresaProjetoAc(t, out, avisos);
+    extrairEmpresaProjetoNomeCorrido(t, out, avisos);
     extrairPerspectivasSimples(t, out, avisos);
     extrairRotulosCompactos(t, out, avisos);
     extrairPlantasTextoCorrido(t, out, avisos);
@@ -585,15 +658,23 @@
         norm(novo.cliente.contato) === norm(novo.cliente.empresa) &&
         anterior.cliente.empresa !== "CLIENTE" &&
         !empresaPareceInvalida(anterior.cliente.empresa));
+    const novoSoMeta =
+      !!novo._somente_meta_cliente ||
+      (novo.cliente.empresa === "CLIENTE" &&
+        (novo.cliente.ref !== "PROJETO" || novo.cliente.contato !== "—"));
 
     if (
       novo.cliente.empresa !== "CLIENTE" &&
       !empresaPareceInvalida(novo.cliente.empresa) &&
-      !corrigeSoAc
+      !corrigeSoAc &&
+      !novoSoMeta
     ) {
       out.cliente.empresa = novo.cliente.empresa;
     }
-    if (novo.cliente.ref !== "PROJETO") out.cliente.ref = novo.cliente.ref;
+    if (novo.cliente.ref !== "PROJETO") {
+      const refLimpa = tituloCase(limparValorAtribuido(novo.cliente.ref));
+      if (refLimpa && !empresaPareceInvalida(refLimpa)) out.cliente.ref = refLimpa;
+    }
     if (novo.cliente.contato !== "—") out.cliente.contato = novo.cliente.contato;
     if (novo._remove_desconto) {
       out.desconto_pct = 0;
@@ -723,9 +804,12 @@
 
     if (!cliente && !soCorrecaoDesconto) {
       const primeira = texto.split(/\r?\n/, 1)[0].trim();
-      const mCaps = primeira.match(
-        /^([A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9](?:[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9 &]*[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9])?)\b/
-      );
+      const linhaSoMeta = /^\s*(?:projeto|ref|empreendimento|a\/?c|contato)\s*=/i.test(primeira);
+      const mCaps =
+        !linhaSoMeta &&
+        primeira.match(
+          /^([A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9](?:[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9 &]*[A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9])?)\b/
+        );
       if (mCaps && mCaps[1].length >= 3) {
         cliente = mCaps[1].trim();
         avisos.push(`Cliente não foi marcado explicitamente — assumi '${cliente}' (1as palavras em CAPS).`);
@@ -742,7 +826,12 @@
         if (mAny && !bloq.has(mAny[1])) {
           cliente = mAny[1].trim();
           avisos.push(`Cliente não foi marcado explicitamente — assumi '${cliente}' (palavra em CAPS no texto).`);
-        } else if (primeira && primeira.length < 60 && !ehLinhaMetaDescritiva(primeira)) {
+        } else if (
+          primeira &&
+          primeira.length < 60 &&
+          !ehLinhaMetaDescritiva(primeira) &&
+          !linhaSoMeta
+        ) {
           cliente = primeira;
           avisos.push(`Cliente não foi marcado explicitamente — assumi '${cliente}' (1ª linha).`);
         }
@@ -790,11 +879,13 @@
     }
 
     const empresaFmt = empresaFormatada(cliente);
+    const refFmt = ref ? tituloCase(limparValorAtribuido(ref)) : "PROJETO";
+    const contatoFmt = contato ? tituloCase(limparValorAtribuido(contato)) : "—";
     return {
       cliente: {
         empresa: empresaPareceInvalida(empresaFmt) ? "CLIENTE" : empresaFmt,
-        ref: ref ? tituloCase(ref) : "PROJETO",
-        contato: contato ? tituloCase(contato) : "—",
+        ref: refFmt && !empresaPareceInvalida(refFmt) ? refFmt : "PROJETO",
+        contato: contatoFmt,
       },
       externas, internas, plantas,
       tour_virtual, filmes, apps, drone,

@@ -132,30 +132,60 @@
       .trim();
   }
 
-  function empresaDoArquivo(nome) {
-    if (!nome) return "";
-    const base = nome.replace(/\.[a-z0-9]+$/i, "");
-    let m = base.match(/flying[_\s-]+([a-z0-9][a-z0-9\s_-]{1,40})/i);
-    if (m) return limparTokenEmpresa(m[1]).toUpperCase();
-    m = base.match(/^orc[_\s-]+(.+)$/i);
-    if (m) {
-      const tok = limparTokenEmpresa(m[1]);
-      const partes = tok.split(/\s+/).filter((p) => p.length >= 2);
-      if (!partes.length) return "";
-      if (partes.length === 1) return partes[0].toUpperCase();
-      return partes[0].toUpperCase();
+  function tituloCasePdf(s) {
+    return (s || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((w) => {
+        const l = w.toLowerCase();
+        if (["de", "da", "do", "das", "dos", "e"].includes(l)) return l;
+        return l.charAt(0).toUpperCase() + l.slice(1);
+      })
+      .join(" ");
+  }
+
+  function empresaEhLixoPdf(nome) {
+    const e = normEmpresa(nome);
+    if (!e || e.length < 2) return true;
+    if (/DESENVOLVIMENTO|ITENS\s+ACIMA|DESCRI|ORCAMENTO\s+ANTERIOR|VALOR\s+FINAL|INVESTIMENTO\s+TOTAL/.test(e)) {
+      return true;
     }
-    m = base.match(/proposta[_\s-]+([a-z0-9][a-z0-9\s_-]{1,40})/i);
-    if (m) return limparTokenEmpresa(m[1]).toUpperCase();
-    return "";
+    if (/^O\s+(DESENVOLVIMENTO|ITENS|ORCAMENTO)/.test(e)) return true;
+    if (e.length > 42) return true;
+    return false;
+  }
+
+  /** Orc_Integra_Voluntarios_da_Patria_AnexoI_R04 → empresa + ref */
+  function metaFromArquivo(nomeArquivo) {
+    const out = { empresa: "", ref: "", contato: "" };
+    if (!nomeArquivo) return out;
+    const base = nomeArquivo.replace(/\.[a-z0-9]+$/i, "");
+    let m = base.match(/^orc[_\s-]+([a-z0-9][a-z0-9_-]*?)_([a-z0-9][a-z0-9_-]+)$/i);
+    if (m) {
+      out.empresa = m[1].replace(/_/g, " ").trim().toUpperCase();
+      let ref = m[2]
+        .replace(/_/g, " ")
+        .replace(/\banexo\w*\b/gi, "")
+        .replace(/\br\d+\b/gi, "")
+        .trim();
+      out.ref = tituloCasePdf(ref);
+      return out;
+    }
+    out.empresa = empresaDoArquivo(nomeArquivo);
+    return out;
+  }
+
+  function empresaDoArquivo(nome) {
+    const meta = metaFromArquivo(nome);
+    return meta.empresa || "";
   }
 
   function extrairEmpresaDoTextoPdf(texto) {
     const t = texto || "";
     const padroes = [
-      /(?:^|\n)\s*cliente\s*[:\-]\s*([A-ZÁÉÍÓÚÃÕÇ0-9][A-ZÁÉÍÓÚÃÕÇ0-9\s.&'-]{2,48}?)(?=\s*\n|\s+ref\b|\s+projeto\b|\s+a\/?c\b|$)/im,
-      /proposta\s+(?:comercial\s+)?(?:para|p\/)\s+([A-ZÁÉÍÓÚÃÕÇ][A-ZÁÉÍÓÚÃÕÇ0-9\s.&'-]{2,48}?)(?=\s*\n|\s+ref\b|\s+projeto\b)/i,
-      /(?:^|\n)\s*empresa\s*[:\-]\s*([A-ZÁÉÍÓÚÃÕÇ0-9][A-ZÁÉÍÓÚÃÕÇ0-9\s.&'-]{2,48}?)(?=\s*\n|\s+ref\b|\s+projeto\b)/im,
+      /(?:^|\n)\s*cliente\s*[=:\-]\s*([A-ZÁÉÍÓÚÃÕÇ0-9][A-ZÁÉÍÓÚÃÕÇ0-9\s.&'-]{2,48}?)(?=\s*\n|\s+ref\b|\s+projeto\b|\s+a\/?c\b|$)/im,
+      /(?:^|\n)\s*empresa\s*[=:\-]\s*([A-ZÁÉÍÓÚÃÕÇ0-9][A-ZÁÉÍÓÚÃÕÇ0-9\s.&'-]{2,48}?)(?=\s*\n|\s+ref\b|\s+projeto\b)/im,
       /\bcliente\s+([A-ZÁÉÍÓÚÃÕÇ][A-ZÁÉÍÓÚÃÕÇ0-9\s&.'-]{2,40}?)\s+projeto\s/i,
       /\bengicastro\b/i,
     ];
@@ -165,10 +195,23 @@
       if (!m[1]) return "ENGECASTRO";
       let emp = m[1].split(/\n|ref|projeto|empreendimento|a\/?c/i)[0].trim();
       emp = emp.replace(/[.;,]+$/, "");
-      if (emp.length >= 2) return normEmpresa(emp);
+      if (emp.length >= 2 && !empresaEhLixoPdf(emp)) return normEmpresa(emp);
     }
     const meta = parseClienteRef(t);
-    if (meta.empresa) return normEmpresa(meta.empresa);
+    if (meta.empresa && !empresaEhLixoPdf(meta.empresa)) return normEmpresa(meta.empresa);
+    return "";
+  }
+
+  function extrairContatoDoTextoPdf(texto) {
+    const t = texto || "";
+    const padroes = [
+      /(?:^|\n)\s*(?:a\/?c|contato)\s*[=:\-]\s*([A-ZÁÉÍÓÚÃÕÇ][A-ZÁÉÍÓÚÃÕÇa-záéíóúâêôãõç\s.'-]{2,45}?)(?=\s*\n|\s+cliente\b|\s+projeto\b|$)/im,
+      /aos\s+cuidados\s+de\s+([A-ZÁÉÍÓÚÃÕÇ][A-ZÁÉÍÓÚÃÕÇa-záéíóúâêôãõç\s.'-]{2,45}?)(?=\s*\n|[,.]|$)/i,
+    ];
+    for (const re of padroes) {
+      const m = t.match(re);
+      if (m && m[1]) return tituloCasePdf(m[1].trim());
+    }
     return "";
   }
 
@@ -176,20 +219,22 @@
    * Define o cliente do PDF: prioridade texto do PDF > nome do arquivo > formulário.
    */
   function resolverEmpresaHistorico(texto, nomeArquivo, empresaFormulario) {
-    const doTexto = extrairEmpresaDoTextoPdf(texto);
-    const doArquivo = empresaDoArquivo(nomeArquivo);
+    const metaArq = metaFromArquivo(nomeArquivo || "");
+    const doTextoRaw = extrairEmpresaDoTextoPdf(texto);
+    const doTexto = doTextoRaw && !empresaEhLixoPdf(doTextoRaw) ? doTextoRaw : "";
+    const doArquivo = metaArq.empresa || empresaDoArquivo(nomeArquivo);
     const doForm = normEmpresa(empresaFormulario || "");
-    let empresa = doTexto || doArquivo || doForm;
-    let origem = doTexto ? "pdf" : doArquivo ? "arquivo" : "formulario";
+    let empresa = doArquivo || doTexto || doForm;
+    let origem = doArquivo ? "arquivo" : doTexto ? "pdf" : "formulario";
     let substituiuForm = false;
 
     if ((doTexto || doArquivo) && doForm && empresa !== doForm) {
       substituiuForm = true;
-      origem = doTexto ? "pdf" : "arquivo";
-      empresa = doTexto || doArquivo;
+      origem = doArquivo ? "arquivo" : "pdf";
+      empresa = doArquivo || doTexto;
     }
 
-    return { empresa, origem, substituiuForm, doTexto, doArquivo, doForm };
+    return { empresa, origem, substituiuForm, doTexto, doArquivo, doForm, metaArq };
   }
 
   function ultimoRegistro() {
@@ -325,13 +370,17 @@
   function parseClienteRef(texto) {
     let empresa = "";
     let ref = "";
-    const mEmp = texto.match(/(?:cliente|para|proposta\s+para)\s*[:\-]?\s*([A-ZÁÉÍÓÚÃÕÇ][A-ZÁÉÍÓÚÃÕÇ0-9\s.&-]{2,40})/i);
+    const mEmp = texto.match(
+      /(?:^|\n)\s*(?:cliente|empresa)\s*[=:\-]\s*([A-ZÁÉÍÓÚÃÕÇ0-9][A-ZÁÉÍÓÚÃÕÇ0-9\s.&'-]{2,40})/im
+    );
     if (mEmp) empresa = mEmp[1].split(/\n|ref|projeto/i)[0].trim();
-    const mRef = texto.match(/(?:ref(?:er[eê]ncia)?|projeto)\s*[:\-]?\s*([^\n$]{3,60})/i);
+    const mRef = texto.match(/(?:ref(?:er[eê]ncia)?|projeto|empreendimento)\s*[=:\-]?\s*([^\n$]{3,60})/i);
     if (mRef) {
       ref = mRef[1].trim();
       if (/^r\$\s*[\d.,]+$/i.test(ref)) ref = "";
+      ref = ref.replace(/\s+(?:e\s+)?aos\s+cuidados.*$/i, "");
     }
+    if (empresa && empresaEhLixoPdf(empresa)) empresa = "";
     return { empresa, ref };
   }
 
@@ -384,13 +433,17 @@
     }
 
     const meta = parseClienteRef(t);
-    if (!meta.empresa && metaArquivo && metaArquivo.nomeArquivo) {
-      meta.empresa = empresaDoArquivo(metaArquivo.nomeArquivo);
+    const doArquivo = metaFromArquivo(metaArquivo && metaArquivo.nomeArquivo);
+    if (!meta.empresa || empresaEhLixoPdf(meta.empresa)) {
+      meta.empresa = doArquivo.empresa || "";
     }
+    if (!meta.ref && doArquivo.ref) meta.ref = doArquivo.ref;
+    const contatoPdf = extrairContatoDoTextoPdf(t);
 
     return {
-      ref: meta.ref || "Último orçamento (PDF)",
-      empresa_pdf: meta.empresa ? normEmpresa(meta.empresa) : "",
+      ref: meta.ref || doArquivo.ref || "Último orçamento (PDF)",
+      empresa_pdf: meta.empresa ? normEmpresa(meta.empresa) : doArquivo.empresa || "",
+      contato_pdf: contatoPdf || "",
       data: new Date().toISOString().slice(0, 10),
       origem: "pdf_upload",
       desconto_pct: pct,
@@ -506,7 +559,10 @@
   window.FlyingHistoricoPdf = {
     parseTexto,
     empresaDoArquivo,
+    metaFromArquivo,
+    empresaEhLixoPdf,
     extrairEmpresaDoTextoPdf,
+    extrairContatoDoTextoPdf,
     resolverEmpresaHistorico,
     extrairTodosPrecos,
     registrar,
