@@ -675,10 +675,19 @@
               if (window.FlyingChat) {
                 const pr = ultimo.proposta || {};
                 const ac = pr.contato_pdf || "";
-                let txt = `Cliente: ${ultimo.empresa}\nRef: ${pr.ref || "PROJETO"}\n`;
-                if (ac) txt += `A/C: ${ac}\n`;
+                const txt = hp.textoIngestaoBriefing(
+                  pr,
+                  ultimo.empresa,
+                  pr.ref || "PROJETO",
+                  ac
+                );
                 window.FlyingChat.ingestTexto(txt, {
-                  resposta: `Briefing ajustado para **${ultimo.empresa}** (último PDF).`,
+                  resposta: hp.respostaIngestaoPdf(
+                    pr,
+                    ultimo.empresa,
+                    pr.ref || "PROJETO",
+                    ac
+                  ),
                 });
               }
               status.dataset.fixDismissed = "1";
@@ -697,7 +706,7 @@
       if (btnUpload) btnUpload.textContent = "📄 Trocar PDF do último orçamento";
       if (reg.empresa === empresa || !empresa) {
         status.classList.remove("hidden");
-        status.innerHTML = `<span class="upload-ok">✓ ${hp.resumoHtml(reg.proposta)} · cliente <strong>${reg.empresa}</strong></span>`;
+        status.innerHTML = `<span class="upload-ok">✓ ${hp.resumoHtml(reg.proposta, { html: true })}<br><span class="upload-aviso">Cliente <strong>${reg.empresa}</strong> · histórico ativo para preços</span></span>`;
       }
     } else {
       blocoAtivo.classList.add("hidden");
@@ -780,24 +789,43 @@
 
       hp.registrar(empresa, proposta, { nomeArquivo: file.name });
 
-      function textoBriefingPdf(emp, ref, ac) {
-        let t = `Cliente: ${emp}\nRef: ${ref || "PROJETO"}\n`;
-        if (ac) t += `A/C: ${ac}\n`;
-        return t;
-      }
-
-      if (resolv.substituiuForm && empresaForm && window.FlyingChat) {
-        const refTitulo = proposta.ref && proposta.ref !== "Último orçamento (PDF)"
+      const refTitulo =
+        proposta.ref && proposta.ref !== "Último orçamento (PDF)"
           ? proposta.ref
           : metaArq.ref || "PROJETO";
-        window.FlyingChat.ingestTexto(textoBriefingPdf(empresa, refTitulo, contatoPdf), {
-          resposta: `Atualizei o briefing para **${empresa}** · ${refTitulo}${contatoPdf ? ` · A/C ${contatoPdf}` : ""} (dados do PDF).`,
-        });
-      } else if (window.FlyingChat && (!empresaForm || empresaForm === "CLIENTE" || empresaForm.includes("PROJETO"))) {
-        const refTitulo = proposta.ref || metaArq.ref || "PROJETO";
-        window.FlyingChat.ingestTexto(textoBriefingPdf(empresa, refTitulo, contatoPdf), {
-          resposta: `**${empresa}** · ${refTitulo}${contatoPdf ? ` · A/C ${contatoPdf}` : ""} — identificado pelo PDF.`,
-        });
+
+      if (window.FlyingChat) {
+        const txtBrief = hp.textoIngestaoBriefing(proposta, empresa, refTitulo, contatoPdf);
+        const respBrief = hp.respostaIngestaoPdf(proposta, empresa, refTitulo, contatoPdf);
+        const deveIngerir =
+          resolv.substituiuForm ||
+          !empresaForm ||
+          empresaForm === "CLIENTE" ||
+          empresaForm.includes("PROJETO") ||
+          normEmpresa(empresaForm) !== normEmpresa(empresa);
+        if (deveIngerir) {
+          window.FlyingChat.ingestTexto(txtBrief, { resposta: respBrief });
+        } else {
+          window.FlyingChat.ingestTexto(
+            [
+              proposta.forma_pagamento && proposta.forma_pagamento.length
+                ? "Forma de pagamento (PDF):\n" +
+                  proposta.forma_pagamento.map((p) => `- ${p.percentual}% ${p.marco}`).join("\n")
+                : "",
+              proposta._resumo && proposta._resumo.media_geral
+                ? `Preço médio do contrato (PDF): R$ ${proposta._resumo.media_geral}`
+                : "",
+              "Use o histórico do cliente.",
+            ]
+              .filter(Boolean)
+              .join("\n") + "\n",
+            {
+              resposta:
+                respBrief +
+                (resolv.substituiuForm ? "" : " (cliente do chat mantido; preços do PDF atualizados)."),
+            }
+          );
+        }
       }
 
       const radioHist = document.querySelector('input[name="estrategia"][value="historico"]');
@@ -815,7 +843,7 @@
       } else if (resolv.origem === "arquivo") {
         avisoTroca = `<br><span class="upload-aviso">Cliente lido do nome do arquivo.</span>`;
       }
-      status.innerHTML = `<span class="upload-ok">✓ ${hp.resumoHtml(proposta)}<br><span class="upload-aviso">Histórico vinculado a <strong>${empresa}</strong>.${avisoTroca}</span></span>`;
+      status.innerHTML = `<span class="upload-ok">✓ ${hp.resumoHtml(proposta, { html: true })}<br><span class="upload-aviso">Histórico vinculado a <strong>${empresa}</strong>.${avisoTroca}</span></span>`;
     } catch (err) {
       status.innerHTML = `<span class="upload-erro">❌ Erro: ${err.message}</span>`;
     }

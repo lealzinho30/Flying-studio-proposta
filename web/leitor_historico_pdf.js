@@ -172,13 +172,21 @@
       out.ref = tituloCasePdf(ref);
       return out;
     }
-    out.empresa = empresaDoArquivo(nomeArquivo);
+    const tok = tokenEmpresaDoNomeArquivo(nomeArquivo);
+    if (tok) out.empresa = tok;
     return out;
   }
 
+  function tokenEmpresaDoNomeArquivo(nomeArquivo) {
+    if (!nomeArquivo) return "";
+    const base = nomeArquivo.replace(/\.[a-z0-9]+$/i, "");
+    const m = base.match(/^orc[_\s-]+([a-z0-9][a-z0-9_-]*)/i);
+    if (!m) return "";
+    return m[1].replace(/_/g, " ").trim().toUpperCase();
+  }
+
   function empresaDoArquivo(nome) {
-    const meta = metaFromArquivo(nome);
-    return meta.empresa || "";
+    return tokenEmpresaDoNomeArquivo(nome);
   }
 
   function extrairEmpresaDoTextoPdf(texto) {
@@ -335,25 +343,135 @@
     return { pct: Number.isFinite(pct) ? pct : 0, label: m[0].trim() };
   }
 
+  function adicionarParcela(parcelas, vistos, pct, marco) {
+    const p = parseInt(pct, 10);
+    if (!Number.isFinite(p) || p < 1 || p > 100) return;
+    let m = (marco || "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .replace(/[.;,]+$/, "");
+    m = m.replace(/^\s*[-–—:.]\s*/, "");
+    if (m.length < 2) return;
+    if (/^ro\s*\d+$/i.test(m)) m = m.toUpperCase().replace(/\s+/, "");
+    if (/desconto|parceria|\boff\b/i.test(m)) return;
+    if (/^r\$\s*[\d.,]+$/i.test(m)) return;
+    const key = `${p}|${norm(m)}`;
+    if (vistos.has(key)) return;
+    vistos.add(key);
+    parcelas.push({ percentual: p, marco: m });
+  }
+
   function parseFormaPagamento(texto) {
     const parcelas = [];
-    const bloco = texto.match(
-      /(?:forma\s+de\s+pagamento|condi[cç][oõ]es?\s+de\s+pagamento)[\s\S]{0,2000}/i
+    const vistos = new Set();
+    const t = texto || "";
+
+    for (const linha of t.split(/\r?\n/)) {
+      const l = linha.trim();
+      if (!l || l.length < 6) continue;
+      if (/desconto\s+de\s+\d/i.test(l)) continue;
+      let m = l.match(/^(\d{1,3})\s*%\s*[-–—:.]?\s*(.+)$/i);
+      if (m) {
+        adicionarParcela(parcelas, vistos, m[1], m[2]);
+        continue;
+      }
+      m = l.match(/^(\d{1,3})\s*%\s+(.+?)(?:\s+\d{1,3}\s*%|$)/i);
+      if (m) adicionarParcela(parcelas, vistos, m[1], m[2]);
+    }
+
+    const bloco = t.match(
+      /(?:forma\s+de\s+pagamento|condi[cç][oõ]es?\s+de\s+pagamento|parcelas?)\s*[:\-]?\s*([\s\S]{0,3500})/i
     );
-    const trecho = bloco ? bloco[0] : texto;
-    const reLinha = /(\d{1,3})\s*%\s*([^%\n]{6,120}?)(?=\d{1,3}\s*%|$)/gi;
+    const trecho = bloco ? bloco[1] : t;
+    const reLinha = /(\d{1,3})\s*%\s*[-–—:.]?\s*([^%\n]{4,140}?)(?=\s*\d{1,3}\s*%|$)/gi;
     let m;
     while ((m = reLinha.exec(trecho)) !== null) {
-      const pct = parseInt(m[1], 10);
-      let marco = (m[2] || "").replace(/\s+/g, " ").trim().replace(/[.;,]+$/, "");
-      if (/desconto|parceria|off\b/i.test(marco)) continue;
-      if (pct > 0 && pct <= 100 && marco.length > 4) parcelas.push({ percentual: pct, marco });
+      adicionarParcela(parcelas, vistos, m[1], m[2]);
     }
+
+    parcelas.sort((a, b) => a.percentual - b.percentual);
+
+    if (!parcelas.length) {
+      const achados = contarPercentuaisPagamento(t);
+      if (achados >= 2) {
+        const corrido = t.replace(/\s+/g, " ");
+        const ini = corrido.search(
+          /forma\s+de\s+pagamento|condi[cç][oõ]es?\s+de\s+pagamento|pagamento\s+do\s+projeto/i
+        );
+        const alvo = ini >= 0 ? corrido.slice(ini, ini + 4000) : corrido;
+        const reGlobal =
+          /(\d{1,3})\s*%\s*[-–—:.]?\s*([^%]{3,160}?)(?=\s*\d{1,3}\s*%|forma\s+de\s+pagamento|prazo|validade|$)/gi;
+        let gm;
+        while ((gm = reGlobal.exec(alvo)) !== null) {
+          adicionarParcela(parcelas, vistos, gm[1], gm[2]);
+        }
+        parcelas.sort((a, b) => a.percentual - b.percentual);
+      }
+    }
+
     if (!parcelas.length) {
       const pad = window.FLYING_PRECOS && window.FLYING_PRECOS.forma_pagamento_padrao;
+      if (Array.isArray(pad) && pad.length) return pad.map((p) => ({ ...p }));
       if (pad && pad.parcelas) return pad.parcelas.slice();
     }
     return parcelas;
+  }
+
+  function contarPercentuaisPagamento(texto) {
+    const trecho = (texto || "").match(
+      /(?:forma\s+de\s+pagamento|condi[cç][oõ]es?\s+de\s+pagamento)[\s\S]{0,4500}/i
+    );
+    const alvo = trecho ? trecho[0] : texto || "";
+    const m = alvo.match(/\b\d{1,3}\s*%/g);
+    return m ? m.length : 0;
+  }
+
+  function parsePrecoMedioExplicito(texto) {
+    const padroes = [
+      /pre[cç]o\s+m[eé]dio[\s\S]{0,80}?R\$\s*([\d.\s]+(?:,\d{2})?)/i,
+      /valor\s+m[eé]dio[\s\S]{0,80}?R\$\s*([\d.\s]+(?:,\d{2})?)/i,
+      /m[eé]dia\s+(?:geral|unit[aá]ria)?[\s\S]{0,60}?R\$\s*([\d.\s]+(?:,\d{2})?)/i,
+      /R\$\s*([\d.\s]+(?:,\d{2})?)\s*(?:por\s+imagem|\/\s*imagem|cada|unit[aá]rio|na\s+m[eé]dia)/i,
+      /valor\s+unit[aá]rio[\s\S]{0,60}?R\$\s*([\d.\s]+(?:,\d{2})?)/i,
+    ];
+    for (const re of padroes) {
+      const m = texto.match(re);
+      if (m) {
+        const p = parsePreco(m[1]);
+        if (p) return p;
+      }
+    }
+    return null;
+  }
+
+  function calcularMediasResumo(cats, valorFinal, nItens, texto) {
+    const r = {
+      media_externa: cats.externas ? Math.round(cats.externas.total / cats.externas.qtd) : null,
+      media_interna: cats.internas ? Math.round(cats.internas.total / cats.internas.qtd) : null,
+      media_planta: cats.plantas ? Math.round(cats.plantas.total / cats.plantas.qtd) : null,
+      media_servicos: cats.servicos ? Math.round(cats.servicos.total / cats.servicos.qtd) : null,
+      media_geral: null,
+    };
+    let total = 0;
+    let qtd = 0;
+    for (const k of ["externas", "internas", "plantas", "servicos"]) {
+      if (cats[k] && cats[k].qtd) {
+        total += cats[k].total;
+        qtd += cats[k].qtd;
+      }
+    }
+    if (qtd > 0) r.media_geral = Math.round(total / qtd);
+    else if (valorFinal > 0 && nItens > 0) r.media_geral = Math.round(valorFinal / nItens);
+    const expl = parsePrecoMedioExplicito(texto || "");
+    if (expl) r.media_geral = expl;
+    if (!r.media_geral && texto) {
+      const soltos = extrairTodosPrecos(texto).map((x) => x.preco).filter((p) => p >= 500);
+      if (soltos.length >= 2) {
+        const soma = soltos.reduce((a, b) => a + b, 0);
+        r.media_geral = Math.round(soma / soltos.length);
+      }
+    }
+    return r;
   }
 
   function parsePrazos(texto) {
@@ -455,16 +573,17 @@
       internas: cats.internas,
       plantas: cats.plantas,
       servicos: cats.servicos,
-      _resumo: {
-        itens: contarItens(cats),
-        tipo: cats.servicos && !cats.externas ? "tecnologias" : "misto",
-        media_externa: cats.externas ? Math.round(cats.externas.total / cats.externas.qtd) : null,
-        media_interna: cats.internas ? Math.round(cats.internas.total / cats.internas.qtd) : null,
-        media_planta: cats.plantas ? Math.round(cats.plantas.total / cats.plantas.qtd) : null,
-        media_servicos: cats.servicos ? Math.round(cats.servicos.total / cats.servicos.qtd) : null,
-        parcelas: forma_pagamento.length,
-        valor_final: valorFinalProjeto,
-      },
+      _resumo: (() => {
+        const n = contarItens(cats);
+        const medias = calcularMediasResumo(cats, valorFinalProjeto, n, t);
+        return {
+          itens: n,
+          tipo: cats.servicos && !cats.externas ? "tecnologias" : "misto",
+          ...medias,
+          parcelas: forma_pagamento.length,
+          valor_final: valorFinalProjeto,
+        };
+      })(),
     };
   }
 
@@ -521,20 +640,74 @@
     saveStore(memStore);
   }
 
-  function resumoHtml(proposta) {
+  function resumoHtml(proposta, opts) {
     if (!proposta || !proposta._resumo) return "";
     const r = proposta._resumo;
+    const html = opts && opts.html;
+    const br = html ? "<br>" : " · ";
     const partes = [];
     if (r.itens) partes.push(`${r.itens} item(ns) no PDF`);
     if (r.tipo === "tecnologias") partes.push("proposta de tecnologias");
-    if (r.media_externa) partes.push(`média externa R$${r.media_externa.toLocaleString("pt-BR")}`);
-    if (r.media_servicos) partes.push(`média serviços R$${r.media_servicos.toLocaleString("pt-BR")}`);
-    if (r.parcelas) partes.push(`${r.parcelas} parcela(s)`);
-    if (proposta.desconto_pct) {
-      partes.push(`desconto ${proposta.desconto_pct}% no PDF (não aplicado — diga no chat se quiser)`);
+    if (r.media_geral) {
+      partes.push(`<strong>preço médio R$ ${r.media_geral.toLocaleString("pt-BR")}</strong>`);
     }
-    if (r.valor_final) partes.push(`total R$${r.valor_final.toLocaleString("pt-BR")}`);
-    return partes.join(" · ");
+    if (r.media_interna) partes.push(`média interna R$ ${r.media_interna.toLocaleString("pt-BR")}`);
+    if (r.media_externa) partes.push(`média externa R$ ${r.media_externa.toLocaleString("pt-BR")}`);
+    if (r.media_planta) partes.push(`média planta R$ ${r.media_planta.toLocaleString("pt-BR")}`);
+    if (r.media_servicos) partes.push(`média serviços R$ ${r.media_servicos.toLocaleString("pt-BR")}`);
+    if (proposta.forma_pagamento && proposta.forma_pagamento.length) {
+      const linhas = proposta.forma_pagamento.map(
+        (p) => `${p.percentual}% — ${p.marco}`
+      );
+      if (html) {
+        partes.push(`<span class="hist-pag-titulo">Forma de pagamento:</span>${br}${linhas.join("<br>")}`);
+      } else {
+        partes.push(`pagamento: ${linhas.join("; ")}`);
+      }
+    } else if (r.parcelas) {
+      partes.push(`${r.parcelas} parcela(s) (detalhes não lidos — confira o PDF)`);
+    }
+    if (proposta.desconto_pct) {
+      partes.push(`desconto ${proposta.desconto_pct}% no PDF (não aplicado no chat)`);
+    }
+    if (r.valor_final) partes.push(`total projeto R$ ${r.valor_final.toLocaleString("pt-BR")}`);
+    return partes.join(br);
+  }
+
+  function textoIngestaoBriefing(proposta, empresa, ref, contato) {
+    const linhas = [`Cliente: ${empresa}`, `Ref: ${ref || "PROJETO"}`];
+    if (contato) linhas.push(`A/C: ${contato}`);
+    const r = proposta && proposta._resumo;
+    if (r && r.media_geral) {
+      linhas.push(`Preço médio do contrato (PDF): R$ ${r.media_geral}`);
+    }
+    if (proposta && proposta.forma_pagamento && proposta.forma_pagamento.length) {
+      linhas.push("Forma de pagamento (PDF):");
+      for (const p of proposta.forma_pagamento) {
+        linhas.push(`- ${p.percentual}% ${p.marco}`);
+      }
+    }
+    if (r && r.valor_final) {
+      linhas.push(`Valor final do projeto (PDF): R$ ${r.valor_final}`);
+    }
+    linhas.push("Use o histórico do cliente.");
+    return linhas.join("\n") + "\n";
+  }
+
+  function respostaIngestaoPdf(proposta, empresa, ref, contato) {
+    const r = proposta && proposta._resumo;
+    let msg = `PDF lido: **${empresa}** · ${ref || "PROJETO"}`;
+    if (contato) msg += ` · A/C ${contato}`;
+    if (r && r.media_geral) msg += ` · preço médio **R$ ${r.media_geral.toLocaleString("pt-BR")}**`;
+    if (proposta.forma_pagamento && proposta.forma_pagamento.length) {
+      const det = proposta.forma_pagamento
+        .slice(0, 6)
+        .map((p) => `${p.percentual}% ${p.marco}`)
+        .join(" · ");
+      msg += ` · pagamento: ${det}`;
+    }
+    if (r && r.itens) msg += ` · ${r.itens} itens no histórico`;
+    return msg + ".";
   }
 
   /** Média unitária do contrato anterior (para propostas adicionais). */
@@ -544,12 +717,13 @@
     const nPla = (parsed && parsed.plantas && parsed.plantas.length) || 0;
     const nInt = (parsed && parsed.internas && parsed.internas.length) || 0;
     const nExt = (parsed && parsed.externas && parsed.externas.length) || 0;
+    if (r.media_geral) return r.media_geral;
     if (nPla && r.media_planta) return r.media_planta;
     if (nInt && r.media_interna) return r.media_interna;
     if (nExt && r.media_externa) return r.media_externa;
     if (r.media_servicos) return r.media_servicos;
     const vals = [r.media_externa, r.media_interna, r.media_planta, r.media_servicos].filter(Boolean);
-    if (vals.length) return vals.reduce((a, b) => a + b, 0) / vals.length;
+    if (vals.length) return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
     if (proposta.valor_final_projeto && r.itens > 0) {
       return proposta.valor_final_projeto / r.itens;
     }
@@ -573,6 +747,8 @@
     temCliente,
     limpar,
     resumoHtml,
+    textoIngestaoBriefing,
+    respostaIngestaoPdf,
     normEmpresa,
     propostaTemDados,
     parseClienteRef,

@@ -1107,6 +1107,12 @@ code {
 .sem-hist-sub { color: var(--muted); font-size: 12px; margin: 0; }
 .hist-pdf-badge { color: var(--green-dark); font-size: 12px; font-weight: 600; margin: 0 0 8px; }
 .hist-pag-label { color: var(--muted); font-size: 12px; margin: 12px 0 6px; }
+.hist-pag-titulo {
+  display: block;
+  font-weight: 600;
+  margin-top: 0.35rem;
+}
+
 .hist-parcelas {
   margin: 0;
   padding-left: 18px;
