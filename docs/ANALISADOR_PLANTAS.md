@@ -12,9 +12,11 @@ Em **Site settings → Environment variables**:
 |----------|-------------|-----------|
 | `ANTHROPIC_API_KEY` | Sim | Chave da Anthropic (Claude) |
 | `ANTHROPIC_MODEL` | Não | Ex.: `claude-sonnet-4-20250514` |
-| `PLANTAS_IA_PROVIDER` | Não | `anthropic` (padrão) ou `gemini` |
+| `PLANTAS_IA_PROVIDER` | Não | `anthropic` (padrão), `openai` ou `gemini` |
+| `OPENAI_API_KEY` | Só se `PLANTAS_IA_PROVIDER=openai` | Chave em platform.openai.com |
+| `OPENAI_MODEL` | Não | Ex.: `gpt-4o` (plantas), `gpt-4o-mini` (chat) |
 | `GEMINI_API_KEY` | Só se `PLANTAS_IA_PROVIDER=gemini` | Chave no Google AI Studio |
-| `GEMINI_MODEL` | Não | Ex.: `gemini-2.0-flash` |
+| `GEMINI_MODEL` | Não | Ex.: `gemini-2.5-flash` |
 
 Depois de salvar as variáveis, faça **Redeploy** do site.
 
