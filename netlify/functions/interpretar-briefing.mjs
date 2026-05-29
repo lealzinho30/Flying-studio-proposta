@@ -1,6 +1,7 @@
 /**
  * Interpreta mensagem de chat / briefing em linguagem natural → JSON da proposta Flying.
- * Variáveis: GEMINI_API_KEY ou ANTHROPIC_API_KEY (mesmo padrão do analisar-planta).
+ * Variáveis: GEMINI_API_KEY, ANTHROPIC_API_KEY ou OPENAI_API_KEY.
+ * PLANTAS_IA_PROVIDER = gemini | anthropic | openai
  */
 
 const PROMPT = `Você converte mensagens em português sobre propostas comerciais da Flying Studio (imagens 3D imobiliárias) em JSON.
@@ -91,6 +92,50 @@ async function chamarGemini(texto) {
   return normalizar(extrairJson(out));
 }
 
+function escolherProvider() {
+  const pref = (process.env.PLANTAS_IA_PROVIDER || "").toLowerCase();
+  const has = {
+    gemini: !!process.env.GEMINI_API_KEY,
+    anthropic: !!process.env.ANTHROPIC_API_KEY,
+    openai: !!process.env.OPENAI_API_KEY,
+  };
+  if (pref && has[pref]) return pref;
+  if (has.anthropic) return "anthropic";
+  if (has.openai) return "openai";
+  if (has.gemini) return "gemini";
+  return null;
+}
+
+async function chamarOpenAI(texto) {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error("OPENAI_API_KEY não configurada.");
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature: 0.1,
+      max_tokens: 4096,
+      messages: [
+        { role: "system", content: PROMPT },
+        { role: "user", content: texto },
+      ],
+    }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(body.error?.message || res.statusText);
+    if (/quota|rate limit|insufficient/i.test(err.message)) err.code = "QUOTA";
+    throw err;
+  }
+  const out = body.choices?.[0]?.message?.content || "";
+  return normalizar(extrairJson(out));
+}
+
 async function chamarAnthropic(texto) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY não configurada.");
@@ -148,22 +193,23 @@ export async function handler(event) {
       return { statusCode: 400, headers, body: JSON.stringify({ erro: "Texto muito longo." }) };
     }
 
-    const provider = (process.env.PLANTAS_IA_PROVIDER || "gemini").toLowerCase();
-    const hasGemini = !!process.env.GEMINI_API_KEY;
-    const hasAnthropic = !!process.env.ANTHROPIC_API_KEY;
-    if (!hasGemini && !hasAnthropic) {
+    const provider = escolherProvider();
+    if (!provider) {
       return {
         statusCode: 503,
         headers,
-        body: JSON.stringify({ erro: "IA não configurada. Configure GEMINI_API_KEY ou ANTHROPIC_API_KEY no Netlify." }),
+        body: JSON.stringify({
+          erro: "IA não configurada. Configure ANTHROPIC_API_KEY, OPENAI_API_KEY ou GEMINI_API_KEY no Netlify.",
+        }),
       };
     }
 
-    const parsed = provider === "anthropic" && hasAnthropic
-      ? await chamarAnthropic(texto)
-      : hasGemini
-        ? await chamarGemini(texto)
-        : await chamarAnthropic(texto);
+    const parsed =
+      provider === "openai"
+        ? await chamarOpenAI(texto)
+        : provider === "anthropic"
+          ? await chamarAnthropic(texto)
+          : await chamarGemini(texto);
 
     return {
       statusCode: 200,
@@ -178,7 +224,7 @@ export async function handler(event) {
       headers,
       body: JSON.stringify({
         erro: quota
-          ? "Cota da API Gemini esgotada. O site usa interpretação local até você ativar billing ou outro modelo."
+          ? "Cota da API esgotada. Use PLANTAS_IA_PROVIDER=anthropic ou openai no Netlify, ou ative billing no provedor."
           : msg,
         quota,
       }),

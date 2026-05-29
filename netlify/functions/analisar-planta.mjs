@@ -1,9 +1,8 @@
 /**
  * Analisa PDF de projeto (páginas em JPEG base64) e devolve listagem Flying.
  * Variáveis de ambiente (Netlify):
- *   PLANTAS_IA_PROVIDER = gemini | anthropic  (padrão: anthropic)
- *   GEMINI_API_KEY      — Google AI Studio (tier gratuito disponível)
- *   ANTHROPIC_API_KEY   — se usar Claude
+ *   PLANTAS_IA_PROVIDER = gemini | anthropic | openai  (padrão: anthropic)
+ *   GEMINI_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY
  */
 
 const PROMPT_SISTEMA = `Você é especialista em propostas comerciais da Flying Studio (imagens 3D para lançamentos imobiliários).
@@ -83,6 +82,61 @@ async function chamarGemini(images, textoExtraido) {
   return normalizarListagem(extrairJson(texto));
 }
 
+function escolherProvider() {
+  const pref = (process.env.PLANTAS_IA_PROVIDER || "anthropic").toLowerCase();
+  const has = {
+    gemini: !!process.env.GEMINI_API_KEY,
+    anthropic: !!process.env.ANTHROPIC_API_KEY,
+    openai: !!process.env.OPENAI_API_KEY,
+  };
+  if (pref && has[pref]) return pref;
+  if (has.anthropic) return "anthropic";
+  if (has.openai) return "openai";
+  if (has.gemini) return "gemini";
+  return null;
+}
+
+async function chamarOpenAI(images, textoExtraido) {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error("OPENAI_API_KEY não configurada no Netlify.");
+
+  const model = process.env.OPENAI_MODEL || "gpt-4o";
+  const content = [{ type: "text", text: PROMPT_SISTEMA }];
+  if (textoExtraido) {
+    content.push({ type: "text", text: `Texto extraído do PDF:\n${textoExtraido.slice(0, 14000)}` });
+  }
+  for (const img of images) {
+    const data = (img.dataUrl || "").replace(/^data:image\/\w+;base64,/, "");
+    if (!data) continue;
+    content.push({
+      type: "image_url",
+      image_url: { url: `data:${img.mime || "image/jpeg"};base64,${data}` },
+    });
+  }
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 8192,
+      temperature: 0.15,
+      messages: [{ role: "user", content }],
+    }),
+  });
+
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = body.error?.message || res.statusText;
+    throw new Error(`OpenAI: ${msg}`);
+  }
+  const texto = body.choices?.[0]?.message?.content || "";
+  return normalizarListagem(extrairJson(texto));
+}
+
 async function chamarAnthropic(images, textoExtraido) {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error("ANTHROPIC_API_KEY não configurada no Netlify.");
@@ -158,10 +212,20 @@ export async function handler(event) {
     }
 
     const textoExtraido = payload.textoExtraido || "";
-    const provider = (process.env.PLANTAS_IA_PROVIDER || "anthropic").toLowerCase();
-    const listagem = provider === "anthropic"
-      ? await chamarAnthropic(images, textoExtraido)
-      : await chamarGemini(images, textoExtraido);
+    const provider = escolherProvider();
+    if (!provider) {
+      return {
+        statusCode: 503,
+        headers,
+        body: JSON.stringify({ erro: "IA não configurada no Netlify." }),
+      };
+    }
+    const listagem =
+      provider === "openai"
+        ? await chamarOpenAI(images, textoExtraido)
+        : provider === "anthropic"
+          ? await chamarAnthropic(images, textoExtraido)
+          : await chamarGemini(images, textoExtraido);
 
     const total = listagem.externas.length + listagem.internas.length + listagem.plantas.length;
     if (total === 0) {
