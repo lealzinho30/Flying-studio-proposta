@@ -178,7 +178,7 @@
               <p><strong>2.</strong> Escopo (imagens): <em>apenas uma perspectiva da brinquedoteca</em>, <em>3 imagens internas: suite, gourmet, lobby</em>, listas com <em>Externas:</em> / <em>Internas:</em>.</p>
               <p><strong>3.</strong> Ajustes: <em>tirar brinquedoteca</em>, <em>projeto = Vila Mariana</em>, proposta adicional com <em>pelo valor de 1.650</em>.</p>
               <p>Desconto só se pedir (<em>10% de desconto</em>). Parcelas 50/50 não são desconto.</p>
-              <p>Modo <strong>sem API paga</strong> — tudo interpretado no navegador + PDF. Guia: <code>docs/PARSER_LOCAL.md</code>.</p>
+              <p>Chat usa <strong>IA + interpretador local</strong> (se a API falhar, o sistema continua). Guia: <code>docs/PARSER_LOCAL.md</code>.</p>
             </div>
           </details>
         </aside>
@@ -242,11 +242,11 @@
   <script src="https://unpkg.com/mammoth@1.7.2/mammoth.browser.min.js"></script>
   <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 
-  <script>window.FLYING_MODO_LOCAL = true;</script>
+  <!-- API ativa por padrão; parser local protege cliente/escopo. Só local: FLYING_MODO_LOCAL = true -->
   <script src="data.js?v=20260527q"></script>
-  <script src="parser.js?v=20260601a"></script>
-  <script src="parser_ia.js?v=20260601a"></script>
-  <script src="chat_ui.js?v=20260601a"></script>
+  <script src="parser.js?v=20260602a"></script>
+  <script src="parser_ia.js?v=20260602a"></script>
+  <script src="chat_ui.js?v=20260602a"></script>
   <script src="escopo_tecnologias.js?v=20260527q"></script>
   <script src="leitor_historico_pdf.js?v=20260531a"></script>
   <script src="orcamento.js?v=20260530d"></script>

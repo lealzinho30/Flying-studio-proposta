@@ -1,6 +1,12 @@
-# Proposta inteligente — modo local (sem API paga)
+# Proposta inteligente — interpretador local
 
-O site está configurado para **não depender de IA paga** (`FLYING_MODO_LOCAL = true` no `index.html`). Toda a inteligência do chat vem do **parser em JavaScript** + **leitura do PDF de orçamento**.
+O chat usa **IA (Gemini/Claude/OpenAI)** quando há chave no Netlify, e sempre passa pelo **parser em JavaScript** + **PDF** para não trocar cliente por engano quando você só fala de imagens.
+
+Para **desligar a API** e usar só o parser: no `index.html`, adicione antes dos scripts:
+
+```html
+<script>window.FLYING_MODO_LOCAL = true;</script>
+```
 
 ## Fluxo recomendado
 

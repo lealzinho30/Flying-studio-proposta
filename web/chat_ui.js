@@ -242,11 +242,11 @@
       msg += " Ainda não identifiquei imagens — informe quantidades ou liste os ambientes.";
     }
     if (opts && opts.ia) msg += " _(interpretado com IA)_";
-    else if (opts && opts.modoLocal) {
-      msg += "\n\n_Modo local — sem API paga; cliente e escopo vêm do interpretador do site e do PDF._";
-    } else if (opts && opts.iaIndisponivel) {
+    else if (opts && opts.iaIndisponivel) {
       msg +=
-        "\n\n_Interpretação local (API de IA indisponível — use o parser do site ou configure chave no Netlify)._";
+        "\n\n_Interpretação local (a IA não respondeu — cota ou chave no Netlify; o briefing foi montado pelo sistema)._";
+    } else if (opts && opts.modoLocal) {
+      msg += "\n\n_Só interpretação local (API desligada nesta página)._";
     }
     const av = (parsed._avisos || []).filter(
       (a) =>
@@ -267,27 +267,21 @@
     const localOk =
       window.FlyingParser.briefingLocalSuficiente &&
       window.FlyingParser.briefingLocalSuficiente(local);
-    const baseTemCliente =
-      baseAnterior &&
-      baseAnterior.cliente &&
-      baseAnterior.cliente.empresa !== "CLIENTE" &&
-      !window.FlyingParser.empresaPareceInvalida(baseAnterior.cliente.empresa);
-    const localOkComBase =
-      localOk || (local._somente_escopo && baseTemCliente && local.internas && local.internas.length);
 
-    const modoLocal = window.FLYING_MODO_LOCAL !== false;
+    const modoLocal = window.FLYING_MODO_LOCAL === true;
     const querIA =
       !modoLocal &&
       !soCorrecao &&
-      !localOkComBase &&
       window.FlyingParserIA &&
       window.FlyingParserIA.pareceConversacional(texto);
 
     let iaIndisponivel = false;
+    let usouIa = false;
     if (querIA) {
       try {
         const ia = await window.FlyingParserIA.interpretar(texto);
         if (ia) {
+          usouIa = true;
           if (ia.desconto_pct > 0 && !local._desconto_explicito) {
             ia.desconto_pct = 0;
             ia.desconto_label = null;
@@ -297,6 +291,17 @@
           if (local._somente_escopo) {
             ia.cliente = { empresa: "CLIENTE", ref: "PROJETO", contato: "—" };
             ia._somente_escopo = true;
+          } else if (
+            window.FlyingParser.empresaPareceInvalida &&
+            window.FlyingParser.empresaPareceInvalida(ia.cliente.empresa)
+          ) {
+            ia.cliente.empresa = "CLIENTE";
+          }
+          if (
+            window.FlyingParser.refPareceInvalida &&
+            window.FlyingParser.refPareceInvalida(ia.cliente.ref)
+          ) {
+            ia.cliente.ref = "PROJETO";
           }
           novo = window.FlyingParser.mesclarBriefing(local, ia);
         } else {
@@ -311,8 +316,8 @@
     const merged = window.FlyingParser.mesclarBriefing(baseAnterior, novo);
     return {
       parsed: merged,
-      usouIa: !!(novo && novo._origem === "ia"),
-      iaIndisponivel: iaIndisponivel && !localOkComBase,
+      usouIa,
+      iaIndisponivel: iaIndisponivel && !localOk,
       modoLocal,
     };
   }
@@ -411,7 +416,7 @@
       const resp = respostaAssistente(parsedAtual, {
         ia: usouIa,
         iaIndisponivel,
-        modoLocal: window.FLYING_MODO_LOCAL !== false,
+        modoLocal: window.FLYING_MODO_LOCAL === true,
       });
       mensagens.push({
         role: "assistant",

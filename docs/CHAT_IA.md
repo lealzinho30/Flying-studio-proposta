@@ -1,6 +1,6 @@
 # Chat com interpretação por IA
 
-Por padrão o site usa **modo local** (`FLYING_MODO_LOCAL = true` em `index.html`) — sem custo de API. Veja **`docs/PARSER_LOCAL.md`** para todas as frases que o parser entende.
+Por padrão o site usa **IA + parser local** (híbrido). Veja **`docs/PARSER_LOCAL.md`** para frases que o parser entende mesmo sem API.
 
 Camadas:
 

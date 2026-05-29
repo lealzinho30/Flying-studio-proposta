@@ -1365,6 +1365,7 @@
     textoTemSecoesEstruturadas,
     aplicarRemocaoEscopo,
     empresaPareceInvalida,
+    refPareceInvalida,
     ehMensagemSoCorrecaoDesconto,
     norm,
     limpaItem,
