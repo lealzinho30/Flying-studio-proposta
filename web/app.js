@@ -307,9 +307,25 @@
         internas: parsed.internas || [],
         plantas: parsed.plantas || [],
       };
-      const descontoPct = parseFloat(parsed.desconto_pct) || 0;
+      const descontoPct =
+        parsed._desconto_explicito && parsed.desconto_pct > 0
+          ? parseFloat(parsed.desconto_pct)
+          : 0;
 
-      const { planilha: plan, historico: hist } = window.FlyingOrc.comparar(cliente.empresa, descricoes, descontoPct);
+      if (parsed.modo === "adicional") {
+        parsed.estrategia = "historico";
+        parsed._avisos = parsed._avisos || [];
+        if (!parsed._avisos.some((a) => /adicional/i.test(a))) {
+          parsed._avisos.push("Modo adicional: só as imagens listadas; preço unitário do contrato.");
+        }
+      }
+
+      const { planilha: plan, historico: hist } = window.FlyingOrc.comparar(
+        cliente.empresa,
+        descricoes,
+        descontoPct,
+        parsed
+      );
       const extrasEstr = window.FlyingOrc.montarExtras(parsed);
       const ultProp = window.FlyingOrc.ultimaPropostaDe(cliente.empresa);
       const histVeioDoPdf = ultProp && ultProp.origem === "pdf_upload";
@@ -338,6 +354,7 @@
       `<span class="chip">A/C <strong>${cliente.contato || "—"}</strong></span>`,
       `<span class="chip">${total} imagens</span>`,
     ];
+    if (parsed.modo === "adicional") chips.push(`<span class="chip">Adicional</span>`);
     if (descontoPct > 0) chips.push(`<span class="chip">Desconto ${descontoPct}%</span>`);
     if (extrasEstr.qtd) chips.push(`<span class="chip">${extrasEstr.qtd} extra(s)</span>`);
     chips.push(`<span class="chip chip-accent">${rotuloEstrategia}</span>`);

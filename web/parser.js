@@ -142,6 +142,79 @@
     return negacao.some((re) => re.test(t));
   }
 
+  function parseValorBr(s) {
+    const n = parseFloat(String(s || "").replace(/\./g, "").replace(",", "."));
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  /** Desconto só quando o texto pede desconto (ignora % de parcelas/sinal). */
+  function detectarPedidoDesconto(texto) {
+    if (detectarRemocaoDesconto(texto)) {
+      return { pct: 0, label: null, explicito: false };
+    }
+    const t = texto || "";
+    const mD = RE_DESCONTO.exec(t) || RE_DESCONTO2.exec(t);
+    if (!mD) return { pct: 0, label: null, explicito: false };
+    const idx = typeof mD.index === "number" ? mD.index : t.indexOf(mD[0]);
+    const trecho = t.slice(Math.max(0, idx - 55), idx + mD[0].length + 35);
+    if (!/\bdesconto\b|\bdesc\.?\b|\bde\s+parceria\b|\boff\b/i.test(trecho)) {
+      return { pct: 0, label: null, explicito: false };
+    }
+    const pct = parseFloat(String(mD[1]).replace(",", "."));
+    if (!pct || pct > 50) return { pct: 0, label: null, explicito: false };
+    return { pct, label: `${pct}%`, explicito: true };
+  }
+
+  function detectarPropostaAdicional(texto) {
+    const t = norm(texto);
+    return (
+      /\b(?:imagens?|ilustracoes?|perspectivas?|plantas?)\s+adicionais?\b/.test(t) ||
+      /\badicionais?\s+ao\s+projeto\b/.test(t) ||
+      /\bproposta\s+adicional\b/.test(t) ||
+      /\bcomplemento\s+(?:ao|do)\s+(?:projeto|contrato)\b/.test(t) ||
+      /\bmesmo\s+valor\s+(?:do\s+)?(?:contrato|projeto|fechado)\b/.test(t) ||
+      /\bvalor\s+(?:unitario|medio)\s+(?:do\s+)?contrato\b/.test(t) ||
+      /\bpreco\s+medio\b/.test(t) ||
+      /\bmesma\s+base\s+(?:de\s+)?preco\b/.test(t)
+    );
+  }
+
+  function parsePrecoUnitarioContrato(texto) {
+    const t = texto || "";
+    const padroes = [
+      /(?:valor\s+)?(?:medio|unit[aá]rio)\s*(?:de\s+)?r\$\s*([\d.\s]+(?:,\d{1,2})?)/i,
+      /r\$\s*([\d.\s]+(?:,\d{1,2})?)\s*(?:por\s+imagem|cada|unit[aá]rio|na\s+media)/i,
+      /(?:mesmo\s+valor|preco)\s+(?:de\s+)?r\$\s*([\d.\s]+(?:,\d{1,2})?)/i,
+      /valor\s+(?:de\s+)?([\d.\s]+(?:,\d{1,2})?)\s*(?:por\s+imagem|cada)/i,
+    ];
+    for (const re of padroes) {
+      const m = t.match(re);
+      if (m) {
+        const v = parseValorBr(m[1]);
+        if (v >= 80 && v < 100000) return Math.round(v);
+      }
+    }
+    return 0;
+  }
+
+  function aplicarModoAdicional(texto, out) {
+    if (!detectarPropostaAdicional(texto)) return;
+    out.modo = "adicional";
+    out.estrategia = "historico";
+    const pu = parsePrecoUnitarioContrato(texto);
+    out._avisos = out._avisos || [];
+    if (pu > 0) {
+      out.preco_unitario_contrato = pu;
+      out._avisos.push(
+        `Proposta adicional: R$ ${pu.toLocaleString("pt-BR")} por imagem (valor do contrato informado).`
+      );
+    } else {
+      out._avisos.push(
+        "Proposta adicional: preço virá do PDF/histórico (média do contrato). Liste só as imagens deste pedido."
+      );
+    }
+  }
+
   /** Mensagem curta só para corrigir desconto — não deve virar nome de cliente. */
   function ehMensagemSoCorrecaoDesconto(texto) {
     const t = (texto || "").trim();
@@ -349,8 +422,11 @@
       drone: [...(anterior.drone || [])],
       extras_diversos: [...(anterior.extras_diversos || [])],
       extras_detectados: [...(anterior.extras_detectados || [])],
-      desconto_pct: anterior.desconto_pct || 0,
-      desconto_label: anterior.desconto_label,
+      desconto_pct: anterior._desconto_explicito ? anterior.desconto_pct || 0 : 0,
+      desconto_label: anterior._desconto_explicito ? anterior.desconto_label : null,
+      _desconto_explicito: !!(anterior._desconto_explicito && anterior.desconto_pct > 0),
+      modo: anterior.modo || "completo",
+      preco_unitario_contrato: anterior.preco_unitario_contrato || 0,
       estrategia: anterior.estrategia || "auto",
       mostrar_precos_individuais: anterior.mostrar_precos_individuais,
       _origem: novo._origem || anterior._origem,
@@ -366,7 +442,11 @@
       (novo.internas && novo.internas.length) +
       (novo.plantas && novo.plantas.length) > 0;
 
-    if (trocaCliente && novoTemListas) {
+    const substituirListas =
+      (trocaCliente && novoTemListas) ||
+      (novo.modo === "adicional" && novoTemListas);
+
+    if (substituirListas) {
       out.externas = [...(novo.externas || [])];
       out.internas = [...(novo.internas || [])];
       out.plantas = [...(novo.plantas || [])];
@@ -393,9 +473,18 @@
     if (novo._remove_desconto) {
       out.desconto_pct = 0;
       out.desconto_label = null;
-    } else if (novo.desconto_pct > 0) {
+      out._desconto_explicito = false;
+    } else if (novo._desconto_explicito && novo.desconto_pct > 0) {
       out.desconto_pct = novo.desconto_pct;
-      if (novo.desconto_label) out.desconto_label = novo.desconto_label;
+      out.desconto_label = novo.desconto_label || `${novo.desconto_pct}%`;
+      out._desconto_explicito = true;
+    }
+    if (novo.modo === "adicional") {
+      out.modo = "adicional";
+      out.estrategia = "historico";
+      if (novo.preco_unitario_contrato > 0) {
+        out.preco_unitario_contrato = novo.preco_unitario_contrato;
+      }
     }
     if (novo.estrategia && novo.estrategia !== "auto") out.estrategia = novo.estrategia;
     if (novo.mostrar_precos_individuais) out.mostrar_precos_individuais = true;
@@ -417,6 +506,7 @@
       }
     }
     enriquecerLinguagemNatural(textoOrig, out);
+    aplicarModoAdicional(textoOrig, out);
     if (!out.externas.length && !out.internas.length && !out.plantas.length &&
         !(out.tour_virtual && out.tour_virtual.length)) {
       const det = detectarExtrasSoltos(textoOrig, {
@@ -446,7 +536,13 @@
       `Ref: ${c.ref}`,
       `A/C: ${c.contato}`,
     ];
-    if (p.desconto_pct > 0) linhas.push(`Desconto: ${p.desconto_pct}%`);
+    if (p.modo === "adicional") {
+      linhas.push("Modo: proposta adicional (preço do contrato)");
+      if (p.preco_unitario_contrato > 0) {
+        linhas.push(`Preço unitário contrato: R$ ${p.preco_unitario_contrato}`);
+      }
+    }
+    if (p.desconto_pct > 0 && p._desconto_explicito) linhas.push(`Desconto: ${p.desconto_pct}%`);
     if (p.estrategia === "historico") linhas.push("Use o histórico do cliente.");
     else if (p.estrategia === "planilha") linhas.push("Use preço de planilha.");
 
@@ -476,6 +572,9 @@
         cliente: { empresa: "CLIENTE", ref: "PROJETO", contato: "—" },
         externas: [], internas: [], plantas: [],
         desconto_pct: 0, desconto_label: null,
+        _desconto_explicito: false,
+        modo: "completo",
+        preco_unitario_contrato: 0,
         estrategia: "auto",
         mostrar_precos_individuais: false,
         _origem: "local", _avisos: ["Texto vazio."],
@@ -522,9 +621,13 @@
     }
 
     let desconto_pct = 0;
+    let desconto_label = null;
+    let _desconto_explicito = false;
     if (!removeDesconto) {
-      const mD = RE_DESCONTO.exec(texto) || RE_DESCONTO2.exec(texto);
-      if (mD) desconto_pct = parseFloat(mD[1].replace(",", "."));
+      const d = detectarPedidoDesconto(texto);
+      desconto_pct = d.pct;
+      desconto_label = d.label;
+      _desconto_explicito = d.explicito;
     }
 
     let estrategia = "auto";
@@ -568,7 +671,10 @@
       extras_diversos,
       extras_detectados: detSolta,
       desconto_pct,
-      desconto_label: null,
+      desconto_label,
+      _desconto_explicito,
+      modo: "completo",
+      preco_unitario_contrato: 0,
       estrategia,
       mostrar_precos_individuais: RE_PRECOS_IND.test(texto),
       _origem: "local",
@@ -680,6 +786,8 @@
     mesclarBriefing,
     enriquecerLinguagemNatural,
     detectarRemocaoDesconto,
+    detectarPedidoDesconto,
+    detectarPropostaAdicional,
     ehMensagemSoCorrecaoDesconto,
     norm,
     limpaItem,

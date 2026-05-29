@@ -100,15 +100,21 @@
     if (!parsed || !window.FlyingOrc || !window.FlyingDocx) return null;
     const qtd = contagemImagens(parsed);
     if (!qtd) return null;
+    const desc = {
+      externas: parsed.externas || [],
+      internas: parsed.internas || [],
+      plantas: parsed.plantas || [],
+    };
+    const desconto = parsed._desconto_explicito ? parsed.desconto_pct || 0 : 0;
     try {
-      const orc = window.FlyingOrc.orcarPelaPlanilha(
-        {
-          externas: parsed.externas || [],
-          internas: parsed.internas || [],
-          plantas: parsed.plantas || [],
-        },
-        parsed.desconto_pct || 0
-      );
+      let orc;
+      if (parsed.modo === "adicional" && parsed.cliente.empresa !== "CLIENTE") {
+        orc =
+          window.FlyingOrc.orcarPeloHistorico(parsed.cliente.empresa, desc, desconto, parsed) ||
+          window.FlyingOrc.orcarPelaPlanilha(desc, desconto);
+      } else {
+        orc = window.FlyingOrc.orcarPelaPlanilha(desc, desconto);
+      }
       return window.FlyingDocx.calcularTotaisInvestimento(orc, null);
     } catch (_) {
       return null;
@@ -124,7 +130,7 @@
     if (pct > 0) {
       return `
         <div class="briefing-finance">
-          <p class="briefing-finance-label">Estimativa · tabela padrão</p>
+          <p class="briefing-finance-label">Estimativa · ${parsed.modo === "adicional" ? "contrato/histórico" : "tabela padrão"}</p>
           <div class="briefing-finance-row">
             <span>Valor Total das Imagens</span>
             <strong>${brl(totais.subtotalImagens)}</strong>
@@ -139,7 +145,7 @@
 
     return `
       <div class="briefing-finance">
-        <p class="briefing-finance-label">Estimativa · tabela padrão</p>
+        <p class="briefing-finance-label">Estimativa · ${parsed.modo === "adicional" ? "contrato/histórico" : "tabela padrão"}</p>
         <div class="briefing-finance-row briefing-finance-row--destaque">
           <span>Investimento estimado</span>
           <strong class="briefing-finance-total">${brl(totais.valorFinal)}</strong>
@@ -168,7 +174,10 @@
     if (nExt) chips.push(`<span class="briefing-chip briefing-chip--ext">${nExt} ext.</span>`);
     if (nInt) chips.push(`<span class="briefing-chip briefing-chip--int">${nInt} int.</span>`);
     if (nPla) chips.push(`<span class="briefing-chip briefing-chip--pla">${nPla} plantas</span>`);
-    if (parsed.desconto_pct > 0) {
+    if (parsed.modo === "adicional") {
+      chips.push(`<span class="briefing-chip briefing-chip--adic">Adicional</span>`);
+    }
+    if (parsed.desconto_pct > 0 && parsed._desconto_explicito) {
       chips.push(`<span class="briefing-chip briefing-chip--desc">${parsed.desconto_pct}% desc.</span>`);
     }
 
@@ -216,6 +225,9 @@
       (parsed.internas && parsed.internas.length) +
       (parsed.plantas && parsed.plantas.length);
     let msg = `Entendi: **${c.empresa}** · projeto **${c.ref}** · A/C **${c.contato}**.`;
+    if (parsed.modo === "adicional") {
+      msg += " **Proposta adicional** — escopo só com o que você listou; preço do contrato/histórico.";
+    }
     if (parsed._remove_desconto) msg += " **Desconto removido** — proposta sem percentual de desconto.";
     if (nImg) msg += ` ${nImg} imagem(ns) na proposta.`;
     else if (!parsed._remove_desconto) msg += " Ainda não identifiquei imagens — informe quantidades ou liste os ambientes.";
@@ -241,7 +253,15 @@
     if (querIA) {
       try {
         const ia = await window.FlyingParserIA.interpretar(texto);
-        if (ia) novo = window.FlyingParser.mesclarBriefing(local, ia);
+        if (ia) {
+          if (ia.desconto_pct > 0 && !local._desconto_explicito) {
+            ia.desconto_pct = 0;
+            ia.desconto_label = null;
+            ia._desconto_explicito = false;
+          }
+          if (local._desconto_explicito) ia._desconto_explicito = true;
+          novo = window.FlyingParser.mesclarBriefing(local, ia);
+        }
       } catch (e) {
         console.warn("IA briefing:", e);
         local._avisos = local._avisos || [];

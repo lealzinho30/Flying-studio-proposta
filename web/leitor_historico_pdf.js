@@ -477,9 +477,30 @@
     if (r.media_externa) partes.push(`média externa R$${r.media_externa.toLocaleString("pt-BR")}`);
     if (r.media_servicos) partes.push(`média serviços R$${r.media_servicos.toLocaleString("pt-BR")}`);
     if (r.parcelas) partes.push(`${r.parcelas} parcela(s)`);
-    if (proposta.desconto_pct) partes.push(`desconto ${proposta.desconto_pct}%`);
+    if (proposta.desconto_pct) {
+      partes.push(`desconto ${proposta.desconto_pct}% no PDF (não aplicado — diga no chat se quiser)`);
+    }
     if (r.valor_final) partes.push(`total R$${r.valor_final.toLocaleString("pt-BR")}`);
     return partes.join(" · ");
+  }
+
+  /** Média unitária do contrato anterior (para propostas adicionais). */
+  function mediaUnitariaPreferida(proposta, parsed) {
+    if (!proposta || !proposta._resumo) return 0;
+    const r = proposta._resumo;
+    const nPla = (parsed && parsed.plantas && parsed.plantas.length) || 0;
+    const nInt = (parsed && parsed.internas && parsed.internas.length) || 0;
+    const nExt = (parsed && parsed.externas && parsed.externas.length) || 0;
+    if (nPla && r.media_planta) return r.media_planta;
+    if (nInt && r.media_interna) return r.media_interna;
+    if (nExt && r.media_externa) return r.media_externa;
+    if (r.media_servicos) return r.media_servicos;
+    const vals = [r.media_externa, r.media_interna, r.media_planta, r.media_servicos].filter(Boolean);
+    if (vals.length) return vals.reduce((a, b) => a + b, 0) / vals.length;
+    if (proposta.valor_final_projeto && r.itens > 0) {
+      return proposta.valor_final_projeto / r.itens;
+    }
+    return 0;
   }
 
   window.FlyingHistoricoPdf = {
@@ -499,5 +520,6 @@
     normEmpresa,
     propostaTemDados,
     parseClienteRef,
+    mediaUnitariaPreferida,
   };
 })();

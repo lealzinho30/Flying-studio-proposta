@@ -25,7 +25,9 @@ Regras:
 - Nomes de ambiente curtos, sem prefixo "Perspectiva" (o sistema adiciona depois).
 - empresa sempre MAIÚSCULAS; ref e contato em formato título.
 - estrategia: "planilha" se pedir tabela/planilha; "historico" se pedir histórico do cliente; senão "auto".
-- Ignore valores em R$, forma de pagamento e sinal — não entram no JSON.
+- Ignore valores em R$, forma de pagamento e sinal — não entram no JSON. Percentuais de parcelas (50% sinal, 50% entrega) NÃO são desconto.
+- desconto_pct: use valor > 0 SOMENTE se o usuário pedir desconto explicitamente (ex.: "10% de desconto"). Caso contrário sempre 0.
+- Proposta adicional / imagens adicionais / mesmo valor do contrato: liste só os itens mencionados; não invente escopo grande.
 - Se o usuário NEGAR desconto ("não pedi 12%", "sem desconto", "tirar desconto"), use desconto_pct: 0 e NÃO altere cliente/projeto/contato — mantenha empresa "CLIENTE" se não souber o nome.
 - Se faltar dado, use empresa "CLIENTE", ref "PROJETO", contato "—" e explique em avisos.`;
 

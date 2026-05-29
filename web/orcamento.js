@@ -154,18 +154,38 @@
     return out;
   }
 
-  function orcarPeloHistorico(empresa, descricoes, descontoPct) {
+  function precoUnitarioContrato(empresa, parsed) {
+    if (parsed && parsed.preco_unitario_contrato > 0) {
+      return Math.round(parsed.preco_unitario_contrato);
+    }
+    const hp = _historicoPdf();
+    if (hp && hp.mediaUnitariaPreferida) {
+      const m = hp.mediaUnitariaPreferida(_ultimaProposta(empresa), parsed);
+      if (m > 0) return Math.round(m);
+    }
+    const medias = mediasCategoria(empresa) || {};
+    const vals = Object.values(medias).filter((v) => v > 0);
+    if (vals.length) return Math.round(vals.reduce((a, b) => a + b, 0) / vals.length);
+    return null;
+  }
+
+  function orcarPeloHistorico(empresa, descricoes, descontoPct, parsed) {
     if (!_ultimaProposta(empresa)) return null;
     const tab = tabelaInferida(empresa) || { externas: {}, internas: {}, plantas: {} };
     const medias = mediasCategoria(empresa) || {};
     const orc = buildOrcamento("historico:" + empresa, descricoes, descontoPct);
+    const modoAdicional = parsed && parsed.modo === "adicional";
+    const precoFixo = modoAdicional ? precoUnitarioContrato(empresa, parsed) : null;
 
     for (const cat of ["externas", "internas", "plantas"]) {
       for (const desc of descricoes[cat] || []) {
         const chave = norm(desc);
         let preco = null, fonte = "";
 
-        if (tab[cat][chave] !== undefined) {
+        if (precoFixo !== null) {
+          preco = precoFixo;
+          fonte = `historico:${empresa}:contrato_unitario`;
+        } else if (tab[cat][chave] !== undefined) {
           preco = tab[cat][chave];
           fonte = `historico:${empresa}:item_exato`;
         }
@@ -193,9 +213,9 @@
     return orc;
   }
 
-  function comparar(empresa, descricoes, descontoPct) {
+  function comparar(empresa, descricoes, descontoPct, parsed) {
     const plan = orcarPelaPlanilha(descricoes, descontoPct);
-    const hist = orcarPeloHistorico(empresa, descricoes, descontoPct);
+    const hist = orcarPeloHistorico(empresa, descricoes, descontoPct, parsed);
     return { planilha: plan, historico: hist };
   }
 
