@@ -171,11 +171,13 @@
       /\b(?:imagens?|ilustracoes?|perspectivas?|plantas?)\s+adicionais?\b/.test(t) ||
       /\badicionais?\s+ao\s+projeto\b/.test(t) ||
       /\bproposta\s+adicional\b/.test(t) ||
+      /\bproposta\s+que\s+contempla\b/.test(t) ||
       /\bcomplemento\s+(?:ao|do)\s+(?:projeto|contrato)\b/.test(t) ||
       /\bmesmo\s+valor\s+(?:do\s+)?(?:contrato|projeto|fechado)\b/.test(t) ||
       /\bvalor\s+(?:unitario|medio)\s+(?:do\s+)?contrato\b/.test(t) ||
       /\bpreco\s+medio\b/.test(t) ||
-      /\bmesma\s+base\s+(?:de\s+)?preco\b/.test(t)
+      /\bmesma\s+base\s+(?:de\s+)?preco\b/.test(t) ||
+      (/\bpelo\s+valor\s+de\b/.test(t) && /\bperspectivas?\b/.test(t))
     );
   }
 
@@ -186,29 +188,45 @@
       /r\$\s*([\d.\s]+(?:,\d{1,2})?)\s*(?:por\s+imagem|cada|unit[aá]rio|na\s+media)/i,
       /(?:mesmo\s+valor|preco)\s+(?:de\s+)?r\$\s*([\d.\s]+(?:,\d{1,2})?)/i,
       /valor\s+(?:de\s+)?([\d.\s]+(?:,\d{1,2})?)\s*(?:por\s+imagem|cada)/i,
+      /pelo\s+valor\s+(?:de\s+)?([\d.\s]{3,12})/i,
+      /(?:no\s+)?valor\s+(?:de\s+)?([\d]{3,5})(?:[,.]\d{1,2})?\b/i,
     ];
     for (const re of padroes) {
       const m = t.match(re);
       if (m) {
-        const v = parseValorBr(m[1]);
+        const v = parseValorBr(String(m[1]).trim());
         if (v >= 80 && v < 100000) return Math.round(v);
       }
     }
     return 0;
   }
 
+  function aplicarPrecoContrato(texto, out) {
+    const pu = parsePrecoUnitarioContrato(texto);
+    if (pu <= 0) return;
+    out.preco_unitario_contrato = pu;
+    out._avisos = out._avisos || [];
+    if (!out._avisos.some((a) => /R\$\s*[\d.]/.test(a))) {
+      out._avisos.push(
+        `Valor informado: R$ ${pu.toLocaleString("pt-BR")} por imagem.`
+      );
+    }
+  }
+
   function aplicarModoAdicional(texto, out) {
-    if (!detectarPropostaAdicional(texto)) return;
+    const adicional = detectarPropostaAdicional(texto) || out.modo === "adicional";
+    if (!adicional) return;
     out.modo = "adicional";
     out.estrategia = "historico";
-    const pu = parsePrecoUnitarioContrato(texto);
     out._avisos = out._avisos || [];
-    if (pu > 0) {
-      out.preco_unitario_contrato = pu;
-      out._avisos.push(
-        `Proposta adicional: R$ ${pu.toLocaleString("pt-BR")} por imagem (valor do contrato informado).`
-      );
-    } else {
+    aplicarPrecoContrato(texto, out);
+    if (out.preco_unitario_contrato > 0) {
+      if (!out._avisos.some((a) => /proposta adicional/i.test(a))) {
+        out._avisos.push(
+          `Proposta adicional: R$ ${out.preco_unitario_contrato.toLocaleString("pt-BR")} por imagem.`
+        );
+      }
+    } else if (!out._avisos.some((a) => /pdf\/histórico/i.test(a))) {
       out._avisos.push(
         "Proposta adicional: preço virá do PDF/histórico (média do contrato). Liste só as imagens deste pedido."
       );
@@ -263,6 +281,93 @@
     return !c || c.empresa === "CLIENTE" || c.ref === "PROJETO";
   }
 
+  function ehLinhaMetaDescritiva(linha) {
+    return /é\s+o\s+nome\b|é\s+a\s+empresa\b|é\s+o\s+projeto\b|forma\s+de\s+pagamento\b|pagamento\s+ser[aá]\b|pagos?\s+aceite\b|pacot[aã]o\s+20\d{2}/i.test(
+      linha || ""
+    );
+  }
+
+  function empresaPareceInvalida(empresa) {
+    const e = (empresa || "").toUpperCase();
+    return (
+      !e ||
+      e === "CLIENTE" ||
+      /É\s+O\s+NOME|É\s+A\s+EMPRESA|NOME\s+DAS?\s+CLIENTE/.test(e) ||
+      e.length > 48
+    );
+  }
+
+  /** "empresa - integra projeto voluntarios da patria ac/ raquel chiara" */
+  function extrairLinhaEmpresaProjetoAc(t, out, avisos) {
+    const m =
+      t.match(
+        /\bempresa\s*[-–—:]\s*([a-záéíóúâêôãõç0-9][a-záéíóúâêôãõç0-9&.'-]*)\s+projeto\s+(.+?)\s+(?:a\/?c|ac)\s*[/:.]?\s*([a-záéíóúâêôãõç][a-záéíóúâêôãõç\s.'-]{2,45})/i
+      ) ||
+      t.match(
+        /\bempresa\s+([a-záéíóúâêôãõç0-9][a-záéíóúâêôãõç0-9&.'-]{2,30}?)\s+projeto\s+(.+?)\s+(?:a\/?c|ac)\s*[/:.]?\s*([a-záéíóúâêôãõç][a-záéíóúâêôãõç\s.'-]{2,45})/i
+      );
+    if (!m) return false;
+    out.cliente.empresa = empresaFormatada(m[1]);
+    out.cliente.ref = tituloCase(m[2].replace(/\s+e\s+aos.*$/i, "").trim());
+    out.cliente.contato = tituloCase(m[3].trim());
+    avisos.push("Empresa, projeto e A/C interpretados do texto.");
+    return true;
+  }
+
+  /** "raquel chiara é o nome da cliente" → sempre A/C (pessoa), nunca substitui empresa */
+  function extrairNomeExplicito(t, out, avisos) {
+    const m = t.match(
+      /(?:^|[\s,])([a-záéíóúâêôãõç][\w\s.'-]{2,45}?)\s+é\s+o\s+nome\s+(?:d[ao]s?\s+)?(?:cliente|clientes|a\/c|contato)\b/i
+    );
+    if (!m) return false;
+    const nome = tituloCase(m[1].trim());
+    out.cliente.contato = nome;
+    out._atualizou_ac = true;
+    avisos.push(`A/C atualizado: ${nome}.`);
+    return true;
+  }
+
+  function extrairPerspectivasSimples(t, out, avisos) {
+    const m =
+      t.match(/\b(?:contempla|comtempla|com|inclui)\s+(\d{1,2})\s+perspectivas?\s+([a-záéíóúâêôãõç0-9][a-záéíóúâêôãõç0-9\s-]{2,45})/i) ||
+      t.match(/\b(\d{1,2})\s+perspectivas?\s+([a-záéíóúâêôãõç0-9][a-záéíóúâêôãõç0-9\s-]{2,45})/i) ||
+      t.match(/\b(\d{1,2})\s+perspectiva\s+([a-záéíóúâêôãõç0-9][a-záéíóúâêôãõç0-9\s-]{2,45})/i);
+    if (!m) return false;
+    const qtd = Math.min(99, parseInt(m[1], 10) || 1);
+    let amb = m[2].trim().replace(/\s+p(?:or|elo)\s+.*$/i, "").replace(/[,.]$/, "");
+    amb = tituloCase(amb);
+    const cat = /\bexterna/i.test(t) ? "externas" : "internas";
+    if (out[cat] && out[cat].length) return false;
+    out[cat] = qtd === 1 ? [amb] : gerarListaPlaceholder(qtd, amb);
+    avisos.push(`${qtd} perspectiva(s) ${cat}: ${amb}.`);
+    if (!out.modo || out.modo === "completo") {
+      out.modo = "adicional";
+      out.estrategia = "historico";
+    }
+    return true;
+  }
+
+  function briefingLocalSuficiente(p) {
+    if (!p) return false;
+    const nImg =
+      (p.externas && p.externas.length) +
+      (p.internas && p.internas.length) +
+      (p.plantas && p.plantas.length);
+    const temCli = p.cliente.empresa !== "CLIENTE" && !empresaPareceInvalida(p.cliente.empresa);
+    const temRef = p.cliente.ref && p.cliente.ref !== "PROJETO";
+    const temAc = p.cliente.contato && p.cliente.contato !== "—";
+    if (nImg > 0 && temCli) return true;
+    if (temCli && temRef && temAc) return true;
+    if (temCli && temRef && nImg > 0) return true;
+    if (p.modo === "adicional" && nImg > 0 && p.preco_unitario_contrato > 0) {
+      return true;
+    }
+    if (p.modo === "adicional" && temCli && (nImg > 0 || p.preco_unitario_contrato > 0)) {
+      return true;
+    }
+    return false;
+  }
+
   function extrairRotulosCompactos(t, out, avisos) {
     const mSeq = t.match(
       /\bcliente\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9][A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9\s&.'-]{1,40}?)\s+projeto\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9][A-ZÁÉÍÓÚÂÊÔÃÕÇ0-9\s&.'-]{1,50}?)\s+(?:a\/?c|ac)\s+([A-ZÁÉÍÓÚÂÊÔÃÕÇ][A-ZÁÉÍÓÚÂÊÔÃÕÇa-záéíóúâêôãõç\s.'-]{1,40}?)(?=\s+planta\b|\s+valor\b|\s+externas?\b|\s+internas?\b|$)/i
@@ -310,6 +415,13 @@
     const t = texto || "";
     const avisos = out._avisos || [];
 
+    if (empresaPareceInvalida(out.cliente.empresa)) {
+      out.cliente.empresa = "CLIENTE";
+    }
+
+    extrairNomeExplicito(t, out, avisos);
+    extrairLinhaEmpresaProjetoAc(t, out, avisos);
+    extrairPerspectivasSimples(t, out, avisos);
     extrairRotulosCompactos(t, out, avisos);
     extrairPlantasTextoCorrido(t, out, avisos);
 
@@ -467,7 +579,20 @@
       out.plantas = uni("plantas");
     }
 
-    if (novo.cliente.empresa !== "CLIENTE") out.cliente.empresa = novo.cliente.empresa;
+    const corrigeSoAc =
+      !!(novo._atualizou_ac && novo.cliente.contato !== "—") ||
+      (novo.cliente.contato !== "—" &&
+        norm(novo.cliente.contato) === norm(novo.cliente.empresa) &&
+        anterior.cliente.empresa !== "CLIENTE" &&
+        !empresaPareceInvalida(anterior.cliente.empresa));
+
+    if (
+      novo.cliente.empresa !== "CLIENTE" &&
+      !empresaPareceInvalida(novo.cliente.empresa) &&
+      !corrigeSoAc
+    ) {
+      out.cliente.empresa = novo.cliente.empresa;
+    }
     if (novo.cliente.ref !== "PROJETO") out.cliente.ref = novo.cliente.ref;
     if (novo.cliente.contato !== "—") out.cliente.contato = novo.cliente.contato;
     if (novo._remove_desconto) {
@@ -507,6 +632,7 @@
     }
     enriquecerLinguagemNatural(textoOrig, out);
     aplicarModoAdicional(textoOrig, out);
+    if (!out.preco_unitario_contrato) aplicarPrecoContrato(textoOrig, out);
     if (!out.externas.length && !out.internas.length && !out.plantas.length &&
         !(out.tour_virtual && out.tour_virtual.length)) {
       const det = detectarExtrasSoltos(textoOrig, {
@@ -519,9 +645,12 @@
       if (det.length) out.extras_detectados = det;
     }
     const av = out._avisos || [];
-    if (!out.externas.length && !out.internas.length && !out.plantas.length) {
-      const idx = av.findIndex((a) => a.includes("Não consegui identificar nenhuma seção"));
-      if (idx >= 0) av.splice(idx, 1);
+    const temImg =
+      out.externas.length || out.internas.length || out.plantas.length;
+    if (temImg) {
+      for (let i = av.length - 1; i >= 0; i -= 1) {
+        if (/Não consegui identificar nenhuma seção/.test(av[i])) av.splice(i, 1);
+      }
     }
     out._avisos = av;
     out._origem = "conversacional";
@@ -613,7 +742,7 @@
         if (mAny && !bloq.has(mAny[1])) {
           cliente = mAny[1].trim();
           avisos.push(`Cliente não foi marcado explicitamente — assumi '${cliente}' (palavra em CAPS no texto).`);
-        } else if (primeira && primeira.length < 60) {
+        } else if (primeira && primeira.length < 60 && !ehLinhaMetaDescritiva(primeira)) {
           cliente = primeira;
           avisos.push(`Cliente não foi marcado explicitamente — assumi '${cliente}' (1ª linha).`);
         }
@@ -660,11 +789,12 @@
       avisos.push("Não consegui identificar nenhuma seção (Externas/Internas/Plantas/Tour Virtual/Filmes/Apps). Use cabeçalhos tipo 'Externas:' seguidos da lista.");
     }
 
+    const empresaFmt = empresaFormatada(cliente);
     return {
       cliente: {
-        empresa: cliente || "CLIENTE",
-        ref: ref || "PROJETO",
-        contato: contato || "—",
+        empresa: empresaPareceInvalida(empresaFmt) ? "CLIENTE" : empresaFmt,
+        ref: ref ? tituloCase(ref) : "PROJETO",
+        contato: contato ? tituloCase(contato) : "—",
       },
       externas, internas, plantas,
       tour_virtual, filmes, apps, drone,
@@ -788,6 +918,7 @@
     detectarRemocaoDesconto,
     detectarPedidoDesconto,
     detectarPropostaAdicional,
+    briefingLocalSuficiente,
     ehMensagemSoCorrecaoDesconto,
     norm,
     limpaItem,

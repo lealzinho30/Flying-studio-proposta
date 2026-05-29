@@ -226,13 +226,25 @@
       (parsed.plantas && parsed.plantas.length);
     let msg = `Entendi: **${c.empresa}** · projeto **${c.ref}** · A/C **${c.contato}**.`;
     if (parsed.modo === "adicional") {
-      msg += " **Proposta adicional** — escopo só com o que você listou; preço do contrato/histórico.";
+      msg += " **Proposta adicional** — escopo só com o que você listou.";
+      if (parsed.preco_unitario_contrato > 0) {
+        msg += ` Valor: **R$ ${parsed.preco_unitario_contrato.toLocaleString("pt-BR")}**/imagem.`;
+      } else {
+        msg += " Preço do contrato/histórico.";
+      }
     }
     if (parsed._remove_desconto) msg += " **Desconto removido** — proposta sem percentual de desconto.";
     if (nImg) msg += ` ${nImg} imagem(ns) na proposta.`;
     else if (!parsed._remove_desconto) msg += " Ainda não identifiquei imagens — informe quantidades ou liste os ambientes.";
     if (opts && opts.ia) msg += " _(interpretado com IA)_";
-    const av = (parsed._avisos || []).filter((a) => !/interpretado|lidos do texto/i.test(a));
+    else if (opts && opts.iaIndisponivel) {
+      msg += "\n\n_Interpretação local (a IA está sem cota no momento — o briefing foi montado pelo sistema)._";
+    }
+    const av = (parsed._avisos || []).filter(
+      (a) =>
+        !/interpretado|lidos do texto|quota|generativelanguage|API_KEY|exceeded your current/i.test(a) &&
+        !/^IA:/i.test(a)
+    );
     if (av.length) msg += `\n\n_${av.slice(0, 2).join(" ")}_`;
     return msg;
   }
@@ -244,12 +256,17 @@
       window.FlyingParser &&
       window.FlyingParser.ehMensagemSoCorrecaoDesconto &&
       window.FlyingParser.ehMensagemSoCorrecaoDesconto(texto);
+    const localOk =
+      window.FlyingParser.briefingLocalSuficiente &&
+      window.FlyingParser.briefingLocalSuficiente(local);
+
     const querIA =
       !soCorrecao &&
+      !localOk &&
       window.FlyingParserIA &&
-      (window.FlyingParserIA.pareceConversacional(texto) ||
-        (local.cliente.empresa === "CLIENTE" && !local.internas.length && !local.externas.length));
+      window.FlyingParserIA.pareceConversacional(texto);
 
+    let iaIndisponivel = false;
     if (querIA) {
       try {
         const ia = await window.FlyingParserIA.interpretar(texto);
@@ -261,19 +278,20 @@
           }
           if (local._desconto_explicito) ia._desconto_explicito = true;
           novo = window.FlyingParser.mesclarBriefing(local, ia);
+        } else {
+          iaIndisponivel = true;
         }
       } catch (e) {
         console.warn("IA briefing:", e);
-        local._avisos = local._avisos || [];
-        if (!/indisponível|503|API_KEY/i.test(e.message)) {
-          local._avisos.push(`IA: ${e.message} — usei interpretação local.`);
-        }
+        iaIndisponivel = true;
         novo = local;
       }
     }
+    const merged = window.FlyingParser.mesclarBriefing(baseAnterior, novo);
     return {
-      parsed: window.FlyingParser.mesclarBriefing(baseAnterior, novo),
+      parsed: merged,
       usouIa: !!(novo && novo._origem === "ia"),
+      iaIndisponivel: iaIndisponivel && !localOk,
     };
   }
 
@@ -361,14 +379,14 @@
 
     let usouIa = false;
     try {
-      const { parsed, usouIa: iaFlag } = await interpretarMensagem(t, baseAnterior);
+      const { parsed, usouIa: iaFlag, iaIndisponivel } = await interpretarMensagem(t, baseAnterior);
       usouIa = iaFlag;
       parsedAtual = parsed;
       if ($("descricao") && parsedAtual) {
         $("descricao").value = window.FlyingParser.serializar(parsedAtual);
       }
       mensagens.pop();
-      const resp = respostaAssistente(parsedAtual, { ia: usouIa });
+      const resp = respostaAssistente(parsedAtual, { ia: usouIa, iaIndisponivel });
       mensagens.push({
         role: "assistant",
         text: resp.replace(/\*\*/g, "").replace(/_/g, ""),

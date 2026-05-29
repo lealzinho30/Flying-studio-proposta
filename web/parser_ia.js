@@ -32,8 +32,10 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const msg = data.erro || res.statusText;
-        if (res.status === 503) return null;
+        const msg = String(data.erro || res.statusText || "");
+        if (res.status === 503 || res.status === 429 || /quota|rate limit|exceeded/i.test(msg)) {
+          return null;
+        }
         throw new Error(msg);
       }
       return data.parsed || null;
