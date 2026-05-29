@@ -287,6 +287,27 @@
     );
   }
 
+  /** Frase só descreve imagem/ambiente — não é nome de cliente. */
+  function ehMensagemSoEscopo(texto) {
+    const t = norm(texto);
+    if (!t || t.length > 220) return false;
+    if (/\b(?:cliente|empresa)\s*[=:]/i.test(texto)) return false;
+    if (/(?:^|\n)\s*cliente\s*:/im.test(texto)) return false;
+    const temImagem =
+      /\b(?:perspectivas?|plantas?|ilustra[cç][oõ]es?|imagens?|render|fachada|vista)\b/i.test(t);
+    if (!temImagem) return false;
+    if (
+      /\b(?:apenas|somente|s[oó]|uma|um|\d{1,2})\s+(?:(?:uma|um)\s+)?(?:perspectivas?|plantas?)\b/i.test(
+        t
+      )
+    ) {
+      return true;
+    }
+    if (/\bperspectivas?\s+(?:da|de|do|das|dos)\s+\w/i.test(t)) return true;
+    if (/\b(?:apenas|somente|s[oó])\s+(?:a\s+)?[a-záéíóú]{4,}/i.test(t) && temImagem) return true;
+    return false;
+  }
+
   function empresaPareceInvalida(empresa) {
     const e = (empresa || "").toUpperCase();
     return (
@@ -294,9 +315,23 @@
       e === "CLIENTE" ||
       /^PROJETO\s*=/.test(e) ||
       /^=\s/.test(e) ||
+      /^(?:APENAS|SOMENTE|UMA|UM|SO|UMA PERSPECTIVA)$/.test(e) ||
+      /^APENAS\s/.test(e) ||
+      /\bPERSPECTIVA\b/.test(e) ||
       /É\s+O\s+NOME|É\s+A\s+EMPRESA|NOME\s+DAS?\s+CLIENTE/.test(e) ||
       /DESENVOLVIMENTO|ITENS\s+ACIMA|OR[CÇ]AMENTO\s+ANTERIOR|DESCRI(?:TO|ÇÃO)/.test(e) ||
       e.length > 48
+    );
+  }
+
+  function refPareceInvalida(ref) {
+    const r = (ref || "").toUpperCase();
+    return (
+      !r ||
+      r === "PROJETO" ||
+      /^=\s/.test(r) ||
+      /^(?:UMA PERSPECTIVA|UMA PLANTA|PERSPECTIVA)$/.test(r) ||
+      /\bPERSPECTIVA\b/.test(r)
     );
   }
 
@@ -348,9 +383,35 @@
     return mudou;
   }
 
+  /** "apenas uma perspectiva da brinquedoteca" → 1 interna Brinquedoteca */
+  function extrairPerspectivaAmbiente(t, out, avisos) {
+    if (!/\bperspectivas?\b|\bplantas?\b/i.test(t)) return false;
+    let m = t.match(
+      /\b(?:apenas|somente|s[oó])?\s*(?:uma|um|\d{1,2})?\s*(?:perspectivas?|plantas?)\s+(?:da|de|do|das|dos)\s+([a-záéíóúâêôãõç][a-záéíóúâêôãõç0-9\s-]{2,45}?)(?=\s*$|[,.])/i
+    );
+    if (!m) {
+      m = t.match(
+        /\b(?:apenas|somente|s[oó])\s+(?:a\s+)?([a-záéíóúâêôãõç][a-záéíóúâêôãõç0-9\s-]{3,45}?)(?=\s*$|[,.])/i
+      );
+    }
+    if (!m) return false;
+    let amb = tituloCase(m[1].trim().replace(/^(?:da|de|do)\s+/i, ""));
+    if (!amb || amb.length < 3) return false;
+    const cat = /\bplantas?\b/i.test(t) && !/\bperspectivas?\b/i.test(t) ? "plantas" : "internas";
+    if (out[cat] && out[cat].length) return false;
+    out[cat] = [amb];
+    out._somente_escopo = true;
+    avisos.push(`1 ${cat === "plantas" ? "planta" : "perspectiva"}: ${amb}.`);
+    return true;
+  }
+
   /** "Integra voluntarios da patria raquel chiara" → empresa + ref + A/C */
   function extrairEmpresaProjetoNomeCorrido(t, out, avisos) {
     const s = (t || "").trim();
+    if (ehMensagemSoEscopo(s)) return false;
+    if (/^\s*(?:apenas|somente|s[oó]|uma|um|\d+)\b/i.test(s) && /\bperspectivas?\b/i.test(s)) {
+      return false;
+    }
     if (/\b(?:projeto|cliente|empresa|ref)\s*=/i.test(s)) return false;
     if (/\d+\s+perspectivas?|\bpelo\s+valor\b/i.test(s)) return false;
     const partes = s.split(/\s+/).filter(Boolean);
@@ -490,6 +551,10 @@
       out.cliente.empresa = "CLIENTE";
     }
 
+    if (extrairPerspectivaAmbiente(t, out, avisos)) {
+      out._avisos = avisos;
+      return out;
+    }
     extrairAtribuicoesIgual(t, out, avisos);
     extrairNomeExplicito(t, out, avisos);
     extrairLinhaEmpresaProjetoAc(t, out, avisos);
@@ -662,8 +727,10 @@
       !!novo._somente_meta_cliente ||
       (novo.cliente.empresa === "CLIENTE" &&
         (novo.cliente.ref !== "PROJETO" || novo.cliente.contato !== "—"));
+    const novoSoEscopo = !!novo._somente_escopo;
 
     if (
+      !novoSoEscopo &&
       novo.cliente.empresa !== "CLIENTE" &&
       !empresaPareceInvalida(novo.cliente.empresa) &&
       !corrigeSoAc &&
@@ -671,11 +738,13 @@
     ) {
       out.cliente.empresa = novo.cliente.empresa;
     }
-    if (novo.cliente.ref !== "PROJETO") {
+    if (!novoSoEscopo && novo.cliente.ref !== "PROJETO") {
       const refLimpa = tituloCase(limparValorAtribuido(novo.cliente.ref));
-      if (refLimpa && !empresaPareceInvalida(refLimpa)) out.cliente.ref = refLimpa;
+      if (refLimpa && !refPareceInvalida(refLimpa)) out.cliente.ref = refLimpa;
     }
-    if (novo.cliente.contato !== "—") out.cliente.contato = novo.cliente.contato;
+    if (!novoSoEscopo && novo.cliente.contato !== "—") {
+      out.cliente.contato = novo.cliente.contato;
+    }
     if (novo._remove_desconto) {
       out.desconto_pct = 0;
       out.desconto_label = null;
@@ -711,7 +780,16 @@
         out._avisos.push("Desconto removido conforme sua mensagem.");
       }
     }
+    if (ehMensagemSoEscopo(textoOrig)) {
+      out.cliente = { empresa: "CLIENTE", ref: "PROJETO", contato: "—" };
+      out._somente_escopo = true;
+      out._avisos = (out._avisos || []).filter((a) => !/assumi.*cliente/i.test(a));
+    }
     enriquecerLinguagemNatural(textoOrig, out);
+    if (out._somente_escopo) {
+      out.cliente = { empresa: "CLIENTE", ref: "PROJETO", contato: "—" };
+      out._avisos = (out._avisos || []).filter((a) => !/interpretados do texto/i.test(a));
+    }
     aplicarModoAdicional(textoOrig, out);
     if (!out.preco_unitario_contrato) aplicarPrecoContrato(textoOrig, out);
     if (!out.externas.length && !out.internas.length && !out.plantas.length &&
@@ -802,7 +880,7 @@
     let ref = mRef ? mRef[1].trim().replace(/[.;,]+$/, "") : "";
     let contato = mCon ? mCon[1].trim().replace(/[.;,]+$/, "") : "";
 
-    if (!cliente && !soCorrecaoDesconto) {
+    if (!cliente && !soCorrecaoDesconto && !ehMensagemSoEscopo(texto)) {
       const primeira = texto.split(/\r?\n/, 1)[0].trim();
       const linhaSoMeta = /^\s*(?:projeto|ref|empreendimento|a\/?c|contato)\s*=/i.test(primeira);
       const mCaps =
