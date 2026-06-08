@@ -293,10 +293,151 @@
     );
   }
 
+  /** "avita thiago perspectiva de fachada …" — cliente + escopo na mesma mensagem */
+  function ehMensagemBriefingMisto(texto) {
+    if (!/\bperspe(?:ctiva)?s?\b/i.test(texto || "")) return false;
+    const idx = texto.search(/\bperspe(?:ctiva)?s?\b/i);
+    const prefix = texto.slice(0, idx).trim();
+    return prefixoPareceCliente(prefix);
+  }
+
+  function normalizarAmbientePerspectiva(raw) {
+    const s = limpaItem(raw);
+    const n = norm(s);
+    const map = {
+      facha: "Fachada",
+      fachada: "Fachada",
+      fotomantagem: "Fotomontagem",
+      fotomontagem: "Fotomontagem",
+      living: "Living",
+      brinquedoteca: "Brinquedoteca",
+      portaria: "Portaria",
+      lobby: "Lobby",
+      gourmet: "Gourmet",
+      suite: "Suíte",
+      fotomont: "Fotomontagem",
+    };
+    if (map[n]) return map[n];
+    return tituloCase(s);
+  }
+
+  function rotuloPerspectiva(ambiente) {
+    const a = (ambiente || "").trim();
+    if (/^perspectiva\s/i.test(a)) return tituloCase(a);
+    return `Perspectiva ${a}`;
+  }
+
+  function inferirCategoriaAmbiente(nome) {
+    const n = norm(nome);
+    if (
+      /fachada|fotomont|portaria|playground|piscina|jardim|extern|terrace|terraco|voo|bird|quadra|bicicletario|solarium|redario/i.test(
+        n
+      )
+    ) {
+      return "externas";
+    }
+    if (/planta|implanta|humaniz|tipo\s+[a-d]|mosca/i.test(n)) return "plantas";
+    return "internas";
+  }
+
+  function extrairPerspectivasListaCorrida(t, out, avisos) {
+    if (!/\bperspe(?:ctiva)?s?\b/i.test(t)) return false;
+
+    const achados = [];
+    const vistos = new Set();
+
+    function add(raw) {
+      const amb = normalizarAmbientePerspectiva(raw);
+      const key = norm(amb);
+      if (!amb || amb.length < 3 || vistos.has(key)) return;
+      if (/^(?:de|da|do|das|dos|a|b|c|d|e|f|g|h)$/i.test(amb)) return;
+      vistos.add(key);
+      achados.push({ amb, cat: inferirCategoriaAmbiente(amb) });
+    }
+
+    let m;
+    const reDe = /\bperspe(?:ctiva)?s?\s+(?:de\s+|da\s+|do\s+)?([a-záéíóúâêôãõç][a-záéíóúâêôãõç0-9-]*)/gi;
+    while ((m = reDe.exec(t)) !== null) add(m[1]);
+
+    const reCap = /\bPerspectiva\s+([A-Za-záéíóúâêôãõç][a-záéíóúâêôãõç0-9-]{3,30})/g;
+    while ((m = reCap.exec(t)) !== null) add(m[1]);
+
+    const reAbrev = /\bperspe\s+([a-záéíóúâêôãõç]{4,30})\b/gi;
+    while ((m = reAbrev.exec(t)) !== null) add(m[1]);
+
+    if (!achados.length) return false;
+
+    for (const { amb, cat } of achados) {
+      const label = rotuloPerspectiva(amb);
+      if (!out[cat]) out[cat] = [];
+      if (!out[cat].some((x) => norm(x) === norm(label))) out[cat].push(label);
+    }
+    avisos.push(`${achados.length} perspectiva(s) identificada(s) no texto.`);
+    return true;
+  }
+
+  function prefixoPareceCliente(prefix) {
+    const partes = (prefix || "").split(/\s+/).filter(Boolean);
+    if (partes.length < 2) return false;
+    if (/^(?:apenas|somente|mais|quero|preciso|faltam?|uma|um|\d+)$/i.test(partes[0])) {
+      return false;
+    }
+    return partes[0].length >= 3;
+  }
+
+  function extrairClientePrefixoPerspectivas(t, out, avisos) {
+    const idx = t.search(/\bperspe(?:ctiva)?s?\b/i);
+    if (idx < 0) return false;
+    const prefix = t.slice(0, idx).trim();
+    if (!prefixoPareceCliente(prefix)) return false;
+    const partes = prefix.split(/\s+/).filter(Boolean);
+
+    const empresa = partes[0];
+    if (empresa.length < 3 || /^(?:perspectiva|cliente|projeto|empresa)$/i.test(empresa)) {
+      return false;
+    }
+
+    if (partes.length >= 3) {
+      const contato = partes[partes.length - 1];
+      let ref = partes.slice(1, -1).join(" ");
+      if (
+        partes.length >= 4 &&
+        /^francisto$/i.test(partes[1]) &&
+        /^polito$/i.test(partes[2])
+      ) {
+        ref = "Francisco Polito";
+      }
+      out.cliente.empresa = empresaFormatada(empresa);
+      out.cliente.ref = tituloCase(ref);
+      out.cliente.contato = tituloCase(contato);
+      avisos.push(
+        `Cliente ${out.cliente.empresa}, projeto ${out.cliente.ref} e A/C ${out.cliente.contato} lidos do texto.`
+      );
+      return true;
+    }
+
+    out.cliente.empresa = empresaFormatada(empresa);
+    out.cliente.ref = tituloCase(partes[1] || "PROJETO");
+    avisos.push(`Cliente ${out.cliente.empresa} e projeto lidos do texto.`);
+    return true;
+  }
+
+  function extrairBriefingCorridoCompleto(t, out, avisos) {
+    if (!/\bperspe(?:ctiva)?s?\b/i.test(t)) return false;
+    if (textoTemSecoesEstruturadas(t)) return false;
+
+    const temPersp = extrairPerspectivasListaCorrida(t, out, avisos);
+    if (prefixoPareceCliente(t.slice(0, t.search(/\bperspe(?:ctiva)?s?\b/i)).trim())) {
+      extrairClientePrefixoPerspectivas(t, out, avisos);
+    }
+    return temPersp && (ehMensagemBriefingMisto(t) || ehMensagemSoEscopo(t));
+  }
+
   /** Frase sobre escopo (imagens/ambientes) — não altera cliente/projeto/A/C. */
   function ehMensagemSoEscopo(texto) {
     const t = norm(texto);
     if (!t || t.length > 420) return false;
+    if (ehMensagemBriefingMisto(texto)) return false;
     if (/\b(?:cliente|empresa)\s*[=:]/i.test(texto)) return false;
     if (/(?:^|\n)\s*cliente\s*:/im.test(texto)) return false;
     if (/\b(?:cliente|empresa|projeto)\s+(?:é|eh|ser[aá])\b/i.test(t)) return false;
@@ -598,6 +739,12 @@
         /\b(?:apenas|somente|s[oó]|mais)\s+(?:a\s+)?([a-záéíóúâêôãõç][a-záéíóúâêôãõç0-9\s-]{3,45}?)(?=\s*$|[,.])/i
       );
     }
+    if (!m && /\bperspe(?:ctiva)?s?\b/i.test(t)) {
+      if (extrairPerspectivasListaCorrida(t, out, avisos)) {
+        marcarSomenteEscopo(out);
+        return true;
+      }
+    }
     if (m && m[1]) {
       const raw = m[1].trim().replace(/^(?:da|de|do)\s+/i, "");
       if (/\s+e\s+/i.test(raw)) {
@@ -797,6 +944,10 @@
 
     const estruturado = textoTemSecoesEstruturadas(t);
 
+    if (!estruturado && extrairBriefingCorridoCompleto(t, out, avisos)) {
+      out._avisos = avisos;
+      return out;
+    }
     if (extrairEscopoImagens(t, out, avisos)) {
       out._avisos = avisos;
       return out;
@@ -1362,6 +1513,7 @@
     detectarPropostaAdicional,
     briefingLocalSuficiente,
     ehMensagemSoEscopo,
+    ehMensagemBriefingMisto,
     textoTemSecoesEstruturadas,
     aplicarRemocaoEscopo,
     empresaPareceInvalida,

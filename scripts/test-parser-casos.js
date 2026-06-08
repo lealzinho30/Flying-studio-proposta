@@ -26,7 +26,10 @@ const casos = [
     nome: "escopo perspectiva brinquedoteca",
     run() {
       const m = merge(baseIntegra(), "apenas uma perspectiva da brinquedoteca");
-      return m.cliente.empresa === "INTEGRA" && m.internas.includes("Brinquedoteca");
+      return (
+        m.cliente.empresa === "INTEGRA" &&
+        m.internas.some((x) => /brinquedoteca/i.test(x))
+      );
     },
   },
   {
@@ -103,6 +106,31 @@ Internas:
         "internas:\n- Suite\n- Gourmet\n- Lobby"
       );
       return m.internas.length >= 3;
+    },
+  },
+  {
+    nome: "briefing corrido avita perspectivas",
+    run() {
+      const p = FP.parseConversacional(
+        "avita francisto polito thiago perspectiva de fachada A Perspectiva de facha B Perspectiva fotomantagem perspectiva living perspe brinquedoteca"
+      );
+      return (
+        p.cliente.empresa === "AVITA" &&
+        /francisco\s+polito/i.test(p.cliente.ref) &&
+        p.cliente.contato === "Thiago" &&
+        p.externas.length >= 2 &&
+        p.internas.length >= 2 &&
+        !p._somente_escopo
+      );
+    },
+  },
+  {
+    nome: "lista perspectivas sem quantidade",
+    run() {
+      const p = FP.parseConversacional(
+        "perspectiva de portaria perspectiva de playground perspectiva academia"
+      );
+      return p.externas.length >= 2 && p.internas.length >= 1;
     },
   },
 ];

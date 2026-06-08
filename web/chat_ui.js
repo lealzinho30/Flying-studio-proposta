@@ -235,9 +235,14 @@
     }
     if (parsed._remove_desconto) msg += " **Desconto removido** — proposta sem percentual de desconto.";
     if (nImg) {
+      const det = [];
+      if (parsed.externas && parsed.externas.length) det.push(`${parsed.externas.length} externa(s)`);
+      if (parsed.internas && parsed.internas.length) det.push(`${parsed.internas.length} interna(s)`);
+      if (parsed.plantas && parsed.plantas.length) det.push(`${parsed.plantas.length} planta(s)`);
+      const detStr = det.length ? ` (${det.join(", ")})` : "";
       msg += parsed._somente_escopo
-        ? ` **Escopo:** ${nImg} imagem(ns) adicionada(s) — cliente e projeto mantidos.`
-        : ` ${nImg} imagem(ns) na proposta.`;
+        ? ` **Escopo:** ${nImg} imagem(ns)${detStr} — cliente e projeto mantidos.`
+        : ` **${nImg} imagem(ns)**${detStr} na proposta.`;
     } else if (!parsed._remove_desconto) {
       msg += " Ainda não identifiquei imagens — informe quantidades ou liste os ambientes.";
     }
