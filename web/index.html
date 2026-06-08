@@ -160,6 +160,20 @@
             <div id="escopo-tecnologias-grid" class="escopo-tecnologias-grid"></div>
           </details>
 
+          <details class="panel panel-fold" id="timbrado-bloco" open>
+            <summary class="panel-fold-head">
+              <span class="panel-title">Papel timbrado</span>
+              <span class="panel-desc">Word com cabeçalho/rodapé Flying</span>
+            </summary>
+            <p class="fold-note">Escolha o <strong>.docx</strong> salvo no seu computador — sem Git, sem Python.</p>
+            <input type="file" id="arquivo-timbrado" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
+            <button type="button" class="tool-btn tool-btn-block" id="btn-timbrado-local">
+              📄 Usar meu papel timbrado (.docx)
+            </button>
+            <p class="timbrado-status" id="timbrado-local-status"></p>
+            <button type="button" class="btn-text hidden" id="btn-timbrado-padrao">Voltar ao timbrado do site</button>
+          </details>
+
           <details class="panel panel-fold" id="historico-word">
             <summary class="panel-fold-head">
               <span class="panel-title">Downloads recentes</span>
@@ -246,15 +260,15 @@
   <script src="data.js?v=20260527q"></script>
   <script src="parser.js?v=20260602d"></script>
   <script src="parser_ia.js?v=20260602a"></script>
-  <script src="chat_ui.js?v=20260602a"></script>
+  <script src="chat_ui.js?v=20260602d"></script>
   <script src="escopo_tecnologias.js?v=20260527q"></script>
   <script src="leitor_historico_pdf.js?v=20260602b"></script>
   <script src="orcamento.js?v=20260530d"></script>
-  <script src="docx_timbrado.js?v=20260528d"></script>
+  <script src="docx_timbrado.js?v=20260602e"></script>
   <script src="docx_gen.js?v=20260602c"></script>
   <script src="historico_downloads.js?v=20260527q"></script>
   <script src="leitor_arquivo.js?v=20260527q"></script>
   <script src="analisador_plantas.js?v=20260527q"></script>
-  <script src="app.js?v=20260602b"></script>
+  <script src="app.js?v=20260602e"></script>
 </body>
 </html>

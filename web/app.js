@@ -955,5 +955,53 @@
       }
     });
   }
+  function atualizarUiTimbradoLocal() {
+    const status = $("timbrado-local-status");
+    const btnPadrao = $("btn-timbrado-padrao");
+    const hp = window.FlyingTimbrado;
+    if (!status || !hp) return;
+    if (hp.timbradoCustomSalvo && hp.timbradoCustomSalvo()) {
+      status.innerHTML = `<span class="upload-ok">✓ Ativo: <strong>${hp.nomeTimbradoAtivo()}</strong></span>`;
+      if (btnPadrao) btnPadrao.classList.remove("hidden");
+    } else {
+      status.innerHTML = `<span class="upload-aviso">Usando timbrado padrão do site. Clique acima para trocar.</span>`;
+      if (btnPadrao) btnPadrao.classList.add("hidden");
+    }
+  }
+
+  async function handleTimbradoLocal(e) {
+    const file = e.target.files && e.target.files[0];
+    const status = $("timbrado-local-status");
+    if (!file || !window.FlyingTimbrado) return;
+    status.innerHTML = `<span class="upload-loading">⏳ Lendo <strong>${file.name}</strong>…</span>`;
+    try {
+      await window.FlyingTimbrado.salvarTimbradoLocal(file);
+      status.innerHTML = `<span class="upload-ok">✓ Timbrado salvo: <strong>${file.name}</strong>. A próxima proposta Word usará este arquivo.</span>`;
+      atualizarUiTimbradoLocal();
+    } catch (err) {
+      status.innerHTML = `<span class="upload-erro">❌ ${err.message}</span>`;
+    }
+    e.target.value = "";
+  }
+
+  const btnTimbrado = $("btn-timbrado-local");
+  const inpTimbrado = $("arquivo-timbrado");
+  const btnTimbradoPadrao = $("btn-timbrado-padrao");
+  if (btnTimbrado && inpTimbrado) {
+    btnTimbrado.addEventListener("click", () => inpTimbrado.click());
+    inpTimbrado.addEventListener("change", handleTimbradoLocal);
+  }
+  if (btnTimbradoPadrao) {
+    btnTimbradoPadrao.addEventListener("click", () => {
+      if (window.FlyingTimbrado) window.FlyingTimbrado.limparTimbradoLocal();
+      atualizarUiTimbradoLocal();
+      const status = $("timbrado-local-status");
+      if (status) {
+        status.innerHTML = `<span class="upload-aviso">Voltou ao timbrado padrão do site.</span>`;
+      }
+    });
+  }
+  atualizarUiTimbradoLocal();
+
   renderHistoricoDownloads();
 })();
