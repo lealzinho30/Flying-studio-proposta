@@ -74,13 +74,13 @@
   const TAM = 20; // half-points → 10 pt (modelo Word)
   const HIGHLIGHT = "yellow";
 
-  // Modelo Word: depois 10 pt, entrelinhas múltiplo 1,15, justificado.
+  // Espaçamento Word (twips = 1/20 pt). Leitura respirada — não usar entrelinha 1,0.
   const SP = {
-    corpo: 200,
-    linha: 276,
-    tituloSec: 200,
-    entreSecoes: 200,
-    bullet: 200,
+    corpo: 220, // ~11 pt depois de cada parágrafo (faixa 10–12)
+    linha: 312, // múltiplo ~1,30 (faixa 1,25–1,35 × base 240)
+    tituloSec: 240, // ~12 pt entre título e 1º parágrafo (faixa 10–14)
+    antesSecao: 500, // ~25 pt antes de novo título/seção (faixa 22–28)
+    bullet: 220,
     prazoRecuo: 360,
   };
 
@@ -180,11 +180,13 @@
 
   function secaoHeading(numero, titulo, opts = {}) {
     const { AlignmentType } = window.docx;
+    const antes =
+      opts.before !== undefined ? opts.before : SP.antesSecao;
     return P(`${numero} — ${titulo}`, {
       bold: true,
       size: TAM,
       after: SP.tituloSec,
-      before: opts.before ?? 0,
+      before: antes,
       alignment: AlignmentType.LEFT,
       semJustificar: true,
     });
@@ -278,7 +280,7 @@
     const nomeCliente = (cliente.empresa || "CLIENTE").toUpperCase();
 
     partes.push(P(`São Paulo, ${dataExtenso(data)}.`, {
-      before: SP.entreSecoes,
+      before: SP.antesSecao,
       after: SP.corpo,
       semJustificar: true,
       alignment: AlignmentType.LEFT,
@@ -308,26 +310,27 @@
     return [
       P("PROPOSTA DE IMAGENS, FILMES E TECNOLOGIAS 3D", cab),
       P(`${emp} – REF: ${ref}`, cab),
-      P(`A/C: ${contato}`, { ...cab, after: SP.entreSecoes }),
+      P(`A/C: ${contato}`, { ...cab, after: 0 }),
     ].filter(Boolean);
   }
 
   function paragrafoApresentacaoInicial() {
+    const estilo = { line: SP.linha, after: SP.corpo };
     const partes = [];
     partes.push(PRich([
       R("Nascemos para dar forma ao invisível", { bold: true }),
       R(" – Em 9 de maio de 2011, a Flying Studio nasceu com a missão de transformar projetos em experiências visuais que comunicam arquitetura, paisagismo e decoração com clareza e emoção. Como diz o provérbio, "),
       R("uma imagem vale mais do que mil palavras", { italics: true, underline: true }),
       R("."),
-    ]));
+    ], estilo));
     partes.push(PRich([
       R("Muito além das perspectivas", { bold: true }),
       R(" – Esse sempre foi o nosso lema e, ao longo dos anos, evoluímos para sermos a ponte entre a ideia e a materialização do empreendimento. Desenvolvemos filmes, tours virtuais e tecnologias 3D que elevam o lançamento imobiliário e fortalecem a narrativa de cada projeto."),
-    ]));
+    ], estilo));
     partes.push(PRich([
       R("Nossa evolução foi um despertar", { bold: true }),
       R(" – A arte sempre será o nosso core, mas hoje integramos imagens, filmes e experiências digitais em um hub criativo. Do D.brave à Realidade Aumentada, das Salas Imersivas aos filmes cinematográficos, ajudamos incorporadoras e arquitetos a transformar empreendimentos em cases de sucesso."),
-    ], { after: SP.entreSecoes }));
+    ], estilo));
     return partes;
   }
 
@@ -458,7 +461,7 @@
       children.push(PRich([
         R(brl(valorFinal), { bold: true }),
         R(` (${extenso(valorFinal)})`, {}),
-      ], { after: SP.entreSecoes }));
+      ], { after: SP.corpo }));
     }
 
     if (extras && extras.length) {
@@ -469,7 +472,11 @@
       }
     }
 
-    children.push(tituloBloco("FORMA DE PAGAMENTO:", { underline: true, before: SP.entreSecoes, after: SP.corpo }));
+    children.push(tituloBloco("FORMA DE PAGAMENTO:", {
+      underline: true,
+      before: SP.antesSecao,
+      after: SP.tituloSec,
+    }));
     const fp = formaPagamento || [
       { percentual: 50, marco: "Na aprovação desta Proposta" },
       { percentual: 25, marco: "Envio dos Shades" },
@@ -479,7 +486,7 @@
       children.push(linhaPctPagamento(parc.percentual, parc.marco));
     }
 
-    children.push(secaoHeading("3", "PRAZOS / SOLICITAÇÕES / CONSIDERAÇÕES / ENTREGAS", { before: SP.entreSecoes }));
+    children.push(secaoHeading("3", "PRAZOS / SOLICITAÇÕES / CONSIDERAÇÕES / ENTREGAS"));
 
     const pr = prazos || {
       shades: "20 (Vinte) dias",
@@ -492,7 +499,7 @@
     children.push(PRich([
       R("OBS: ", { bold: true }),
       R("Os prazos passam a contar após o recebimento de todos os projetos, informações e aprovações de etapas para o desenvolvimento de cada item. Não iniciamos os trabalhos sem o DWG e as aprovações necessárias desta proposta."),
-    ], { after: SP.entreSecoes }));
+    ], { after: SP.corpo }));
 
     children.push(PRich([
       R("SOLICITAÇÕES: ", { bold: true }),
@@ -520,7 +527,11 @@
       "Descrição ou book de mobiliários",
     ]));
 
-    children.push(P("CONSIDERAÇÕES IMAGENS:", { bold: true, before: SP.entreSecoes, after: SP.corpo }));
+    children.push(P("CONSIDERAÇÕES IMAGENS:", {
+      bold: true,
+      before: SP.antesSecao,
+      after: SP.tituloSec,
+    }));
     const consideracoes = [
       ["Etapas e Tiros de Aprovação", "Esta proposta contempla o envio inicial do tiro de Shade, seguido do tiro de apresentação denominado \u201CR00\u201D. Estão inclusas no escopo 03 (três) rodadas de revisões, denominadas \u201CR01\u201D, \u201CR02\u201D e \u201CR03\u201D, culminando na entrega final denominada \u201CHR\u201D (High Resolution)."],
       ["Ajustes Finos e Adicionais", "A partir do tiro \u201CR00\u201D, as rodadas seguintes consistem exclusivamente em ajustes finos. A partir de um eventual quarto tiro de apresentação (\u201CR04\u201D), será cobrado um adicional de 25% do valor da imagem por tiro extra solicitado, bem como quaisquer tiros adicionais solicitados após a entrega do HR."],
@@ -542,7 +553,11 @@
       }
     }
 
-    children.push(P("ENTREGA FINAL:", { bold: true, before: SP.entreSecoes, after: SP.corpo }));
+    children.push(P("ENTREGA FINAL:", {
+      bold: true,
+      before: SP.antesSecao,
+      after: SP.tituloSec,
+    }));
     const entregas = [
       ["Formato e Envio", "Todo o material finalizado será enviado digitalmente via servidor FTP, link seguro para download ou cadastrados no Frame.io/Adobe."],
       ["Resolução das Imagens Estáticas", "As imagens finais (\u201CHR\u201D) serão entregues com 6000px no lado maior a 300dpi. Após a entrega do HR, o projeto é considerado concluído. Caso surja a necessidade de novas configurações nessa etapa, ficamos à disposição para avaliar e orçar as alterações como um novo serviço."],
