@@ -299,23 +299,29 @@ def _limpar_corpo(doc: Document) -> None:
 def _setup_header(doc):
     section = doc.sections[0]
     header = section.header
-    # Limpa parágrafo padrão
     for el in list(header._element):
         header._element.remove(el)
 
-    p_logo = header.add_paragraph()
-    p_logo.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    p_logo.paragraph_format.space_after = Pt(2)
-    if LOGO_PATH.exists():
-        run = p_logo.add_run()
-        run.add_picture(str(LOGO_PATH), width=Cm(3.5))
+    banner_path = Path(__file__).resolve().parents[1] / "web" / "assets" / "flying_header_banner.png"
+    p_banner = header.add_paragraph()
+    p_banner.paragraph_format.space_after = Pt(6)
+    if banner_path.exists():
+        run = p_banner.add_run()
+        run.add_picture(str(banner_path), width=Cm(17.5))
     else:
-        _run(p_logo, "FLYING studio", bold=True, size=14, color=COR_PRIMARIA)
-
-    # Linha fina
-    p_linha = header.add_paragraph()
-    p_linha.paragraph_format.space_after = Pt(0)
-    _add_horizontal_line(p_linha, color=HEX_PRIMARIA, size=6)
+        p_left = header.add_paragraph()
+        _run(p_left, "G R U P O   F L Y I N G", size=9, color=COR_TEXTO_SOFT)
+        p_logo = header.add_paragraph()
+        p_logo.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+        p_logo.paragraph_format.space_after = Pt(2)
+        if LOGO_PATH.exists():
+            run = p_logo.add_run()
+            run.add_picture(str(LOGO_PATH), width=Cm(3.5))
+        else:
+            _run(p_logo, "FLYING studio", bold=True, size=14, color=COR_PRIMARIA)
+        p_linha = header.add_paragraph()
+        p_linha.paragraph_format.space_after = Pt(0)
+        _add_horizontal_line(p_linha, color=HEX_PRIMARIA, size=6)
 
 
 def _setup_footer(doc):
@@ -342,16 +348,25 @@ def _setup_footer(doc):
     p_bdr.append(top)
     p_pr.append(p_bdr)
 
-    p_site = footer.add_paragraph()
-    p_site.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    p_site.paragraph_format.space_after = Pt(2)
-    _run(p_site, "www.flyingstudio.com.br", bold=True, size=9, color=COR_PRIMARIA)
+    p_marcas = footer.add_paragraph()
+    p_marcas.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    p_marcas.paragraph_format.space_after = Pt(4)
+    _run(p_marcas, "FLYING studio", bold=True, size=8, color=COR_PRIMARIA)
+    _run(p_marcas, "  |  www.flyingstudio.com.br     ", size=8, color=COR_TEXTO_SOFT)
+    _run(p_marcas, "RINNO FILMS", bold=True, size=8, color=COR_TEXTO)
+    _run(p_marcas, "  |  www.rinnofilms.com.br     ", size=8, color=COR_TEXTO_SOFT)
+    _run(p_marcas, "nid.studio", bold=True, size=8, color=COR_TEXTO)
+    _run(p_marcas, "  |  www.nidstudio.com.br", size=8, color=COR_TEXTO_SOFT)
 
     p_end = footer.add_paragraph()
     p_end.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p_end.paragraph_format.space_after = Pt(0)
-    _run(p_end, "Av. Eng. Luís Carlos Berrini, 936, 7º andar  ·  Novo Brooklin, São Paulo  ·  Telefone: (11) 2351-4138",
-         size=8, color=COR_TEXTO_SOFT)
+    _run(
+        p_end,
+        "AV. Engenheiro Luis Carlos Berrini, 936 - 7 andar - Itaim Bibi, São Paulo - SP, 04571-000  |  Telefone - (11) 2351-4138",
+        size=7,
+        color=COR_TEXTO_SOFT,
+    )
 
 
 # ---------- componentes ----------

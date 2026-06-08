@@ -1,5 +1,5 @@
-// Geração do DOCX no navegador (docx.js) — layout Flying_Cliente_AnexoI_R00
-// Modelo: PROPOSTA… / CLIENTE·PROJETO / A/C. · tabelas 2.x contínuas · investimento · seção 3 única
+// Geração do DOCX no navegador (docx.js) — modelo Flying 2026 (sem tabelas)
+// PROPOSTA… / CLIENTE - REF / A/C: · listas por categoria · investimento · seção 3 única
 
 (function () {
   "use strict";
@@ -90,11 +90,21 @@
     right: 1417,
   };
 
-  const TBL = {
-    fillSecao: "9484C4",
-    margem: { top: 10, bottom: 10, left: 50, right: 50 },
-    col: { item: 12, desc: 56, val: 32 },
+  const TITULOS_INVEST = {
+    "ILUSTRAÇÕES EXTERNAS": "Ilustrações Externas",
+    "ILUSTRAÇÕES INTERNAS": "Ilustrações Internas",
+    "IMPLANTAÇÕES/PLANTAS HUMANIZADAS": "Plantas Humanizadas",
   };
+
+  function tituloInvestimentoDisplay(titulo) {
+    const t = (titulo || "").trim();
+    if (TITULOS_INVEST[t]) return TITULOS_INVEST[t];
+    return t
+      .toLowerCase()
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(" ");
+  }
 
   function P(texto, opts = {}) {
     const { TextRun, Paragraph, UnderlineType } = window.docx;
@@ -231,50 +241,34 @@
     return partes.filter(Boolean);
   }
 
-  function tblBorda() {
-    const { BorderStyle } = window.docx;
-    return { style: BorderStyle.SINGLE, size: 4, color: "000000" };
-  }
-
-  function tblCell(texto, opts = {}) {
-    const { TableCell, Paragraph, TextRun, WidthType, ShadingType, AlignmentType } = window.docx;
-    const b = tblBorda();
-    const runs = opts.runs || [
-      new TextRun({
-        text: texto || "",
-        bold: !!opts.bold,
-        size: opts.size ?? TAM,
-        color: opts.color || COR.texto,
-        font: FONTE,
-        highlight: opts.highlight ? HIGHLIGHT : undefined,
-      }),
-    ];
-    return new TableCell({
-      width: opts.width ? { size: opts.width, type: WidthType.PERCENTAGE } : undefined,
-      columnSpan: opts.colSpan,
-      shading: opts.fill ? { type: ShadingType.CLEAR, color: "auto", fill: opts.fill } : undefined,
-      verticalAlign: "center",
-      margins: TBL.margem,
-      borders: { top: b, bottom: b, left: b, right: b },
-      children: [
-        new Paragraph({
-          alignment: opts.align || AlignmentType.LEFT,
-          spacing: { before: 0, after: 0, line: 220 },
-          children: runs,
-        }),
-      ],
-    });
-  }
-
   function cabecalhoProposta(cliente) {
     const emp = (cliente.empresa || "CLIENTE").toUpperCase();
     const ref = (cliente.ref || "PROJETO").toUpperCase();
     const contato = (cliente.contato || "—").trim();
     return [
       P("PROPOSTA DE IMAGENS, FILMES E TECNOLOGIAS 3D", { bold: true, after: SP.corpo }),
-      P(`${emp} — REF: ${ref}`, { bold: true, after: SP.corpo }),
-      P(`A/C. ${contato}`, { bold: true, after: SP.entreSecoes }),
+      P(`${emp} - REF: ${ref}`, { bold: true, after: SP.corpo }),
+      P(`A/C: ${contato}`, { bold: true, after: SP.entreSecoes }),
     ].filter(Boolean);
+  }
+
+  function paragrafoApresentacaoInicial() {
+    const partes = [];
+    partes.push(PRich([
+      R("Nascemos para dar forma ao invisível", { bold: true }),
+      R(" — transformando projetos em experiências visuais que comunicam arquitetura, paisagismo e decoração. Como diz o provérbio, "),
+      R("uma imagem vale mais do que mil palavras", { italics: true, underline: true }),
+      R("."),
+    ], { after: SP.corpo }));
+    partes.push(PRich([
+      R("Muito além das perspectivas", { bold: true }),
+      R(", desenvolvemos filmes, tours virtuais e tecnologias 3D que elevam o lançamento imobiliário e fortalecem a narrativa de cada empreendimento."),
+    ], { after: SP.corpo }));
+    partes.push(PRich([
+      R("Nossa evolução foi um despertar", { bold: true }),
+      R(": hoje integramos imagens, filmes e experiências digitais em um hub criativo que une Flying Studio, RINNO FILMS e NID STUDIO."),
+    ], { after: SP.entreSecoes }));
+    return partes;
   }
 
   function coletarSubsecoesInvestimento(orc, extrasEstruturados) {
@@ -285,8 +279,9 @@
       if (!categoria || !categoria.qtd) return;
       secaoNum += 1;
       blocos.push({
-        numero: `2.${secaoNum}`,
+        numero: secaoNum,
         titulo,
+        tituloDisplay: tituloInvestimentoDisplay(titulo),
         linhas: categoria.itens.map((it) => it.descricao_normalizada),
         qtd: categoria.qtd,
         total: categoria.total,
@@ -314,8 +309,9 @@
           const titulo = (sub.rotulo_secao || sub.rotulo_curto || "SERVIÇO").toUpperCase();
           const itens = (sub.itens && sub.itens.length) ? sub.itens : [sub.rotulo_curto || titulo];
           blocos.push({
-            numero: `2.${secaoNum}`,
+            numero: secaoNum,
             titulo,
+            tituloDisplay: tituloInvestimentoDisplay(titulo),
             linhas: itens,
             qtd: itens.length,
             total: sub.preco,
@@ -327,46 +323,22 @@
     return blocos;
   }
 
-  function precoCelula(bloco) {
-    if (bloco.sem_preco) return "A DEFINIR";
-    return brl(bloco.total);
-  }
-
-  function linhasSubsecaoTabela(bloco) {
-    const { TableRow, AlignmentType } = window.docx;
-    const W = TBL.col;
-    const rows = [];
-
-    rows.push(new TableRow({
-      children: [
-        tblCell(`${bloco.numero} ${bloco.titulo}`, { colSpan: 3, fill: TBL.fillSecao, bold: true }),
-      ],
+  function blocoInvestimentoLista(bloco) {
+    const partes = [];
+    partes.push(P(`${bloco.numero}. ${bloco.tituloDisplay}`, {
+      bold: true,
+      after: SP.bullet,
+      before: bloco.numero > 1 ? SP.corpo : 0,
     }));
-    rows.push(new TableRow({
-      children: [
-        tblCell("Itens", { width: W.item, align: AlignmentType.CENTER }),
-        tblCell("Descrição dos Serviços", { width: W.desc, colSpan: 2, align: AlignmentType.CENTER }),
-      ],
-    }));
-
-    bloco.linhas.forEach((desc, idx) => {
-      rows.push(new TableRow({
-        children: [
-          tblCell(`${bloco.numero}.${idx + 1}`, { width: W.item, align: AlignmentType.CENTER }),
-          tblCell(desc, { width: W.desc, colSpan: 2 }),
-        ],
-      }));
-    });
-
-    rows.push(new TableRow({
-      children: [
-        tblCell(String(bloco.qtd), { width: W.item, align: AlignmentType.CENTER }),
-        tblCell("Valor Total", { width: W.desc, bold: true }),
-        tblCell(precoCelula(bloco), { width: W.val, bold: true, align: AlignmentType.RIGHT }),
-      ],
-    }));
-
-    return rows;
+    for (const desc of bloco.linhas) {
+      partes.push(bulletSimples(desc));
+    }
+    if (bloco.sem_preco) {
+      partes.push(P("Valor total: A DEFINIR", { bold: true, after: SP.corpo }));
+    } else {
+      partes.push(P(`Valor total: ${valorNumerico(bloco.total)}`, { bold: true, after: SP.corpo }));
+    }
+    return partes;
   }
 
   function calcularTotaisInvestimento(orc, extrasEstruturados) {
@@ -378,71 +350,6 @@
     const descontoValor = subtotalImagens * (descontoPct / 100);
     const valorFinal = subtotalImagens - descontoValor + totalExtras;
     return { subtotalImagens, totalExtras, subtotal, descontoPct, descontoValor, valorFinal };
-  }
-
-  function linhasTotaisFinaisTabela(qtdImagens, qtdExtras, totais) {
-    const { TableRow, AlignmentType } = window.docx;
-    const W = TBL.col;
-    const { valorFinal, descontoPct, subtotalImagens, totalExtras } = totais;
-    const rows = [];
-
-    if (descontoPct > 0) {
-      if (subtotalImagens > 0) {
-        rows.push(new TableRow({
-          children: [
-            tblCell(String(qtdImagens), { width: W.item, align: AlignmentType.CENTER }),
-            tblCell("Valor Total das Imagens", { width: W.desc, bold: true }),
-            tblCell(brl(subtotalImagens), {
-              width: W.val, bold: true, align: AlignmentType.RIGHT,
-            }),
-          ],
-        }));
-      }
-      if (totalExtras > 0) {
-        rows.push(new TableRow({
-          children: [
-            tblCell(String(qtdExtras), { width: W.item, align: AlignmentType.CENTER }),
-            tblCell("Valor Total", { width: W.desc, bold: true }),
-            tblCell(brl(totalExtras), {
-              width: W.val, bold: true, align: AlignmentType.RIGHT,
-            }),
-          ],
-        }));
-      }
-      rows.push(new TableRow({
-        children: [
-          tblCell(`Valor Total com ${descontoPct}% de Desconto = ${brl(valorFinal)}`, {
-            colSpan: 3, bold: true, align: AlignmentType.CENTER,
-          }),
-        ],
-      }));
-    } else {
-      // Sem desconto: só o total do projeto (cada subseção já tem seu "Valor Total").
-      rows.push(new TableRow({
-        children: [
-          tblCell(`Valor Total do Projeto = ${brl(valorFinal)}`, {
-            colSpan: 3, bold: true, align: AlignmentType.CENTER,
-          }),
-        ],
-      }));
-    }
-
-    return rows;
-  }
-
-  function tabelaInvestimentosContinua(blocos, qtdImagens, qtdExtras, totais) {
-    const { Table, WidthType } = window.docx;
-    const rows = [];
-    for (const bloco of blocos) rows.push(...linhasSubsecaoTabela(bloco));
-    if (blocos.length) {
-      rows.push(...linhasTotaisFinaisTabela(qtdImagens, qtdExtras, totais));
-    }
-    if (!rows.length) return null;
-    return new Table({
-      width: { size: 100, type: WidthType.PERCENTAGE },
-      rows,
-      margins: { top: 0, bottom: 0 },
-    });
   }
 
   async function gerarDocxBlob({
@@ -465,20 +372,20 @@
     cabecalhoProposta(cliente).forEach((p) => children.push(p));
 
     children.push(secaoHeading("1", "APRESENTAÇÃO FLYING STUDIO"));
-    children.push(P(
-      "A Flying Studio presta serviços de computação gráfica e tecnologias que se aplicam aos lançamentos imobiliários e remanescentes. Em nosso atendimento diário, desenvolvemos laços com projeto e auxiliamos em layout, estudos de projetos e fachadas, de decoração e paisagismo de acordo com cada necessidade.",
-      { after: SP.corpo }
-    ));
-    children.push(P(
-      "Para projetos de arquitetura, decoração e paisagismo, consulte a NID STUDIO.",
-      { italics: true, after: SP.entreSecoes }
-    ));
+    paragrafoApresentacaoInicial().forEach((p) => children.push(p));
 
     children.push(secaoHeading("2", "ITENS A SEREM DESENVOLVIDOS / INVESTIMENTOS:"));
-    const tblInvest = tabelaInvestimentosContinua(
-      blocosInvest, qtdImagens, qtdExtras, totais
-    );
-    if (tblInvest) children.push(tblInvest);
+    for (const bloco of blocosInvest) {
+      blocoInvestimentoLista(bloco).forEach((p) => children.push(p));
+    }
+
+    if (descontoPct > 0 && blocosInvest.length) {
+      children.push(PRich([
+        R(`Desconto de ${descontoPct}% aplicado sobre imagens`, { bold: true }),
+        R(` (${descontoLabel || `${descontoPct}%`}): `),
+        R(`-${brl(descontoValor)}`, { bold: true }),
+      ], { after: SP.corpo }));
+    }
 
     if (blocosInvest.length) {
       children.push(tituloBloco("INVESTIMENTO PARA O DESENVOLVIMENTOS DOS ITENS ACIMA DESCRITOS:", {
@@ -517,7 +424,7 @@
       revisoes: "10 (Dez) dias para contemplar e enviar novos tiros",
     };
     children.push(bulletRotulo("Shades", pr.shades));
-    children.push(bulletRotulo("1º Tiro de Apresentação", pr.primeiro_tiro));
+    children.push(bulletRotulo("1º Tiro", pr.primeiro_tiro));
     children.push(bulletRotulo("Revisões", pr.revisoes));
     children.push(PRich([
       R("OBS: ", { bold: true }),
@@ -541,7 +448,15 @@
       ["Cancelamento", "Em caso de descontinuidade e cancelamento do produto ou lançamento por qualquer motivo por parte da Contratante, considera-se justa e devida a quitação integral do saldo previsto nesta proposta."],
       ["Direitos de Uso", "A Contratada cede à Contratante os direitos de uso das imagens produzidas para uso promocional em todo o seu material publicitário, única e exclusivamente vinculadas ao empreendimento contratado, não havendo débitos/atrasos financeiros."],
     ];
-    for (const [titulo, texto] of consideracoes) children.push(bulletRotulo(titulo, texto));
+    for (const [titulo, texto] of consideracoes) {
+      children.push(bulletRotulo(titulo, texto));
+      if (titulo === "Mecânica de Apontamentos") {
+        children.push(P(
+          "Para garantir agilidade e facilitar o processo de adaptação, sugerimos a visualização do guia prático em vídeo de como realizar revisões dentro da plataforma.",
+          { italics: true, underline: true, indent: { left: 360 }, after: SP.bullet }
+        ));
+      }
+    }
 
     children.push(P("ENTREGA FINAL:", { bold: true, before: SP.entreSecoes, after: SP.corpo }));
     const entregas = [

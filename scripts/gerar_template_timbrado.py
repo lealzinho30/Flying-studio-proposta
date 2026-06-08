@@ -19,7 +19,16 @@ DESTINOS = [
 
 
 def main() -> int:
+    from docx.shared import Cm
+
     doc = Document()
+    sec = doc.sections[0]
+    sec.top_margin = Cm(2.8)
+    sec.bottom_margin = Cm(2.5)
+    sec.left_margin = Cm(2.5)
+    sec.right_margin = Cm(2.5)
+    sec.header_distance = Cm(0.8)
+    sec.footer_distance = Cm(0.6)
     _setup_header(doc)
     _setup_footer(doc)
     doc.add_paragraph("")
