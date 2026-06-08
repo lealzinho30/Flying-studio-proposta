@@ -165,11 +165,16 @@
               <span class="panel-title">Papel timbrado</span>
               <span class="panel-desc">Word com cabeçalho/rodapé Flying</span>
             </summary>
-            <p class="fold-note">Escolha o <strong>.docx</strong> salvo no seu computador — sem Git, sem Python.</p>
+            <p class="fold-note">Arraste o <strong>.docx</strong> aqui ou clique no botão — sem Git, sem Python.</p>
             <input type="file" id="arquivo-timbrado" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" hidden>
-            <button type="button" class="tool-btn tool-btn-block" id="btn-timbrado-local">
-              📄 Usar meu papel timbrado (.docx)
-            </button>
+            <div class="timbrado-drop-zone" id="timbrado-drop-zone" tabindex="0" role="button" aria-label="Arrastar ou escolher papel timbrado docx">
+              <p class="timbrado-drop-icone" aria-hidden="true">📄</p>
+              <p class="timbrado-drop-titulo">Arraste o timbrado .docx aqui</p>
+              <p class="timbrado-drop-sub">ou clique para escolher na pasta</p>
+              <button type="button" class="tool-btn tool-btn-block" id="btn-timbrado-local">
+                Escolher arquivo
+              </button>
+            </div>
             <p class="timbrado-status" id="timbrado-local-status"></p>
             <button type="button" class="btn-text hidden" id="btn-timbrado-padrao">Voltar ao timbrado do site</button>
           </details>
@@ -269,6 +274,6 @@
   <script src="historico_downloads.js?v=20260527q"></script>
   <script src="leitor_arquivo.js?v=20260527q"></script>
   <script src="analisador_plantas.js?v=20260527q"></script>
-  <script src="app.js?v=20260602e"></script>
+  <script src="app.js?v=20260602f"></script>
 </body>
 </html>

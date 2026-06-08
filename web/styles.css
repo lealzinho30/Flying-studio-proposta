@@ -1113,6 +1113,51 @@ code {
   margin-top: 0.35rem;
 }
 
+.timbrado-drop-zone {
+  margin-top: 10px;
+  padding: 16px 14px;
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  text-align: center;
+  background: var(--off-white, #f9f9fc);
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+  cursor: pointer;
+}
+.timbrado-drop-zone:focus-visible {
+  outline: 2px solid var(--primary, #7c5cff);
+  outline-offset: 2px;
+}
+.timbrado-drop-zone--over {
+  border-color: var(--primary, #7c5cff);
+  background: rgba(124, 92, 255, 0.06);
+  box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.12);
+}
+.timbrado-drop-icone {
+  margin: 0 0 6px;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+.timbrado-drop-titulo {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.timbrado-drop-sub {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.timbrado-drop-zone .tool-btn-block {
+  margin-top: 0;
+  pointer-events: auto;
+}
+.timbrado-status {
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .hist-parcelas {
   margin: 0;
   padding-left: 18px;

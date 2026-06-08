@@ -969,10 +969,20 @@
     }
   }
 
-  async function handleTimbradoLocal(e) {
-    const file = e.target.files && e.target.files[0];
+  function arquivoTimbradoValido(file) {
+    if (!file) return false;
+    return /\.docx$/i.test(file.name) || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  }
+
+  async function processarTimbradoArquivo(file) {
     const status = $("timbrado-local-status");
     if (!file || !window.FlyingTimbrado) return;
+    if (!arquivoTimbradoValido(file)) {
+      if (status) {
+        status.innerHTML = `<span class="upload-erro">❌ Use um arquivo <strong>.docx</strong> (Word).</span>`;
+      }
+      return;
+    }
     status.innerHTML = `<span class="upload-loading">⏳ Lendo <strong>${file.name}</strong>…</span>`;
     try {
       await window.FlyingTimbrado.salvarTimbradoLocal(file);
@@ -981,16 +991,80 @@
     } catch (err) {
       status.innerHTML = `<span class="upload-erro">❌ ${err.message}</span>`;
     }
+  }
+
+  async function handleTimbradoLocal(e) {
+    const file = e.target.files && e.target.files[0];
+    await processarTimbradoArquivo(file);
     e.target.value = "";
   }
 
-  const btnTimbrado = $("btn-timbrado-local");
+  function setupTimbradoDragDrop() {
+    const zona = $("timbrado-drop-zone");
+    const inpTimbrado = $("arquivo-timbrado");
+    const btnTimbrado = $("btn-timbrado-local");
+    if (!zona) return;
+
+    let dragDepth = 0;
+
+    function setOver(on) {
+      zona.classList.toggle("timbrado-drop-zone--over", on);
+    }
+
+    zona.addEventListener("click", (ev) => {
+      if (ev.target.closest("#btn-timbrado-local")) return;
+      if (inpTimbrado) inpTimbrado.click();
+    });
+
+    if (btnTimbrado && inpTimbrado) {
+      btnTimbrado.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        inpTimbrado.click();
+      });
+    }
+
+    zona.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" || ev.key === " ") {
+        ev.preventDefault();
+        if (inpTimbrado) inpTimbrado.click();
+      }
+    });
+
+    zona.addEventListener("dragenter", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      dragDepth += 1;
+      setOver(true);
+    });
+    zona.addEventListener("dragover", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      setOver(true);
+    });
+
+    zona.addEventListener("dragleave", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) setOver(false);
+    });
+
+    zona.addEventListener("drop", async (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      dragDepth = 0;
+      setOver(false);
+      const file = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+      await processarTimbradoArquivo(file);
+    });
+  }
+
   const inpTimbrado = $("arquivo-timbrado");
   const btnTimbradoPadrao = $("btn-timbrado-padrao");
-  if (btnTimbrado && inpTimbrado) {
-    btnTimbrado.addEventListener("click", () => inpTimbrado.click());
+  if (inpTimbrado) {
     inpTimbrado.addEventListener("change", handleTimbradoLocal);
   }
+  setupTimbradoDragDrop();
   if (btnTimbradoPadrao) {
     btnTimbradoPadrao.addEventListener("click", () => {
       if (window.FlyingTimbrado) window.FlyingTimbrado.limparTimbradoLocal();
