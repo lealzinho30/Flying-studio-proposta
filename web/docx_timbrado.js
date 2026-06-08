@@ -108,27 +108,65 @@
     } catch (_) {}
   }
 
-  function salvarTimbradoLocal(file) {
-    return new Promise((resolve, reject) => {
-      if (!file || !/\.docx$/i.test(file.name)) {
-        reject(new Error("Use um arquivo .docx (Word)."));
-        return;
+  /** Aceita .docx mesmo sem extensão no nome; rejeita .doc (Word antigo) com mensagem clara. */
+  async function validarTimbradoArquivo(file) {
+    if (!file || !file.size) {
+      throw new Error("Nenhum arquivo recebido. Arraste de novo ou use «Escolher arquivo».");
+    }
+    const buf = await file.arrayBuffer();
+    if (buf.byteLength < 200) throw new Error("Arquivo vazio ou corrompido.");
+
+    const u8 = new Uint8Array(buf.slice(0, 8));
+    const isZip = u8[0] === 0x50 && u8[1] === 0x4b;
+    const isDocOle = u8[0] === 0xd0 && u8[1] === 0xcf;
+
+    if (!isZip) {
+      if (
+        isDocOle ||
+        /\.doc$/i.test(file.name) ||
+        file.type === "application/msword"
+      ) {
+        throw new Error(
+          "Este arquivo é Word antigo (.doc). Abra no Word → Arquivo → Salvar como → tipo «Word (.docx)» → envie o .docx de novo."
+        );
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        try {
-          const dataUrl = reader.result || "";
-          const b64 = String(dataUrl).split(",")[1];
-          if (!b64) throw new Error("Arquivo vazio ou inválido.");
-          localStorage.setItem(STORAGE_B64, b64);
-          localStorage.setItem(STORAGE_NOME, file.name);
-          resolve(file.name);
-        } catch (err) {
-          reject(err);
-        }
-      };
-      reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
-      reader.readAsDataURL(file);
+      throw new Error(
+        "Formato inválido. Salve o timbrado no Word como .docx (não .doc) e tente outra vez."
+      );
+    }
+
+    const JSZip = window.JSZip;
+    if (!JSZip) throw new Error("Página ainda carregando — espere 2 segundos e tente de novo.");
+    const zip = await JSZip.loadAsync(buf);
+    if (!zip.file("word/document.xml")) {
+      throw new Error("O arquivo não é um Word (.docx) válido.");
+    }
+    return buf;
+  }
+
+  function salvarTimbradoLocal(file) {
+    return validarTimbradoArquivo(file).then((buf) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const dataUrl = reader.result || "";
+            const b64 = String(dataUrl).split(",")[1];
+            if (!b64) throw new Error("Arquivo vazio ou inválido.");
+            localStorage.setItem(STORAGE_B64, b64);
+            const nome =
+              file.name && /\./.test(file.name)
+                ? file.name
+                : `${file.name || "timbrado"}.docx`;
+            localStorage.setItem(STORAGE_NOME, nome);
+            resolve(nome);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
+        reader.readAsDataURL(new Blob([buf], { type: file.type || "application/octet-stream" }));
+      });
     });
   }
 
@@ -171,6 +209,7 @@
 
   window.FlyingTimbrado = {
     aplicarPapelTimbrado,
+    validarTimbradoArquivo,
     salvarTimbradoLocal,
     limparTimbradoLocal,
     timbradoCustomSalvo,

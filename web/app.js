@@ -969,21 +969,11 @@
     }
   }
 
-  function arquivoTimbradoValido(file) {
-    if (!file) return false;
-    return /\.docx$/i.test(file.name) || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-  }
-
   async function processarTimbradoArquivo(file) {
     const status = $("timbrado-local-status");
     if (!file || !window.FlyingTimbrado) return;
-    if (!arquivoTimbradoValido(file)) {
-      if (status) {
-        status.innerHTML = `<span class="upload-erro">❌ Use um arquivo <strong>.docx</strong> (Word).</span>`;
-      }
-      return;
-    }
-    status.innerHTML = `<span class="upload-loading">⏳ Lendo <strong>${file.name}</strong>…</span>`;
+    const nome = file.name || "arquivo";
+    status.innerHTML = `<span class="upload-loading">⏳ Lendo <strong>${nome}</strong>…</span>`;
     try {
       await window.FlyingTimbrado.salvarTimbradoLocal(file);
       status.innerHTML = `<span class="upload-ok">✓ Timbrado salvo: <strong>${file.name}</strong>. A próxima proposta Word usará este arquivo.</span>`;
