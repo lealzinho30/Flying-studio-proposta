@@ -66,21 +66,22 @@
 
   const COR = {
     primaria: "7C5CFF",
-    texto: "000000",
-    textoSoft: "333333",
+    texto: "404040",
+    textoSoft: "404040",
     branco: "FFFFFF",
   };
   const FONTE = "Calibri Light";
-  const TAM = 20; // docx: half-points → 10 pt
+  const TAM = 20; // half-points → 10 pt (modelo Word)
   const HIGHLIGHT = "yellow";
 
-  // after/before em twips (1/20 pt). ~240 ≈ uma linha em 10 pt entre parágrafos.
+  // Modelo Word: depois 10 pt, entrelinhas múltiplo 1,15, justificado.
   const SP = {
-    corpo: 240,
-    linha: 240,
-    tituloSec: 240,
-    entreSecoes: 240,
+    corpo: 200,
+    linha: 276,
+    tituloSec: 200,
+    entreSecoes: 200,
     bullet: 200,
+    prazoRecuo: 360,
   };
 
   const PAGE = {
@@ -106,6 +107,18 @@
       .join(" ");
   }
 
+  function estiloParagrafo(opts = {}) {
+    const { AlignmentType, LineRuleType } = window.docx;
+    return {
+      after: opts.after ?? SP.corpo,
+      before: opts.before ?? 0,
+      line: opts.line ?? SP.linha,
+      lineRule: opts.lineRule ?? LineRuleType.AUTO,
+      alignment: opts.alignment ?? (opts.semJustificar ? undefined : AlignmentType.JUSTIFIED),
+      indent: opts.indent,
+    };
+  }
+
   function P(texto, opts = {}) {
     const { TextRun, Paragraph, UnderlineType } = window.docx;
     const textoLimpo = (texto || "").trim();
@@ -120,26 +133,32 @@
     };
     if (opts.highlight) runOpts.highlight = HIGHLIGHT;
     if (opts.underline) runOpts.underline = { type: UnderlineType.SINGLE };
-    const spacing = {
-      after: opts.after ?? SP.corpo,
-      before: opts.before ?? 0,
-      line: opts.line ?? SP.linha,
-    };
-    if (opts.lineRule) spacing.lineRule = opts.lineRule;
+    const par = estiloParagrafo(opts);
     return new Paragraph({
-      spacing,
-      alignment: opts.alignment,
-      indent: opts.indent,
+      spacing: {
+        after: par.after,
+        before: par.before,
+        line: par.line,
+        lineRule: par.lineRule,
+      },
+      alignment: par.alignment,
+      indent: par.indent,
       children: [new TextRun(runOpts)],
     });
   }
 
   function PRich(runs, opts = {}) {
     const { Paragraph } = window.docx;
+    const par = estiloParagrafo(opts);
     return new Paragraph({
-      spacing: { after: opts.after ?? SP.corpo, before: opts.before ?? 0, line: opts.line ?? SP.linha },
-      alignment: opts.alignment,
-      indent: opts.indent,
+      spacing: {
+        after: par.after,
+        before: par.before,
+        line: par.line,
+        lineRule: par.lineRule,
+      },
+      alignment: par.alignment,
+      indent: par.indent,
       children: runs,
     });
   }
@@ -160,22 +179,35 @@
   }
 
   function secaoHeading(numero, titulo, opts = {}) {
+    const { AlignmentType } = window.docx;
     return P(`${numero} — ${titulo}`, {
       bold: true,
       size: TAM,
       after: SP.tituloSec,
       before: opts.before ?? 0,
+      alignment: AlignmentType.LEFT,
+      semJustificar: true,
     });
   }
 
   function tituloBloco(texto, opts = {}) {
-    return P(texto, { bold: true, size: TAM, after: opts.after ?? SP.corpo, before: opts.before ?? 0, underline: !!opts.underline });
+    const { AlignmentType } = window.docx;
+    return P(texto, {
+      bold: true,
+      size: TAM,
+      after: opts.after ?? SP.corpo,
+      before: opts.before ?? 0,
+      underline: !!opts.underline,
+      alignment: AlignmentType.LEFT,
+      semJustificar: true,
+    });
   }
 
   function bulletSimples(texto) {
-    const { Paragraph, TextRun } = window.docx;
+    const { Paragraph, TextRun, AlignmentType, LineRuleType } = window.docx;
     return new Paragraph({
-      spacing: { after: SP.bullet, line: SP.linha },
+      spacing: { after: SP.bullet, line: SP.linha, lineRule: LineRuleType.AUTO },
+      alignment: AlignmentType.LEFT,
       indent: { left: 360, hanging: 180 },
       children: [
         new TextRun({ text: "• ", size: TAM, font: FONTE, color: COR.texto }),
@@ -185,20 +217,41 @@
   }
 
   function bulletRotulo(rotulo, texto) {
-    const { Paragraph, TextRun } = window.docx;
+    const { Paragraph, LineRuleType, AlignmentType } = window.docx;
     return new Paragraph({
-      spacing: { after: SP.bullet, line: SP.linha },
+      spacing: { after: SP.bullet, line: SP.linha, lineRule: LineRuleType.AUTO },
+      alignment: AlignmentType.JUSTIFIED,
       indent: { left: 360, hanging: 180 },
       children: [
-        new TextRun({ text: "• ", size: TAM, font: FONTE, color: COR.texto }),
-        new TextRun({ text: `${rotulo}: `, bold: true, size: TAM, font: FONTE, color: COR.texto }),
-        new TextRun({ text: texto, size: TAM, font: FONTE, color: COR.texto }),
+        R("• ", {}),
+        R(`${rotulo}: `, { bold: true }),
+        R(texto, {}),
       ],
     });
   }
 
+  function linhaPrazo(rotulo, texto) {
+    const marco = (texto || "").replace(/[.,]+$/, "");
+    return PRich([R(`${rotulo} `, { bold: true }), R(`– ${marco}`)], {
+      indent: { left: SP.prazoRecuo },
+      semJustificar: true,
+      alignment: undefined,
+    });
+  }
+
+  function linhaSolicitacao(rotulo, itens) {
+    const txt = itens.map((i) => `• ${i}`).join(" ");
+    return PRich([R(`${rotulo}: `, { bold: true }), R(txt)]);
+  }
+
   function linhaPctPagamento(pct, marco) {
-    return P(`${pct}% - ${marco}`, { indent: { left: 720 }, after: SP.bullet });
+    const m = (marco || "").trim().replace(/[.,]+$/, "");
+    return P(`${pct}% - ${m}.`, {
+      indent: { left: SP.prazoRecuo },
+      semJustificar: true,
+      alignment: undefined,
+      after: SP.bullet,
+    });
   }
 
   /** Linha horizontal (borda inferior em parágrafo vazio). */
@@ -224,18 +277,23 @@
     const partes = [];
     const nomeCliente = (cliente.empresa || "CLIENTE").toUpperCase();
 
-    partes.push(P(`São Paulo, ${dataExtenso(data)}.`, { before: SP.entreSecoes, after: SP.corpo }));
-    partes.push(P("De acordo,", { after: SP.corpo }));
-
-    for (let i = 0; i < 4; i += 1) {
-      partes.push(P("", { forcar: true, after: 240, line: 240, lineRule: LineRuleType.EXACT }));
-    }
-
-    partes.push(paragrafoLinha(COR.texto, { after: 160, size: 6 }));
+    partes.push(P(`São Paulo, ${dataExtenso(data)}.`, {
+      before: SP.entreSecoes,
+      after: SP.corpo,
+      semJustificar: true,
+      alignment: AlignmentType.LEFT,
+    }));
+    partes.push(P("De acordo,", {
+      after: 120,
+      semJustificar: true,
+      alignment: AlignmentType.LEFT,
+    }));
+    partes.push(paragrafoLinha(COR.texto, { before: 80, after: 80, size: 6 }));
     partes.push(P(nomeCliente, {
       bold: true,
       alignment: AlignmentType.CENTER,
       after: 0,
+      semJustificar: true,
     }));
 
     return partes.filter(Boolean);
@@ -245,10 +303,12 @@
     const emp = (cliente.empresa || "CLIENTE").toUpperCase();
     const ref = (cliente.ref || "PROJETO").toUpperCase();
     const contato = (cliente.contato || "—").trim();
+    const { AlignmentType } = window.docx;
+    const cab = { bold: true, after: SP.corpo, alignment: AlignmentType.LEFT, semJustificar: true };
     return [
-      P("PROPOSTA DE IMAGENS, FILMES E TECNOLOGIAS 3D", { bold: true, after: SP.corpo }),
-      P(`${emp} - REF: ${ref}`, { bold: true, after: SP.corpo }),
-      P(`A/C: ${contato}`, { bold: true, after: SP.entreSecoes }),
+      P("PROPOSTA DE IMAGENS, FILMES E TECNOLOGIAS 3D", cab),
+      P(`${emp} – REF: ${ref}`, cab),
+      P(`A/C: ${contato}`, { ...cab, after: SP.entreSecoes }),
     ].filter(Boolean);
   }
 
@@ -256,17 +316,17 @@
     const partes = [];
     partes.push(PRich([
       R("Nascemos para dar forma ao invisível", { bold: true }),
-      R(" — transformando projetos em experiências visuais que comunicam arquitetura, paisagismo e decoração. Como diz o provérbio, "),
+      R(" – Em 9 de maio de 2011, a Flying Studio nasceu com a missão de transformar projetos em experiências visuais que comunicam arquitetura, paisagismo e decoração com clareza e emoção. Como diz o provérbio, "),
       R("uma imagem vale mais do que mil palavras", { italics: true, underline: true }),
       R("."),
-    ], { after: SP.corpo }));
+    ]));
     partes.push(PRich([
       R("Muito além das perspectivas", { bold: true }),
-      R(", desenvolvemos filmes, tours virtuais e tecnologias 3D que elevam o lançamento imobiliário e fortalecem a narrativa de cada empreendimento."),
-    ], { after: SP.corpo }));
+      R(" – Esse sempre foi o nosso lema e, ao longo dos anos, evoluímos para sermos a ponte entre a ideia e a materialização do empreendimento. Desenvolvemos filmes, tours virtuais e tecnologias 3D que elevam o lançamento imobiliário e fortalecem a narrativa de cada projeto."),
+    ]));
     partes.push(PRich([
       R("Nossa evolução foi um despertar", { bold: true }),
-      R(": hoje integramos imagens, filmes e experiências digitais em um hub criativo que une Flying Studio, RINNO FILMS e NID STUDIO."),
+      R(" – A arte sempre será o nosso core, mas hoje integramos imagens, filmes e experiências digitais em um hub criativo. Do D.brave à Realidade Aumentada, das Salas Imersivas aos filmes cinematográficos, ajudamos incorporadoras e arquitetos a transformar empreendimentos em cases de sucesso."),
     ], { after: SP.entreSecoes }));
     return partes;
   }
@@ -325,10 +385,13 @@
 
   function blocoInvestimentoLista(bloco) {
     const partes = [];
+    const { AlignmentType } = window.docx;
     partes.push(P(`${bloco.numero}. ${bloco.tituloDisplay}`, {
       bold: true,
       after: SP.bullet,
       before: bloco.numero > 1 ? SP.corpo : 0,
+      alignment: AlignmentType.LEFT,
+      semJustificar: true,
     }));
     for (const desc of bloco.linhas) {
       partes.push(bulletSimples(desc));
@@ -423,18 +486,39 @@
       primeiro_tiro: "15 (Quinze) dias após a aprovação dos Shades",
       revisoes: "10 (Dez) dias para contemplar e enviar novos tiros",
     };
-    children.push(bulletRotulo("Shades", pr.shades));
-    children.push(bulletRotulo("1º Tiro", pr.primeiro_tiro));
-    children.push(bulletRotulo("Revisões", pr.revisoes));
+    children.push(linhaPrazo("Shades", pr.shades));
+    children.push(linhaPrazo("1º Tiro", pr.primeiro_tiro));
+    children.push(linhaPrazo("Revisões", pr.revisoes));
     children.push(PRich([
       R("OBS: ", { bold: true }),
       R("Os prazos passam a contar após o recebimento de todos os projetos, informações e aprovações de etapas para o desenvolvimento de cada item. Não iniciamos os trabalhos sem o DWG e as aprovações necessárias desta proposta."),
     ], { after: SP.entreSecoes }));
 
-    children.push(P("SOLICITAÇÕES: Arquivos e definições necessários à execução do serviço.", { bold: true, after: SP.corpo }));
-    children.push(bulletRotulo("Arquitetura", "Plantas · Elevação da Fachada · Estudo de Cores da Fachada · Cortes."));
-    children.push(bulletRotulo("Paisagismo", "Implantação · Detalhamentos · Especificação de Revestimentos · Estudo de Vegetação com Especificação de Espécies · Referências do Mobiliário."));
-    children.push(bulletRotulo("Decoração", "Plantas com Layout · Desenhos de Pisos · Elevações de Paredes · Especificações de Materiais · Projeto de Forro e Iluminação · Descrição ou book de mobiliários."));
+    children.push(PRich([
+      R("SOLICITAÇÕES: ", { bold: true }),
+      R("Arquivos e definições necessários à execução do serviço."),
+    ], { after: SP.corpo }));
+    children.push(linhaSolicitacao("Arquitetura", [
+      "Plantas",
+      "Elevação da Fachada",
+      "Estudo de Cores da Fachada",
+      "Cortes",
+    ]));
+    children.push(linhaSolicitacao("Paisagismo", [
+      "Implantação",
+      "Detalhamentos",
+      "Especificação de Revestimentos",
+      "Estudo de Vegetação com Especificação de Espécies",
+      "Referências do Mobiliário",
+    ]));
+    children.push(linhaSolicitacao("Decoração", [
+      "Plantas com Layout",
+      "Desenhos de Pisos",
+      "Elevações de Paredes",
+      "Especificações de materiais",
+      "Projeto de Forro e Iluminação",
+      "Descrição ou book de mobiliários",
+    ]));
 
     children.push(P("CONSIDERAÇÕES IMAGENS:", { bold: true, before: SP.entreSecoes, after: SP.corpo }));
     const consideracoes = [
@@ -477,7 +561,7 @@
         default: {
           document: {
             run: { font: FONTE, size: TAM, color: COR.texto },
-            paragraph: { spacing: { after: SP.corpo, line: SP.linha } },
+            paragraph: { spacing: { after: SP.corpo, line: SP.linha, lineRule: "auto" } },
           },
         },
       },
